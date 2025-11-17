@@ -12,10 +12,13 @@ changelog:
   sort: asc
   filters:
     exclude:
-      - '^docs:'
-      - '^test:'
-      - '^chore:'
-      - '^ci:'
+      - '^docs(!)?(\(.+\))?:'
+      - '^test(!)?(\(.+\))?:'
+      - '^chore(!)?(\(.+\))?:'
+      - 'merge conflict'
+      - 'Merge pull request'
+      - 'Merge remote-tracking branch'
+      - 'Merge branch'
 
 release:
   github:
