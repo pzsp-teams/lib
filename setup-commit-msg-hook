@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+
+set -e
+
+HOOK_FILE=".git/hooks/commit-msg"
+CONFIG_FILE="commit-msg.config.json"
+
+if ! command -v jq >/dev/null 2>&1; then
+  echo "jq not found. Installing..."
+
+  if command -v apt >/dev/null 2>&1; then
+    sudo apt update && sudo apt install -y jq
+  elif command -v dnf >/dev/null 2>&1; then
+    sudo dnf install -y jq
+  elif command -v brew >/dev/null 2>&1; then
+    brew install jq
+  else
+    echo "No supported package manager detected. Install jq manually."
+    exit 1
+  fi
+else
+  echo "jq already installed."
+fi
+
+if [[ ! -f "$CONFIG_FILE" ]]; then
+  echo "Missing $CONFIG_FILE – create it before using this hook."
+  exit 1
+fi
+
+mkdir -p .git/hooks
+
+cat >"$HOOK_FILE" <<'EOF'
+#!/usr/bin/sh
+
+config=commit-msg.config.json
+
+# set variables
+enabled=$(jq -r .enabled $config)
+revert=$(jq -r .revert $config)
+types=($(jq -r '.types[]' $config))
+min_length=$(jq -r .length.min $config)
+max_length=$(jq -r .length.max $config)
+
+if [[ ! -f $config || ! $enabled ]]; then
+    exit 0
+fi
+
+regexp="^("
+
+if $revert; then
+    regexp="${regexp}revert: )?(\w+)("
+fi
+
+for type in "${types[@]}"
+do
+    regexp="${regexp}$type|"
+done
+
+regexp="${regexp})(\(.+\))?: "
+
+regexp="${regexp}.{$min_length,$max_length}$"
+
+msg=$(head -1 "$1")
+
+if [[ ! $msg =~ $regexp ]]; then
+  echo -e "\n\e[1m\e[31m[INVALID COMMIT MESSAGE]"
+  echo -e "------------------------\033[0m\e[0m"
+  echo -e "\e[1mValid types:\e[0m \e[34m${types[@]}\033[0m"
+  echo -e "\e[1mMax length (first line):\e[0m \e[34m$max_length\033[0m"
+  echo -e "\e[1mMin length (first line):\e[0m \e[34m$min_length\033[0m\n"
+
+  exit 1
+fi
+EOF
+
+chmod +x "$HOOK_FILE"
+
+echo "commit-msg hook installed successfully."
