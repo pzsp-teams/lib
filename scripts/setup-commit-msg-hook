@@ -30,7 +30,7 @@ fi
 mkdir -p .git/hooks
 
 cat >"$HOOK_FILE" <<'EOF'
-#!/usr/bin/sh
+#!/usr/bin/env bash
 
 config=./scripts/commit-msg.config.json
 
