@@ -17,15 +17,21 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
+      - name: Setup Go
+        uses: actions/setup-go@v6
         with:
-          go-version: 'latest'
-
+          go-version: '1.25'
+      
+      - name: Install golangci-lint from source
+        run: |
+          go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
+          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+      
+      - name: Verify golangci-lint version
+        run: golangci-lint version
+      
       - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v6
-        with:
-          version: latest
+        run: golangci-lint run --timeout=5m
 
   tidy:
     name: Go Mod Tidy
@@ -34,10 +40,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Go
+      - name: Set up Go 1.25
         uses: actions/setup-go@v5
         with:
-          go-version: 'latest'
+          go-version: '1.25.x'
+          check-latest: true
 
       - name: Check go mod tidy
         run: |
@@ -51,10 +58,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Go
+      - name: Set up Go 1.25
         uses: actions/setup-go@v5
         with:
-          go-version: 'latest'
+          go-version: '1.25.x'
+          check-latest: true
 
       - name: Run govulncheck
         run: |
@@ -69,10 +77,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Go
+      - name: Set up Go 1.25
         uses: actions/setup-go@v5
         with:
-          go-version: 'latest'
+          go-version: '1.25.x'
+          check-latest: true
 
       - name: Run tests
         run: go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
