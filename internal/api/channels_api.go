@@ -18,11 +18,11 @@ func NewChannelsAPI(client *graph.GraphServiceClient, techParams sender.RequestT
     return &ChannelsAPI{client, techParams}
 }
 
-func (api *ChannelsAPI) ListChannels(ctx context.Context, teamId string) (models.ChannelCollectionResponseable, *sender.RequestError) {
+func (api *ChannelsAPI) ListChannels(ctx context.Context, teamID string) (models.ChannelCollectionResponseable, *sender.RequestError) {
     call := func(ctx context.Context) (sender.Response, error) {
         return api.client.
             Teams().
-            ByTeamId(teamId).
+            ByTeamId(teamID).
             Channels().
             Get(ctx, nil)
     }
@@ -40,13 +40,13 @@ func (api *ChannelsAPI) ListChannels(ctx context.Context, teamId string) (models
     return out, nil
 }
 
-func (api *ChannelsAPI) GetChannel(ctx context.Context, teamId, channelId string) (models.Channelable, *sender.RequestError) {
+func (api *ChannelsAPI) GetChannel(ctx context.Context, teamID, channelID string) (models.Channelable, *sender.RequestError) {
     call := func(ctx context.Context) (sender.Response, error) {
         return api.client.
             Teams().
-            ByTeamId(teamId).
+            ByTeamId(teamID).
             Channels().
-            ByChannelId(channelId).
+            ByChannelId(channelID).
             Get(ctx, nil)
     }
 
@@ -63,11 +63,11 @@ func (api *ChannelsAPI) GetChannel(ctx context.Context, teamId, channelId string
     return out, nil
 }
 
-func (api *ChannelsAPI) CreateChannel(ctx context.Context, teamId string, channel models.Channelable) (models.Channelable, *sender.RequestError) {
+func (api *ChannelsAPI) CreateChannel(ctx context.Context, teamID string, channel models.Channelable) (models.Channelable, *sender.RequestError) {
     call := func(ctx context.Context) (sender.Response, error) {
         return api.client.
             Teams().
-            ByTeamId(teamId).
+            ByTeamId(teamID).
             Channels().
             Post(ctx, channel, nil)
     }
@@ -85,13 +85,13 @@ func (api *ChannelsAPI) CreateChannel(ctx context.Context, teamId string, channe
     return out, nil
 }
 
-func (api *ChannelsAPI) DeleteChannel(ctx context.Context, teamId, channelId string) *sender.RequestError {
+func (api *ChannelsAPI) DeleteChannel(ctx context.Context, teamID, channelID string) *sender.RequestError {
     call := func(ctx context.Context) (sender.Response, error) {
         err := api.client.
             Teams().
-            ByTeamId(teamId).
+            ByTeamId(teamID).
             Channels().
-            ByChannelId(channelId).
+            ByChannelId(channelID).
             Delete(ctx, nil)
         return nil, err
     }
