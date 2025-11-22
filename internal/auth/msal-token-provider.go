@@ -14,23 +14,26 @@ const (
 	authorityURL = "https://login.microsoftonline.com/"
 )
 
-var ErrUserNotFound = errors.New("user not found in MSAL cache")
+var errUserNotFound = errors.New("user not found in MSAL cache")
 
+// MSALTokenProvider will be used later by other packages
 type MSALTokenProvider struct {
 	client *public.Client
 	scopes []string
 }
 
+// MSALCredentials will be used later by other packages
 type MSALCredentials struct {
 	ClientID string
 	Tenant   string
 	Scopes   []string
 }
 
+// NewMSALTokenProvider will be used later by other packages
 func NewMSALTokenProvider(credentials *MSALCredentials) (*MSALTokenProvider, error) {
 	storage, err := accessor.New(credentials.ClientID)
 	if err != nil {
-		return nil, fmt.Errorf("creating persistant storage: %w", err)
+		return nil, fmt.Errorf("creating persistent storage: %w", err)
 	}
 
 	cacheAccessor, err := cache.New(storage, credentials.ClientID)
@@ -51,9 +54,10 @@ func NewMSALTokenProvider(credentials *MSALCredentials) (*MSALTokenProvider, err
 	return &MSALTokenProvider{client: &client, scopes: credentials.Scopes}, nil
 }
 
+// GetToken will be used later by other packages
 func (p *MSALTokenProvider) GetToken(email string) (*AccessToken, error) {
-	var userFound bool = false
 	var result public.AuthResult
+	var userFound bool
 
 	accounts, err := p.client.Accounts(context.TODO())
 	if err != nil {
@@ -87,10 +91,10 @@ func (p *MSALTokenProvider) GetToken(email string) (*AccessToken, error) {
 }
 
 func resolveAccount(email string, accounts []public.Account) (*public.Account, error) {
-	for _, acc := range accounts {
-		if acc.PreferredUsername == email {
-			return &acc, nil
+	for i := range accounts {
+		if accounts[i].PreferredUsername == email {
+			return &accounts[i], nil
 		}
 	}
-	return nil, ErrUserNotFound
+	return nil, errUserNotFound
 }
