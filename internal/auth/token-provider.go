@@ -2,11 +2,12 @@ package auth
 
 import "time"
 
-type AccessToken interface {
-	Token() string
-	ExpiresAt() time.Time
+type AccessToken struct {
+	AccessToken   string
+	GrantedScopes []string
+	Expiry        time.Time
 }
 
 type TokenProvider interface {
-	GetToken(email string) (AccessToken, error)
+	GetToken(email string) (*AccessToken, error)
 }
