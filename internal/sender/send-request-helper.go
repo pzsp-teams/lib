@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"appliedgo.net/what"
 	"github.com/microsoftgraph/msgraph-sdk-go/models/odataerrors"
 )
 
@@ -26,13 +27,14 @@ func SendRequest(ctx context.Context, call GraphCall, techParams RequestTechPara
 		response, err := call(attemptCtx)
 		cancel()
 		if err == nil {
-			// TODO: log
+			what.Happens("INFO", "Request successful")
+			what.Is(response) // temp logs
 			return response, nil
 		}
 		time.Sleep(time.Duration(techParams.NextRetryDelay) * time.Second)
 	}
 
-	// TODO: log
+	what.Happens("ERROR", "SendRequest error") // temporary log so the package doesn't get removed
 	return nil, convertGraphError(err)
 }
 
