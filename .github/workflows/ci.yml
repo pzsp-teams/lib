@@ -19,17 +19,11 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version: '1.25'
-      
-      - name: Install golangci-lint from source
-        run: |
-          go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
-          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
-      
-      - name: Verify golangci-lint version
-        run: golangci-lint version
-      
-      - name: Run golangci-lint
-        run: golangci-lint run --timeout=5m
+ 
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.6
 
   tidy:
     name: Go Mod Tidy
