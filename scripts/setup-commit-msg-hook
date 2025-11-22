@@ -3,7 +3,7 @@
 set -e
 
 HOOK_FILE=".git/hooks/commit-msg"
-CONFIG_FILE="commit-msg.config.json"
+CONFIG_FILE="./scripts/commit-msg.config.json"
 
 if ! command -v jq >/dev/null 2>&1; then
   echo "jq not found. Installing..."
@@ -32,7 +32,7 @@ mkdir -p .git/hooks
 cat >"$HOOK_FILE" <<'EOF'
 #!/usr/bin/sh
 
-config=commit-msg.config.json
+config=./scripts/commit-msg.config.json
 
 # set variables
 enabled=$(jq -r .enabled $config)
