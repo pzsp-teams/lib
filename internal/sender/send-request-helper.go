@@ -16,7 +16,7 @@ type RequestTechParams struct {
 	Timeout        int // in seconds
 }
 
-func SendRequest(ctx context.Context, call GraphCall, techParams RequestTechParams) (*Response, *RequestError) { //TODO define response type
+func SendRequest(ctx context.Context, call GraphCall, techParams RequestTechParams) (*Response, *RequestError) {
 	var err error
 	for attempt := 0; attempt < techParams.MaxRetries; attempt++ {
 		ctx, cancel := context.WithTimeout(ctx, time.Duration(techParams.Timeout)*time.Second)

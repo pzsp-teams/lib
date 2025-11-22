@@ -8,7 +8,7 @@ import (
 	graphmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
 )
 
-func GetMyTeams(client *msgraph.GraphServiceClient) sender.GraphCall { //TODO parse response here
+func GetMyTeams(client *msgraph.GraphServiceClient) sender.GraphCall {
 	return func(ctx context.Context) (*sender.Response, error) {
 		received, err := client.Me().JoinedTeams().Get(ctx, nil)
 		if err != nil {
