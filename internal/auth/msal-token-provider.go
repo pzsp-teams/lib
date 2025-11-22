@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/AzureAD/microsoft-authentication-extensions-for-go/cache"
+	"github.com/AzureAD/microsoft-authentication-extensions-for-go/cache/accessor"
 	"github.com/AzureAD/microsoft-authentication-library-for-go/apps/public"
 )
 
@@ -40,8 +42,22 @@ type MSALCredentials struct {
 }
 
 func NewMSALTokenProvider(credentials *MSALCredentials) (*MSALTokenProvider, error) {
+	storage, err := accessor.New(credentials.ClientID)
+	if err != nil {
+		return nil, fmt.Errorf("creating persistant storage: %w", err)
+	}
+
+	cacheAccessor, err := cache.New(storage, credentials.ClientID)
+	if err != nil {
+		return nil, fmt.Errorf("creating cache: %w", err)
+	}
+
 	authority := authorityURL + credentials.Tenet
-	client, err := public.New(credentials.ClientID, public.WithAuthority(authority))
+	client, err := public.New(
+		credentials.ClientID,
+		public.WithAuthority(authority),
+		public.WithCache(cacheAccessor),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("creating MSALTokenProvider: %w", err)
 	}
@@ -50,6 +66,7 @@ func NewMSALTokenProvider(credentials *MSALCredentials) (*MSALTokenProvider, err
 }
 
 func (p *MSALTokenProvider) GetToken(email string) (AccessToken, error) {
+	var userFound bool = false
 	var result public.AuthResult
 
 	accounts, err := p.client.Accounts(context.TODO())
@@ -58,15 +75,21 @@ func (p *MSALTokenProvider) GetToken(email string) (AccessToken, error) {
 	}
 
 	if len(accounts) > 0 {
-		if acc, accErr := resolveAccount(email, accounts); accErr == nil {
-			result, err = p.client.AcquireTokenSilent(context.TODO(), p.scopes, public.WithSilentAccount(*acc))
+		if acc, err := resolveAccount(email, accounts); err == nil {
+			if result, err = p.client.AcquireTokenSilent(
+				context.TODO(),
+				p.scopes,
+				public.WithSilentAccount(*acc),
+			); err == nil {
+				userFound = true
+			}
 		}
 	}
 
-	if err != nil || len(accounts) == 0 {
+	if !userFound || len(accounts) == 0 {
 		result, err = p.client.AcquireTokenInteractive(context.TODO(), p.scopes, public.WithLoginHint(email))
 		if err != nil {
-			return nil, fmt.Errorf("acquiring token interactively: %w", err)
+			return nil, fmt.Errorf("acquiring token: %w", err)
 		}
 	}
 
