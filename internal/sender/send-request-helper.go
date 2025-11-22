@@ -8,28 +8,31 @@ import (
 	"github.com/microsoftgraph/msgraph-sdk-go/models/odataerrors"
 )
 
-type GraphCall func(ctx context.Context) (*Response, error)
+// GraphCall will be used later by other packages
+type GraphCall func(ctx context.Context) (Response, error)
 
+// RequestTechParams will be used later by other packages
 type RequestTechParams struct {
 	MaxRetries     int
 	NextRetryDelay int // in seconds
 	Timeout        int // in seconds
 }
 
-func SendRequest(ctx context.Context, call GraphCall, techParams RequestTechParams) (*Response, *RequestError) {
+// SendRequest will be used later by other packages
+func SendRequest(ctx context.Context, call GraphCall, techParams RequestTechParams) (Response, *RequestError) {
 	var err error
 	for attempt := 0; attempt < techParams.MaxRetries; attempt++ {
-		ctx, cancel := context.WithTimeout(ctx, time.Duration(techParams.Timeout)*time.Second)
-		defer cancel()
-		response, err := call(ctx)
+		attemptCtx, cancel := context.WithTimeout(ctx, time.Duration(techParams.Timeout)*time.Second)
+		response, err := call(attemptCtx)
+		cancel()
 		if err == nil {
-			//TODO log
+			// TODO: log
 			return response, nil
 		}
 		time.Sleep(time.Duration(techParams.NextRetryDelay) * time.Second)
 	}
 
-	//TODO log
+	// TODO: log
 	return nil, convertGraphError(err)
 }
 

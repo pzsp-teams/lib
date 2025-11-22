@@ -2,6 +2,7 @@ package sender
 
 import "fmt"
 
+// RequestError will be used later by other packages
 type RequestError struct {
 	Code    string
 	Message string
