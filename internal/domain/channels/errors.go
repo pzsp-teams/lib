@@ -7,10 +7,11 @@ import (
 	"github.com/pzsp-teams/lib/internal/sender"
 )
 
+// Channel errors
 var (
 	ErrChannelNotFound = errors.New("channel not found")
-	ErrForbidden      = errors.New("forbidden access to channel")
-	ErrUnknown        = errors.New("unknown channel error")
+	ErrForbidden       = errors.New("forbidden access to channel")
+	ErrUnknown         = errors.New("unknown channel error")
 )
 
 func mapError(e *sender.RequestError) error {

@@ -6,14 +6,17 @@ import (
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
 )
 
+// Service will be used later
 type Service struct {
 	api ChannelAPI
 }
 
+// NewService will be used later
 func NewService(api ChannelAPI) *Service {
 	return &Service{api: api}
 }
 
+// ListChannels will be used later
 func (s *Service) ListChannels(ctx context.Context, teamID string) ([]*Channel, error) {
 	resp, err := s.api.ListChannels(ctx, teamID)
 	if err != nil {
@@ -30,6 +33,7 @@ func (s *Service) ListChannels(ctx context.Context, teamID string) ([]*Channel, 
 	return channels, nil
 }
 
+// Get will be used later
 func (s *Service) Get(ctx context.Context, teamID, channelID string) (*Channel, error) {
 	resp, err := s.api.GetChannel(ctx, teamID, channelID)
 	if err != nil {
@@ -42,6 +46,7 @@ func (s *Service) Get(ctx context.Context, teamID, channelID string) (*Channel, 
 	}, nil
 }
 
+// Create will be used later
 func (s *Service) Create(ctx context.Context, teamID, name string) (*Channel, error) {
 	newChannel := msmodels.NewChannel()
 	newChannel.SetDisplayName(&name)
@@ -57,6 +62,7 @@ func (s *Service) Create(ctx context.Context, teamID, name string) (*Channel, er
 	}, nil
 }
 
+// Delete will be used later
 func (s *Service) Delete(ctx context.Context, teamID, channelID string) error {
 	err := s.api.DeleteChannel(ctx, teamID, channelID)
 	if err != nil {
@@ -64,7 +70,6 @@ func (s *Service) Delete(ctx context.Context, teamID, channelID string) error {
 	}
 	return nil
 }
-
 
 func deref(s *string) string {
 	if s == nil {
