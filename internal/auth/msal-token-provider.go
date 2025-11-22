@@ -23,7 +23,7 @@ type MSALTokenProvider struct {
 
 type MSALCredentials struct {
 	ClientID string
-	Tenet    string
+	Tenant   string
 	Scopes   []string
 }
 
@@ -38,7 +38,7 @@ func NewMSALTokenProvider(credentials *MSALCredentials) (*MSALTokenProvider, err
 		return nil, fmt.Errorf("creating cache: %w", err)
 	}
 
-	authority := authorityURL + credentials.Tenet
+	authority := authorityURL + credentials.Tenant
 	client, err := public.New(
 		credentials.ClientID,
 		public.WithAuthority(authority),
