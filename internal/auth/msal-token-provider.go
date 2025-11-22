@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/AzureAD/microsoft-authentication-extensions-for-go/cache"
 	"github.com/AzureAD/microsoft-authentication-extensions-for-go/cache/accessor"
@@ -16,19 +15,6 @@ const (
 )
 
 var ErrUserNotFound = errors.New("user not found in MSAL cache")
-
-type MSALAccessToken struct {
-	AccessToken string
-	Expiry      time.Time
-}
-
-func (t *MSALAccessToken) Token() string {
-	return t.AccessToken
-}
-
-func (t *MSALAccessToken) ExpiresAt() time.Time {
-	return t.Expiry
-}
 
 type MSALTokenProvider struct {
 	client *public.Client
@@ -65,7 +51,7 @@ func NewMSALTokenProvider(credentials *MSALCredentials) (*MSALTokenProvider, err
 	return &MSALTokenProvider{client: &client, scopes: credentials.Scopes}, nil
 }
 
-func (p *MSALTokenProvider) GetToken(email string) (AccessToken, error) {
+func (p *MSALTokenProvider) GetToken(email string) (*AccessToken, error) {
 	var userFound bool = false
 	var result public.AuthResult
 
@@ -93,7 +79,11 @@ func (p *MSALTokenProvider) GetToken(email string) (AccessToken, error) {
 		}
 	}
 
-	return &MSALAccessToken{AccessToken: result.AccessToken, Expiry: result.ExpiresOn}, nil
+	return &AccessToken{
+		AccessToken:   result.AccessToken,
+		GrantedScopes: result.GrantedScopes,
+		Expiry:        result.ExpiresOn,
+	}, nil
 }
 
 func resolveAccount(email string, accounts []public.Account) (*public.Account, error) {
