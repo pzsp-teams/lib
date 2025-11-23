@@ -3,7 +3,7 @@ package teams
 import (
 	"context"
 
-	"github.com/pzsp-teams/lib/internal/domain/channels"
+	"github.com/pzsp-teams/lib/pkg/teams/channels"
 )
 
 // Channel will be used later

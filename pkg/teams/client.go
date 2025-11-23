@@ -6,7 +6,8 @@ import (
 	graph "github.com/microsoftgraph/msgraph-sdk-go"
 	"github.com/pzsp-teams/lib/internal/api"
 	"github.com/pzsp-teams/lib/internal/auth"
-	"github.com/pzsp-teams/lib/internal/domain/channels"
+	"github.com/pzsp-teams/lib/pkg/teams/channels"
+
 	"github.com/pzsp-teams/lib/internal/sender"
 )
 
