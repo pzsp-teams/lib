@@ -9,19 +9,19 @@ import (
 	"github.com/pzsp-teams/lib/internal/sender"
 )
 
-// ChannelsAPI will be used later
-type ChannelsAPI struct {
+// API will be used later
+type API struct {
 	client     *graph.GraphServiceClient
 	techParams sender.RequestTechParams
 }
 
 // NewChannelsAPI will be used later
-func NewChannelsAPI(client *graph.GraphServiceClient, techParams sender.RequestTechParams) *ChannelsAPI {
-	return &ChannelsAPI{client, techParams}
+func NewChannelsAPI(client *graph.GraphServiceClient, techParams sender.RequestTechParams) *API {
+	return &API{client, techParams}
 }
 
 // ListChannels will be used later
-func (api *ChannelsAPI) ListChannels(ctx context.Context, teamID string) (models.ChannelCollectionResponseable, *sender.RequestError) {
+func (api *API) ListChannels(ctx context.Context, teamID string) (models.ChannelCollectionResponseable, *sender.RequestError) {
 	call := func(ctx context.Context) (sender.Response, error) {
 		return api.client.
 			Teams().
@@ -44,7 +44,7 @@ func (api *ChannelsAPI) ListChannels(ctx context.Context, teamID string) (models
 }
 
 // GetChannel will be used later
-func (api *ChannelsAPI) GetChannel(ctx context.Context, teamID, channelID string) (models.Channelable, *sender.RequestError) {
+func (api *API) GetChannel(ctx context.Context, teamID, channelID string) (models.Channelable, *sender.RequestError) {
 	call := func(ctx context.Context) (sender.Response, error) {
 		return api.client.
 			Teams().
@@ -68,7 +68,7 @@ func (api *ChannelsAPI) GetChannel(ctx context.Context, teamID, channelID string
 }
 
 // CreateChannel will be used later
-func (api *ChannelsAPI) CreateChannel(ctx context.Context, teamID string, channel models.Channelable) (models.Channelable, *sender.RequestError) {
+func (api *API) CreateChannel(ctx context.Context, teamID string, channel models.Channelable) (models.Channelable, *sender.RequestError) {
 	call := func(ctx context.Context) (sender.Response, error) {
 		return api.client.
 			Teams().
@@ -91,7 +91,7 @@ func (api *ChannelsAPI) CreateChannel(ctx context.Context, teamID string, channe
 }
 
 // DeleteChannel will be used later
-func (api *ChannelsAPI) DeleteChannel(ctx context.Context, teamID, channelID string) *sender.RequestError {
+func (api *API) DeleteChannel(ctx context.Context, teamID, channelID string) *sender.RequestError {
 	call := func(ctx context.Context) (sender.Response, error) {
 		err := api.client.
 			Teams().
