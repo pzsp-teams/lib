@@ -7,8 +7,8 @@ import (
 	sender "github.com/pzsp-teams/lib/internal/sender"
 )
 
-// ChannelAPI will be used later
-type ChannelAPI interface {
+// ChannelAPIInterface will be used later
+type ChannelAPIInterface interface {
 	ListChannels(ctx context.Context, teamID string) (msmodels.ChannelCollectionResponseable, *sender.RequestError)
 	GetChannel(ctx context.Context, teamID, channelID string) (msmodels.Channelable, *sender.RequestError)
 	CreateChannel(ctx context.Context, teamID string, channel msmodels.Channelable) (msmodels.Channelable, *sender.RequestError)

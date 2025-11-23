@@ -8,11 +8,11 @@ import (
 
 // Service will be used later
 type Service struct {
-	api ChannelAPI
+	api ChannelAPIInterface
 }
 
 // NewService will be used later
-func NewService(api ChannelAPI) *Service {
+func NewService(api ChannelAPIInterface) *Service {
 	return &Service{api: api}
 }
 

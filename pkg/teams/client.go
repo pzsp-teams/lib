@@ -4,7 +4,7 @@ import (
 	"context"
 
 	graph "github.com/microsoftgraph/msgraph-sdk-go"
-	"github.com/pzsp-teams/lib/internal/api"
+
 	"github.com/pzsp-teams/lib/internal/auth"
 	"github.com/pzsp-teams/lib/pkg/teams/channels"
 
@@ -52,7 +52,7 @@ func newClient(graphClient *graph.GraphServiceClient, opts *SenderConfig) *Clien
 		NextRetryDelay: opts.NextRetryDelay,
 		Timeout:        opts.Timeout,
 	}
-	channelAPI := api.NewChannelsAPI(graphClient, techParams)
+	channelAPI := channels.NewChannelsAPI(graphClient, techParams)
 	chSvc := channels.NewService(channelAPI)
 
 	return &Client{
