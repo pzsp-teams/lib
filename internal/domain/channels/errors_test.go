@@ -10,7 +10,7 @@ import (
 
 func TestMapError_ResourceNotFound(t *testing.T) {
 	e := &sender.RequestError{
-		Code: "ResourceNotFound",
+		Code:    "ResourceNotFound",
 		Message: "not found",
 	}
 	err := mapError(e)
@@ -21,7 +21,7 @@ func TestMapError_ResourceNotFound(t *testing.T) {
 
 func TestMapError_AccessDenied(t *testing.T) {
 	e := &sender.RequestError{
-		Code: "AccessDenied",
+		Code:    "AccessDenied",
 		Message: "access denied",
 	}
 	err := mapError(e)
@@ -32,14 +32,14 @@ func TestMapError_AccessDenied(t *testing.T) {
 
 func TestMapError_Unknown(t *testing.T) {
 	e := &sender.RequestError{
-		Code: "SomeOtherError",
+		Code:    "SomeOtherError",
 		Message: "some other error",
 	}
 	err := mapError(e)
 	if !errors.Is(err, ErrUnknown) {
 		t.Fatalf("expected ErrUnknown, got %v", err)
-	}	
-	
+	}
+
 	msg := err.Error()
 	if !strings.Contains(msg, "some other error") || !strings.Contains(msg, "SomeOtherError") {
 		t.Fatalf("error message does not contain original error details: %s", msg)
