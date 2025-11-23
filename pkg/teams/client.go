@@ -6,13 +6,13 @@ import (
 	graph "github.com/microsoftgraph/msgraph-sdk-go"
 	"github.com/pzsp-teams/lib/internal/api"
 	"github.com/pzsp-teams/lib/internal/auth"
-	"github.com/pzsp-teams/lib/internal/domain/channels"
 	"github.com/pzsp-teams/lib/internal/sender"
+	"github.com/pzsp-teams/lib/pkg/teams/channels"
 )
 
 // Client will be used later
 type Client struct {
-	channels ChannelService
+	channels *channels.Service
 }
 
 // SenderConfig will be used later
@@ -55,6 +55,6 @@ func newClient(graphClient *graph.GraphServiceClient, opts *SenderConfig) *Clien
 	chSvc := channels.NewService(channelAPI)
 
 	return &Client{
-		channels: &channelService{inner: chSvc},
+		channels: chSvc,
 	}
 }
