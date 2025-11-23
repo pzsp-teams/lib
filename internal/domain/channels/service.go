@@ -24,10 +24,11 @@ func (s *Service) ListChannels(ctx context.Context, teamID string) ([]*Channel, 
 	}
 	var channels []*Channel
 	for _, ch := range resp.GetValue() {
+		name := deref(ch.GetDisplayName())
 		channels = append(channels, &Channel{
 			ID:        deref(ch.GetId()),
-			Name:      deref(ch.GetDisplayName()),
-			IsGeneral: deref(ch.GetDisplayName()) == "General",
+			Name:      name,
+			IsGeneral: name == "General",
 		})
 	}
 	return channels, nil
@@ -39,10 +40,11 @@ func (s *Service) Get(ctx context.Context, teamID, channelID string) (*Channel, 
 	if err != nil {
 		return nil, mapError(err)
 	}
+	name := deref(resp.GetDisplayName())
 	return &Channel{
 		ID:        deref(resp.GetId()),
-		Name:      deref(resp.GetDisplayName()),
-		IsGeneral: deref(resp.GetDisplayName()) == "General",
+		Name:      name,
+		IsGeneral: name == "General",
 	}, nil
 }
 
