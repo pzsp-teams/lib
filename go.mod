@@ -1,6 +1,6 @@
 module github.com/pzsp-teams/lib
 
-go 1.25.0
+go 1.25.4
 
 require (
 	appliedgo.net/what v0.2.0
