@@ -1,23 +1,51 @@
 package teams
 
 import (
+	"context"
+
 	graph "github.com/microsoftgraph/msgraph-sdk-go"
 	"github.com/pzsp-teams/lib/internal/api"
+	"github.com/pzsp-teams/lib/internal/auth"
 	"github.com/pzsp-teams/lib/internal/domain/channels"
 	"github.com/pzsp-teams/lib/internal/sender"
 )
 
+// Client will be used later
 type Client struct {
 	channels ChannelService
 }
 
-type Options struct {
+// SenderConfig will be used later
+type SenderConfig struct {
 	MaxRetries     int
 	NextRetryDelay int
 	Timeout        int
 }
 
-func NewClient(graphClient *graph.GraphServiceClient, opts *Options) *Client {
+// NewClient will be used later
+func NewClient(ctx context.Context, authConfig *AuthConfig, senderConfig *SenderConfig) (*Client, error) {
+	tokenProvider, err := auth.NewMSALTokenProvider(&auth.MSALCredentials{
+		ClientID: authConfig.ClientID,
+		Tenant:   authConfig.Tenant,
+		Scopes:   authConfig.Scopes,
+	})
+	if err != nil {
+		return nil, err
+	}
+	cred := &msalCredential{
+		provider: tokenProvider,
+		email:    authConfig.Email,
+	}
+
+	graphClient, err := graph.NewGraphServiceClientWithCredentials(cred, authConfig.Scopes)
+	if err != nil {
+		return nil, err
+	}
+
+	return newClient(graphClient, senderConfig), nil
+}
+
+func newClient(graphClient *graph.GraphServiceClient, opts *SenderConfig) *Client {
 	techParams := sender.RequestTechParams{
 		MaxRetries:     opts.MaxRetries,
 		NextRetryDelay: opts.NextRetryDelay,
@@ -30,4 +58,3 @@ func NewClient(graphClient *graph.GraphServiceClient, opts *Options) *Client {
 		channels: &channelService{inner: chSvc},
 	}
 }
-
