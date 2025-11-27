@@ -16,7 +16,6 @@ type Client struct {
 	Channels *channels.Service
 }
 
-
 // SenderConfig will be used later
 type SenderConfig struct {
 	MaxRetries     int
