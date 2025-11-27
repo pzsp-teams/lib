@@ -21,7 +21,6 @@ type RequestTechParams struct {
 
 // SendRequest will be used later by other packages
 func SendRequest(ctx context.Context, call GraphCall, techParams RequestTechParams) (Response, *RequestError) {
-	var err error
 	for attempt := 0; attempt < techParams.MaxRetries; attempt++ {
 		attemptCtx, cancel := context.WithTimeout(ctx, time.Duration(techParams.Timeout)*time.Second)
 		response, err := call(attemptCtx)
@@ -31,14 +30,19 @@ func SendRequest(ctx context.Context, call GraphCall, techParams RequestTechPara
 			what.Is(response) // temp logs
 			return response, nil
 		}
+		if attempt == techParams.MaxRetries-1 {
+			what.Happens("ERROR", "SendRequest error")
+			return nil, convertGraphError(err)
+		}
 		time.Sleep(time.Duration(techParams.NextRetryDelay) * time.Second)
 	}
-
-	what.Happens("ERROR", "SendRequest error") // temporary log so the package doesn't get removed
-	return nil, convertGraphError(err)
+	return nil, &RequestError{Code: "UnknownError", Message: "An unknown error occurred"}
 }
 
 func convertGraphError(err error) *RequestError {
+	if err == nil {
+		return nil
+	}
 	var odataErr *odataerrors.ODataError
 	if errors.As(err, &odataErr) {
 		errElapsed := odataErr.GetErrorEscaped()
