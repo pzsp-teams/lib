@@ -77,9 +77,18 @@ func (p *MSALTokenProvider) GetToken(email string) (*AccessToken, error) {
 	}
 
 	if !userFound || len(accounts) == 0 {
-		result, err = p.client.AcquireTokenInteractive(context.TODO(), p.scopes, public.WithLoginHint(email))
+		deviceCode, err := p.client.AcquireTokenByDeviceCode(
+			context.TODO(),
+			p.scopes,
+		)
 		if err != nil {
-			return nil, fmt.Errorf("acquiring token: %w", err)
+			return nil, fmt.Errorf("starting device code flow: %w", err)
+		}
+		fmt.Println(deviceCode.Result.Message)
+
+		result, err = deviceCode.AuthenticationResult(context.TODO())
+		if err != nil {
+			return nil, fmt.Errorf("completing device code auth: %w", err)
 		}
 	}
 
