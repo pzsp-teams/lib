@@ -13,8 +13,9 @@ import (
 
 // Client will be used later
 type Client struct {
-	channels *channels.Service
+	Channels *channels.Service
 }
+
 
 // SenderConfig will be used later
 type SenderConfig struct {
@@ -56,6 +57,6 @@ func newClient(graphClient *graph.GraphServiceClient, opts *SenderConfig) *Clien
 	chSvc := channels.NewService(channelAPI)
 
 	return &Client{
-		channels: chSvc,
+		Channels: chSvc,
 	}
 }
