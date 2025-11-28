@@ -40,3 +40,12 @@ func TestConvertGraphError_GenericError(t *testing.T) {
 		t.Errorf("expected message 'boom', got %q", got.Message)
 	}
 }
+
+func TestConvertGraphError_NilError(t *testing.T) {
+	var base error = nil
+	got := convertGraphError(base)
+
+	if got != nil {
+		t.Errorf("expected nil, got %v", got)
+	}
+}
