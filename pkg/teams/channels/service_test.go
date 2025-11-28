@@ -10,16 +10,29 @@ import (
 )
 
 type fakeChannelAPI struct {
-	listResp   msmodels.ChannelCollectionResponseable
-	listErr    *sender.RequestError
-	getResp    msmodels.Channelable
-	getErr     *sender.RequestError
-	createResp msmodels.Channelable
-	createErr  *sender.RequestError
-	deleteErr  *sender.RequestError
-	lastCreate msmodels.Channelable
-	lastTeamID string
-	lastChanID string
+	listResp        msmodels.ChannelCollectionResponseable
+	listErr         *sender.RequestError
+	getResp         msmodels.Channelable
+	getErr          *sender.RequestError
+	createResp      msmodels.Channelable
+	createErr       *sender.RequestError
+	deleteErr       *sender.RequestError
+	lastCreate      msmodels.Channelable
+	lastTeamID      string
+	lastChanID      string
+	sendMsgResp     msmodels.ChatMessageable
+	sendMsgErr      *sender.RequestError
+	listMsgsResp    msmodels.ChatMessageCollectionResponseable
+	listMsgsErr     *sender.RequestError
+	getMsgResp      msmodels.ChatMessageable
+	getMsgErr       *sender.RequestError
+	listRepliesResp msmodels.ChatMessageCollectionResponseable
+	listRepliesErr  *sender.RequestError
+	getReplyResp    msmodels.ChatMessageable
+	getReplyErr     *sender.RequestError
+	lastMessage     msmodels.ChatMessageable
+	lastMessageID   string
+	lastReplyID     string
 }
 
 func (f *fakeChannelAPI) ListChannels(ctx context.Context, teamID string) (msmodels.ChannelCollectionResponseable, *sender.RequestError) {
@@ -43,6 +56,41 @@ func (f *fakeChannelAPI) DeleteChannel(ctx context.Context, teamID, channelID st
 	f.lastTeamID = teamID
 	f.lastChanID = channelID
 	return f.deleteErr
+}
+
+func (f *fakeChannelAPI) SendMessage(ctx context.Context, teamID, channelID string, message msmodels.ChatMessageable) (msmodels.ChatMessageable, *sender.RequestError) {
+	f.lastTeamID = teamID
+	f.lastChanID = channelID
+	f.lastMessage = message
+	return f.sendMsgResp, f.sendMsgErr
+}
+
+func (f *fakeChannelAPI) ListMessages(ctx context.Context, teamID, channelID string, top *int32) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError) {
+	f.lastTeamID = teamID
+	f.lastChanID = channelID
+	return f.listMsgsResp, f.listMsgsErr
+}
+
+func (f *fakeChannelAPI) GetMessage(ctx context.Context, teamID, channelID, messageID string) (msmodels.ChatMessageable, *sender.RequestError) {
+	f.lastTeamID = teamID
+	f.lastChanID = channelID
+	f.lastMessageID = messageID
+	return f.getMsgResp, f.getMsgErr
+}
+
+func (f *fakeChannelAPI) ListReplies(ctx context.Context, teamID, channelID, messageID string, top *int32) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError) {
+	f.lastTeamID = teamID
+	f.lastChanID = channelID
+	f.lastMessageID = messageID
+	return f.listRepliesResp, f.listRepliesErr
+}
+
+func (f *fakeChannelAPI) GetReply(ctx context.Context, teamID, channelID, messageID, replyID string) (msmodels.ChatMessageable, *sender.RequestError) {
+	f.lastTeamID = teamID
+	f.lastChanID = channelID
+	f.lastMessageID = messageID
+	f.lastReplyID = replyID
+	return f.getReplyResp, f.getReplyErr
 }
 
 func newGraphChannel(id, name string) msmodels.Channelable {
@@ -166,5 +214,189 @@ func TestDeref_NonNil(t *testing.T) {
 	s := "hello"
 	if got := deref(&s); got != "hello" {
 		t.Fatalf("expected 'hello', got %q", got)
+	}
+}
+
+func newChatMessage(id, content string) msmodels.ChatMessageable {
+	msg := msmodels.NewChatMessage()
+	msg.SetId(&id)
+	body := msmodels.NewItemBody()
+	body.SetContent(&content)
+	msg.SetBody(body)
+	return msg
+}
+
+func TestService_SendMessage_CreatesMessageAndMapsResult(t *testing.T) {
+	ctx := context.Background()
+	msgID := "msg-123"
+	msgContent := "Hello, Teams!"
+
+	respMsg := newChatMessage(msgID, msgContent)
+	api := &fakeChannelAPI{sendMsgResp: respMsg}
+	svc := NewService(api)
+
+	body := MessageBody{Content: msgContent}
+	got, err := svc.SendMessage(ctx, "team-1", "chan-1", body)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if got.ID != msgID {
+		t.Errorf("expected ID %q, got %q", msgID, got.ID)
+	}
+	if got.Content != msgContent {
+		t.Errorf("expected content %q, got %q", msgContent, got.Content)
+	}
+
+	if api.lastTeamID != "team-1" {
+		t.Errorf("expected team ID 'team-1', got %q", api.lastTeamID)
+	}
+	if api.lastChanID != "chan-1" {
+		t.Errorf("expected channel ID 'chan-1', got %q", api.lastChanID)
+	}
+
+	sentContent := api.lastMessage.GetBody().GetContent()
+	if sentContent == nil || *sentContent != msgContent {
+		t.Errorf("expected sent content %q, got %#v", msgContent, sentContent)
+	}
+}
+
+func TestService_SendMessage_MapsError(t *testing.T) {
+	ctx := context.Background()
+	api := &fakeChannelAPI{
+		sendMsgErr: &sender.RequestError{
+			Code:    "AccessDenied",
+			Message: "not allowed",
+		},
+	}
+	svc := NewService(api)
+
+	body := MessageBody{Content: "test"}
+	_, err := svc.SendMessage(ctx, "team-1", "chan-1", body)
+	if !errors.Is(err, ErrForbidden) {
+		t.Fatalf("expected ErrForbidden, got %v", err)
+	}
+}
+
+func TestService_ListMessages_MapsMultipleMessages(t *testing.T) {
+	ctx := context.Background()
+	col := msmodels.NewChatMessageCollectionResponse()
+
+	msg1 := newChatMessage("msg-1", "First message")
+	msg2 := newChatMessage("msg-2", "Second message")
+	col.SetValue([]msmodels.ChatMessageable{msg1, msg2})
+
+	api := &fakeChannelAPI{listMsgsResp: col}
+	svc := NewService(api)
+
+	got, err := svc.ListMessages(ctx, "team-1", "chan-1", nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(got) != 2 {
+		t.Fatalf("expected 2 messages, got %d", len(got))
+	}
+
+	if got[0].ID != "msg-1" || got[0].Content != "First message" {
+		t.Errorf("unexpected first message: %+v", got[0])
+	}
+	if got[1].ID != "msg-2" || got[1].Content != "Second message" {
+		t.Errorf("unexpected second message: %+v", got[1])
+	}
+}
+
+func TestService_ListMessages_WithTopOption(t *testing.T) {
+	ctx := context.Background()
+	col := msmodels.NewChatMessageCollectionResponse()
+	api := &fakeChannelAPI{listMsgsResp: col}
+	svc := NewService(api)
+
+	var top int32 = 10
+	opts := &ListMessagesOptions{Top: &top}
+	_, err := svc.ListMessages(ctx, "team-1", "chan-1", opts)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestService_GetMessage_ReturnsMessage(t *testing.T) {
+	ctx := context.Background()
+	msg := newChatMessage("msg-42", "Test message")
+
+	api := &fakeChannelAPI{getMsgResp: msg}
+	svc := NewService(api)
+
+	got, err := svc.GetMessage(ctx, "team-1", "chan-1", "msg-42")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if got.ID != "msg-42" || got.Content != "Test message" {
+		t.Errorf("unexpected message: %+v", got)
+	}
+
+	if api.lastMessageID != "msg-42" {
+		t.Errorf("expected message ID 'msg-42', got %q", api.lastMessageID)
+	}
+}
+
+func TestService_ListReplies_MapsReplies(t *testing.T) {
+	ctx := context.Background()
+	col := msmodels.NewChatMessageCollectionResponse()
+
+	reply1 := newChatMessage("reply-1", "First reply")
+	reply2 := newChatMessage("reply-2", "Second reply")
+	col.SetValue([]msmodels.ChatMessageable{reply1, reply2})
+
+	api := &fakeChannelAPI{listRepliesResp: col}
+	svc := NewService(api)
+
+	got, err := svc.ListReplies(ctx, "team-1", "chan-1", "msg-1", nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(got) != 2 {
+		t.Fatalf("expected 2 replies, got %d", len(got))
+	}
+
+	if got[0].ID != "reply-1" || got[0].Content != "First reply" {
+		t.Errorf("unexpected first reply: %+v", got[0])
+	}
+
+	if api.lastMessageID != "msg-1" {
+		t.Errorf("expected message ID 'msg-1', got %q", api.lastMessageID)
+	}
+}
+
+func TestService_GetReply_ReturnsReply(t *testing.T) {
+	ctx := context.Background()
+	reply := newChatMessage("reply-42", "Test reply")
+
+	api := &fakeChannelAPI{getReplyResp: reply}
+	svc := NewService(api)
+
+	got, err := svc.GetReply(ctx, "team-1", "chan-1", "msg-1", "reply-42")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if got.ID != "reply-42" || got.Content != "Test reply" {
+		t.Errorf("unexpected reply: %+v", got)
+	}
+
+	if api.lastMessageID != "msg-1" {
+		t.Errorf("expected message ID 'msg-1', got %q", api.lastMessageID)
+	}
+	if api.lastReplyID != "reply-42" {
+		t.Errorf("expected reply ID 'reply-42', got %q", api.lastReplyID)
+	}
+}
+
+func TestMapChatMessageToMessage_NilInput(t *testing.T) {
+	got := mapChatMessageToMessage(nil)
+	if got != nil {
+		t.Errorf("expected nil, got %+v", got)
 	}
 }
