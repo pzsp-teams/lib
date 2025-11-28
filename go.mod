@@ -3,6 +3,7 @@ module github.com/pzsp-teams/lib
 go 1.25.4
 
 require (
+	appliedgo.net/what v0.2.0
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.19.1
 	github.com/AzureAD/microsoft-authentication-extensions-for-go/cache v0.1.1
 	github.com/AzureAD/microsoft-authentication-library-for-go v1.6.0
@@ -10,7 +11,6 @@ require (
 )
 
 require (
-	appliedgo.net/what v0.2.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/internal v1.11.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
