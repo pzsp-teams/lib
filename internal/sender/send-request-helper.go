@@ -5,7 +5,6 @@ import (
 	"errors"
 	"time"
 
-	"appliedgo.net/what"
 	"github.com/microsoftgraph/msgraph-sdk-go/models/odataerrors"
 )
 
@@ -19,28 +18,39 @@ type RequestTechParams struct {
 	Timeout        int // in seconds
 }
 
+func withTimeout(timeout time.Duration, call GraphCall) GraphCall {
+	return func(ctx context.Context) (Response, error) {
+		cctx, cancel := context.WithTimeout(ctx, timeout)
+		defer cancel()
+		return call(cctx)
+	}
+}
+
+func retry(ctx context.Context, attempts int, delay time.Duration, call GraphCall) (Response, error) {
+	var err error
+	var res Response
+	for i := 0; i < attempts; i++ {
+		res, err = call(ctx)
+		if err == nil {
+			return res, nil
+		}
+		if i < attempts-1 {
+			time.Sleep(delay)
+		}
+	}
+	return nil, err
+}
+
 // SendRequest will be used later by other packages
 func SendRequest(ctx context.Context, call GraphCall, techParams RequestTechParams) (Response, *RequestError) {
 	timeout := time.Duration(techParams.Timeout) * time.Second
 	delay := time.Duration(techParams.NextRetryDelay) * time.Second
-	var lastErr error
-	for attempt := 0; attempt < techParams.MaxRetries; attempt++ {
-		attemptCtx, cancel := context.WithTimeout(ctx, timeout)
-		response, err := call(attemptCtx)
-		cancel()
-		if err == nil {
-			what.Happens("INFO", "Request successful")
-			what.Is(response) // temp logs
-			return response, nil
-		}
-		lastErr = err
-		if attempt == techParams.MaxRetries-1 {
-			what.Happens("ERROR", "SendRequest error")
-			return nil, convertGraphError(lastErr)
-		}
-		time.Sleep(delay)
+	call = withTimeout(timeout, call)
+	res, err := retry(ctx, techParams.MaxRetries, delay, call)
+	if err != nil {
+		return nil, convertGraphError(err)
 	}
-	return nil, &RequestError{Code: "UnknownError", Message: "An unknown error occurred"}
+	return res, nil
 }
 
 func convertGraphError(err error) *RequestError {
