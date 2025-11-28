@@ -5,6 +5,8 @@ import (
 	"errors"
 	"time"
 
+	"appliedgo.net/what"
+
 	"github.com/microsoftgraph/msgraph-sdk-go/models/odataerrors"
 )
 
@@ -48,8 +50,11 @@ func SendRequest(ctx context.Context, call GraphCall, techParams RequestTechPara
 	call = withTimeout(timeout, call)
 	res, err := retry(ctx, techParams.MaxRetries, delay, call)
 	if err != nil {
+		what.Happens("ERROR", "Request failed")
 		return nil, convertGraphError(err)
 	}
+	what.Happens("INFO", "Request successful")
+	what.Is(res)
 	return res, nil
 }
 
