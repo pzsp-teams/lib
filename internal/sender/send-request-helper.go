@@ -21,8 +21,11 @@ type RequestTechParams struct {
 
 // SendRequest will be used later by other packages
 func SendRequest(ctx context.Context, call GraphCall, techParams RequestTechParams) (Response, *RequestError) {
+	timeout := time.Duration(techParams.Timeout) * time.Second
+	delay := time.Duration(techParams.NextRetryDelay) * time.Second
+	var lastErr error
 	for attempt := 0; attempt < techParams.MaxRetries; attempt++ {
-		attemptCtx, cancel := context.WithTimeout(ctx, time.Duration(techParams.Timeout)*time.Second)
+		attemptCtx, cancel := context.WithTimeout(ctx, timeout)
 		response, err := call(attemptCtx)
 		cancel()
 		if err == nil {
@@ -30,11 +33,12 @@ func SendRequest(ctx context.Context, call GraphCall, techParams RequestTechPara
 			what.Is(response) // temp logs
 			return response, nil
 		}
+		lastErr = err
 		if attempt == techParams.MaxRetries-1 {
 			what.Happens("ERROR", "SendRequest error")
-			return nil, convertGraphError(err)
+			return nil, convertGraphError(lastErr)
 		}
-		time.Sleep(time.Duration(techParams.NextRetryDelay) * time.Second)
+		time.Sleep(delay)
 	}
 	return nil, &RequestError{Code: "UnknownError", Message: "An unknown error occurred"}
 }
