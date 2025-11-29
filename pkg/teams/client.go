@@ -29,6 +29,7 @@ func NewClient(ctx context.Context, authConfig *AuthConfig, senderConfig *Sender
 		ClientID: authConfig.ClientID,
 		Tenant:   authConfig.Tenant,
 		Scopes:   authConfig.Scopes,
+		AuthMethod: authConfig.AuthMethod,
 	})
 	if err != nil {
 		return nil, err

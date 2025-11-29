@@ -10,10 +10,11 @@ import (
 
 // AuthConfig will be used later
 type AuthConfig struct {
-	ClientID string
-	Tenant   string
-	Scopes   []string
-	Email    string
+	ClientID   string
+	Tenant     string
+	Scopes     []string
+	AuthMethod auth.AuthMethod
+	Email      string
 }
 
 type msalCredential struct {
