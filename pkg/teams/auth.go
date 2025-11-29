@@ -13,7 +13,7 @@ type AuthConfig struct {
 	ClientID   string
 	Tenant     string
 	Scopes     []string
-	AuthMethod auth.AuthMethod
+	AuthMethod string
 	Email      string
 }
 
