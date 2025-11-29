@@ -24,6 +24,7 @@ func loadAuthConfig() *teams.AuthConfig {
 		Tenant:   getEnv("TENANT_ID", ""),
 		Email:    getEnv("EMAIL", ""),
 		Scopes:   strings.Split(getEnv("SCOPES", "https://graph.microsoft.com/.default"), ","),
+		AuthMethod: getEnv("AUTH_METHOD", "DEVICE_CODE"),
 	}
 	validate(cfg)
 	return cfg
@@ -45,5 +46,8 @@ func validate(cfg *teams.AuthConfig) {
 	}
 	if cfg.Email == "" {
 		log.Fatal("Missing EMAIL")
+	}
+	if cfg.AuthMethod != "DEVICE_CODE" && cfg.AuthMethod != "INTERACTIVE" {
+		log.Fatal("AUTH METHOD must be either DEVICE_CODE or INTERACTIVE")
 	}
 }
