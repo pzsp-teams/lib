@@ -26,10 +26,10 @@ type SenderConfig struct {
 // NewClient will be used later
 func NewClient(ctx context.Context, authConfig *AuthConfig, senderConfig *SenderConfig) (*Client, error) {
 	tokenProvider, err := auth.NewMSALTokenProvider(&auth.MSALCredentials{
-		ClientID: authConfig.ClientID,
-		Tenant:   authConfig.Tenant,
-		Scopes:   authConfig.Scopes,
-		AuthMethod: auth.AuthMethod(authConfig.AuthMethod),
+		ClientID:   authConfig.ClientID,
+		Tenant:     authConfig.Tenant,
+		Scopes:     authConfig.Scopes,
+		AuthMethod: auth.Method(authConfig.AuthMethod),
 	})
 	if err != nil {
 		return nil, err
