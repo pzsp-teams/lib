@@ -16,17 +16,27 @@ const (
 
 var errUserNotFound = errors.New("user not found in MSAL cache")
 
+// AuthMethod will be used later by other packages
+type AuthMethod string
+
+const (
+	Interactive AuthMethod = "INTERACTIVE"
+	DeviceCode  AuthMethod = "DEVICE_CODE"
+)
+
 // MSALTokenProvider will be used later by other packages
 type MSALTokenProvider struct {
-	client *public.Client
-	scopes []string
+	client     *public.Client
+	authMethod AuthMethod
+	scopes     []string
 }
 
 // MSALCredentials will be used later by other packages
 type MSALCredentials struct {
-	ClientID string
-	Tenant   string
-	Scopes   []string
+	ClientID   string
+	Tenant     string
+	Scopes     []string
+	AuthMethod AuthMethod
 }
 
 // NewMSALTokenProvider will be used later by other packages
@@ -51,7 +61,7 @@ func NewMSALTokenProvider(credentials *MSALCredentials) (*MSALTokenProvider, err
 		return nil, fmt.Errorf("creating MSALTokenProvider: %w", err)
 	}
 
-	return &MSALTokenProvider{client: &client, scopes: credentials.Scopes}, nil
+	return &MSALTokenProvider{client: &client, authMethod: credentials.AuthMethod, scopes: credentials.Scopes}, nil
 }
 
 // GetToken will be used later by other packages
@@ -77,9 +87,28 @@ func (p *MSALTokenProvider) GetToken(email string) (*AccessToken, error) {
 	}
 
 	if !userFound || len(accounts) == 0 {
-		result, err = p.client.AcquireTokenInteractive(context.TODO(), p.scopes, public.WithLoginHint(email))
-		if err != nil {
-			return nil, fmt.Errorf("acquiring token: %w", err)
+		switch p.authMethod {
+		case Interactive:
+			result, err = p.client.AcquireTokenInteractive(context.TODO(), p.scopes, public.WithLoginHint(email))
+			if err != nil {
+				return nil, fmt.Errorf("acquiring token interactively: %w", err)
+			}
+		case DeviceCode:
+			deviceCode, err := p.client.AcquireTokenByDeviceCode(
+				context.TODO(),
+				p.scopes,
+			)
+			if err != nil {
+				return nil, fmt.Errorf("starting device code flow: %w", err)
+			}
+			fmt.Println(deviceCode.Result.Message)
+
+			result, err = deviceCode.AuthenticationResult(context.TODO())
+			if err != nil {
+				return nil, fmt.Errorf("completing device code auth: %w", err)
+			}
+		default:
+			return nil, fmt.Errorf("unsupported auth method: %s", p.authMethod)
 		}
 	}
 
