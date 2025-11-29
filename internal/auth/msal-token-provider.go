@@ -16,18 +16,18 @@ const (
 
 var errUserNotFound = errors.New("user not found in MSAL cache")
 
-// AuthMethod will be used later by other packages
-type AuthMethod string
+// Method will be used later by other packages
+type Method string
 
 const (
-	Interactive AuthMethod = "INTERACTIVE"
-	DeviceCode  AuthMethod = "DEVICE_CODE"
+	interactive Method = "INTERACTIVE"
+	deviceCode  Method = "DEVICE_CODE"
 )
 
 // MSALTokenProvider will be used later by other packages
 type MSALTokenProvider struct {
 	client     *public.Client
-	authMethod AuthMethod
+	authMethod Method
 	scopes     []string
 }
 
@@ -36,7 +36,7 @@ type MSALCredentials struct {
 	ClientID   string
 	Tenant     string
 	Scopes     []string
-	AuthMethod AuthMethod
+	AuthMethod Method
 }
 
 // NewMSALTokenProvider will be used later by other packages
@@ -88,12 +88,12 @@ func (p *MSALTokenProvider) GetToken(email string) (*AccessToken, error) {
 
 	if !userFound || len(accounts) == 0 {
 		switch p.authMethod {
-		case Interactive:
+		case interactive:
 			result, err = p.client.AcquireTokenInteractive(context.TODO(), p.scopes, public.WithLoginHint(email))
 			if err != nil {
 				return nil, fmt.Errorf("acquiring token interactively: %w", err)
 			}
-		case DeviceCode:
+		case deviceCode:
 			deviceCode, err := p.client.AcquireTokenByDeviceCode(
 				context.TODO(),
 				p.scopes,
