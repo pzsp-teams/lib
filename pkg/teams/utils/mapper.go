@@ -16,12 +16,12 @@ type MapperInterface interface {
 
 // Mapper will be used later
 type Mapper struct {
-	teamSvc    teams.Service
-	channelSvc channels.Service
+	teamSvc    *teams.Service
+	channelSvc *channels.Service
 }
 
 // NewMapper will be used later
-func NewMapper(teamSvc teams.Service, channelSvc channels.Service) *Mapper {
+func NewMapper(teamSvc *teams.Service, channelSvc *channels.Service) *Mapper {
 	return &Mapper{
 		teamSvc:    teamSvc,
 		channelSvc: channelSvc,
