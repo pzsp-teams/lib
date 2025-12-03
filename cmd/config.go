@@ -20,10 +20,10 @@ func newSenderConfig() *teams.SenderConfig {
 func loadAuthConfig() *teams.AuthConfig {
 	_ = godotenv.Load()
 	cfg := &teams.AuthConfig{
-		ClientID: getEnv("CLIENT_ID", ""),
-		Tenant:   getEnv("TENANT_ID", ""),
-		Email:    getEnv("EMAIL", ""),
-		Scopes:   strings.Split(getEnv("SCOPES", "https://graph.microsoft.com/.default"), ","),
+		ClientID:   getEnv("CLIENT_ID", ""),
+		Tenant:     getEnv("TENANT_ID", ""),
+		Email:      getEnv("EMAIL", ""),
+		Scopes:     strings.Split(getEnv("SCOPES", "https://graph.microsoft.com/.default"), ","),
 		AuthMethod: getEnv("AUTH_METHOD", "DEVICE_CODE"),
 	}
 	validate(cfg)
