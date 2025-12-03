@@ -29,8 +29,8 @@ func NewMapper(teamSvc *teams.Service, channelSvc *channels.Service) *Mapper {
 }
 
 // MapTeamNameToTeamID will be used later
-func (m *Mapper) MapTeamNameToTeamID(teamName string) (string, error) {
-	listOfTeams, err := m.teamSvc.ListMyJoined(context.TODO())
+func (m *Mapper) MapTeamNameToTeamID(ctx context.Context, teamName string) (string, error) {
+	listOfTeams, err := m.teamSvc.ListMyJoined(ctx)
 	if err != nil {
 		return "", err
 	}
@@ -43,8 +43,8 @@ func (m *Mapper) MapTeamNameToTeamID(teamName string) (string, error) {
 }
 
 // MapChannelNameToChannelID will be used later
-func (m *Mapper) MapChannelNameToChannelID(teamID, channelName string) (string, error) {
-	chans, err := m.channelSvc.ListChannels(context.TODO(), teamID)
+func (m *Mapper) MapChannelNameToChannelID(ctx context.Context, teamID, channelName string) (string, error) {
+	chans, err := m.channelSvc.ListChannels(ctx, teamID)
 	if err != nil {
 		return "", err
 	}
@@ -53,5 +53,5 @@ func (m *Mapper) MapChannelNameToChannelID(teamID, channelName string) (string, 
 			return c.ID, nil
 		}
 	}
-	return "", fmt.Errorf("channel with name '%s' not found", channelName)
+	return "", fmt.Errorf("channel with name %q not found in team %q", channelName, teamID)
 }
