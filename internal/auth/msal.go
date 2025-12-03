@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
@@ -15,7 +16,6 @@ import (
 
 const (
 	authorityURL = "https://login.microsoftonline.com/"
-	cacheDIR     = ".cache"
 )
 
 var errUserNotFound = errors.New("user not found in MSAL cache")
@@ -51,11 +51,12 @@ func NewMSALTokenProvider(config *AuthConfig) (*MSALTokenProvider, error) {
 		return nil, fmt.Errorf("creating persistent storage: %w", err)
 	}
 
-	if err := os.MkdirAll(cacheDIR, 0o755); err != nil {
-		return nil, fmt.Errorf("creating cache dir: %w", err)
+	cacheDir, err := os.UserCacheDir()
+	if err != nil {
+		return nil, fmt.Errorf("retrieving cache dir: %w", err)
 	}
 
-	cacheAccessor, err := cache.New(storage, cacheDIR+"/"+config.ClientID)
+	cacheAccessor, err := cache.New(storage, filepath.Join(cacheDir, "pzsp-teams", config.ClientID))
 	if err != nil {
 		return nil, fmt.Errorf("creating cache: %w", err)
 	}
