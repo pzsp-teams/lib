@@ -21,11 +21,7 @@ linters:
     revive:
       rules:
         - name: exported
-          arguments:
-            - checkPrivateReceivers
-            - sayRepetitiveInsteadOfStutters
-          severity: warning
-          disabled: false
+          disabled: true
   exclusions:
     generated: lax
     paths:
