@@ -7,7 +7,8 @@ import (
 	sender "github.com/pzsp-teams/lib/internal/sender"
 )
 
-type TeamsAPIInterface interface {
+// APIInterface will be used later
+type APIInterface interface {
 	CreateFromTemplate(ctx context.Context, displayName, description string, owners []string) (string, *sender.RequestError)
 	CreateViaGroup(ctx context.Context, displayName, mailNickname, visibility string) (string, *sender.RequestError)
 	Get(ctx context.Context, teamID string) (msmodels.Teamable, *sender.RequestError)

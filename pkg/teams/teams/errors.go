@@ -7,6 +7,7 @@ import (
 	"github.com/pzsp-teams/lib/internal/sender"
 )
 
+// Team errors
 var (
 	ErrTeamNotFound = errors.New("team not found")
 	ErrForbidden    = errors.New("forbidden access to team")

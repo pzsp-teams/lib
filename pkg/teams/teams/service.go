@@ -6,14 +6,17 @@ import (
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
 )
 
+// Service will be used later
 type Service struct {
-	api TeamsAPIInterface
+	api APIInterface
 }
 
-func NewService(api TeamsAPIInterface) *Service {
+// NewService will be used later
+func NewService(api APIInterface) *Service {
 	return &Service{api: api}
 }
 
+// Get will be used later
 func (s *Service) Get(ctx context.Context, teamID string) (*Team, error) {
 	resp, err := s.api.Get(ctx, teamID)
 	if err != nil {
@@ -22,6 +25,7 @@ func (s *Service) Get(ctx context.Context, teamID string) (*Team, error) {
 	return mapGraphTeam(resp), nil
 }
 
+// ListMyJoined will be used later
 func (s *Service) ListMyJoined(ctx context.Context) ([]*Team, error) {
 	resp, err := s.api.ListMyJoined(ctx)
 	if err != nil {
@@ -36,6 +40,7 @@ func (s *Service) ListMyJoined(ctx context.Context) ([]*Team, error) {
 	return out, nil
 }
 
+// Update will be used later
 func (s *Service) Update(ctx context.Context, teamID string, patch *msmodels.Team) (*Team, error) {
 	resp, err := s.api.Update(ctx, teamID, patch)
 	if err != nil {
@@ -44,6 +49,7 @@ func (s *Service) Update(ctx context.Context, teamID string, patch *msmodels.Tea
 	return mapGraphTeam(resp), nil
 }
 
+// CreateViaGroup will be used later
 func (s *Service) CreateViaGroup(ctx context.Context, displayName, mailNickname, visibility string) (*Team, error) {
 	id, err := s.api.CreateViaGroup(ctx, displayName, mailNickname, visibility)
 	if err != nil {
@@ -56,6 +62,7 @@ func (s *Service) CreateViaGroup(ctx context.Context, displayName, mailNickname,
 	return mapGraphTeam(t), nil
 }
 
+// CreateFromTemplate will be used later
 func (s *Service) CreateFromTemplate(ctx context.Context, displayName, description string, owners []string) (string, error) {
 	id, err := s.api.CreateFromTemplate(ctx, displayName, description, owners)
 	if err != nil {
@@ -64,6 +71,7 @@ func (s *Service) CreateFromTemplate(ctx context.Context, displayName, descripti
 	return id, nil
 }
 
+// Archive will be used later
 func (s *Service) Archive(ctx context.Context, teamID string, spoReadOnlyForMembers *bool) error {
 	if e := s.api.Archive(ctx, teamID, spoReadOnlyForMembers); e != nil {
 		return mapError(e)
@@ -71,6 +79,7 @@ func (s *Service) Archive(ctx context.Context, teamID string, spoReadOnlyForMemb
 	return nil
 }
 
+// Unarchive will be used later
 func (s *Service) Unarchive(ctx context.Context, teamID string) error {
 	if e := s.api.Unarchive(ctx, teamID); e != nil {
 		return mapError(e)
@@ -78,6 +87,7 @@ func (s *Service) Unarchive(ctx context.Context, teamID string) error {
 	return nil
 }
 
+// Delete will be used later
 func (s *Service) Delete(ctx context.Context, teamID string) error {
 	if e := s.api.Delete(ctx, teamID); e != nil {
 		return mapError(e)
@@ -85,6 +95,7 @@ func (s *Service) Delete(ctx context.Context, teamID string) error {
 	return nil
 }
 
+// RestoreDeleted will be used later
 func (s *Service) RestoreDeleted(ctx context.Context, deletedGroupID string) (string, error) {
 	obj, err := s.api.RestoreDeleted(ctx, deletedGroupID)
 	if err != nil {
