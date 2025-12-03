@@ -13,7 +13,7 @@ import (
 
 const (
 	authorityURL = "https://login.microsoftonline.com/"
-	cacheDIR     = ".cache/"
+	cacheDIR     = ".cache"
 )
 
 var errUserNotFound = errors.New("user not found in MSAL cache")
@@ -52,7 +52,7 @@ func NewMSALTokenProvider(credentials *MSALCredentials) (*MSALTokenProvider, err
 		return nil, fmt.Errorf("creating cache dir: %w", err)
 	}
 
-	cacheAccessor, err := cache.New(storage, cacheDIR+credentials.ClientID)
+	cacheAccessor, err := cache.New(storage, cacheDIR+"/"+credentials.ClientID)
 	if err != nil {
 		return nil, fmt.Errorf("creating cache: %w", err)
 	}
