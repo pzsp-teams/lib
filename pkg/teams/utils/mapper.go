@@ -11,7 +11,7 @@ import (
 // MapperInterface will be used later
 type MapperInterface interface {
 	MapTeamNameToTeamID(teamName string) (string, error)
-	MapChannelNameToChannelID(channelName string) (string, error)
+	MapChannelNameToChannelID(teamID, channelName string) (string, error)
 }
 
 // Mapper will be used later
@@ -43,7 +43,7 @@ func (m *Mapper) MapTeamNameToTeamID(teamName string) (string, error) {
 }
 
 // MapChannelNameToChannelID will be used later
-func (m *Mapper) MapChannelNameToChannelID(channelName, teamID string) (string, error) {
+func (m *Mapper) MapChannelNameToChannelID(teamID, channelName string) (string, error) {
 	chans, err := m.channelSvc.ListChannels(context.TODO(), teamID)
 	if err != nil {
 		return "", err
