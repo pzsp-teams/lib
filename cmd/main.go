@@ -103,13 +103,13 @@ func main() {
 		}
 		handleGetTeam(client, mapper, os.Args[2:])
 	case "create-team":
-		if len(os.Args) < 5 {
-			fmt.Println("Usage: teams create-team <display-name> <mail-nickname> <visibility>")
+		if len(os.Args) < 2 {
+			fmt.Println("Usage: teams create-team <display-name>")
 			os.Exit(1)
 		}
 		handleCreateTeam(client, os.Args[2:])
 	case "create-team-from-template":
-		if len(os.Args) < 4 {
+		if len(os.Args) < 2 {
 			fmt.Println("Usage: teams create-team-from-template <display-name> <description...>")
 			os.Exit(1)
 		}
@@ -405,8 +405,8 @@ func handleGetTeam(client *teams.Client, mapper *utils.Mapper, args []string) {
 
 func handleCreateTeam(client *teams.Client, args []string) {
 	displayName := args[0]
-	mailNickname := args[1]
-	visibility := args[2]
+	mailNickname := displayName
+	visibility := "public"
 
 	ctx := context.TODO()
 	t, err := client.Teams.CreateViaGroup(ctx, displayName, mailNickname, visibility)
