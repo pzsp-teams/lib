@@ -11,27 +11,28 @@ import (
 
 	"github.com/pzsp-teams/lib/pkg/teams"
 	channelsPkg "github.com/pzsp-teams/lib/pkg/teams/channels"
+	"github.com/pzsp-teams/lib/pkg/teams/utils"
 )
 
 func printUsage() {
 	fmt.Println("Usage: teams <command> [arguments]")
 	fmt.Println("\nChannel commands:")
-	fmt.Println("  create-channel <team-id> <channel-name>")
-	fmt.Println("  list-channels <team-id>")
-	fmt.Println("  get-channel <team-id> <channel-id>")
-	fmt.Println("  delete-channel <team-id> <channel-id>")
-	fmt.Println("  send-message <team-id> <channel-name> <message>")
-	fmt.Println("  list-messages <team-id> <channel-name> [top]")
-	fmt.Println("  list-replies <team-id> <channel-name> <message-id> [top]")
+	fmt.Println("  create-channel <team-name> <channel-name>")
+	fmt.Println("  list-channels <team-name>")
+	fmt.Println("  get-channel <team-name> <channel-name>")
+	fmt.Println("  delete-channel <team-name> <channel-name>")
+	fmt.Println("  send-message <team-name> <channel-name> <message>")
+	fmt.Println("  list-messages <team-name> <channel-name> [top]")
+	fmt.Println("  list-replies <team-name> <channel-name> <message-id> [top]")
 	fmt.Println("\nTeam commands:")
 	fmt.Println("  list-my-teams")
-	fmt.Println("  get-team <team-id>")
+	fmt.Println("  get-team <team-name>")
 	fmt.Println("  create-team <display-name> <mail-nickname> <visibility>")
 	fmt.Println("  create-team-from-template <display-name> <description...>")
-	fmt.Println("  update-team <team-id> <new-display-name> [new-description...]")
-	fmt.Println("  archive-team <team-id> [spo-readonly=true|false]")
-	fmt.Println("  unarchive-team <team-id>")
-	fmt.Println("  delete-team <team-id>")
+	fmt.Println("  update-team <team-name> <new-display-name> [new-description...]")
+	fmt.Println("  archive-team <team-name> [spo-readonly=true|false]")
+	fmt.Println("  unarchive-team <team-name>")
+	fmt.Println("  delete-team <team-name>")
 	fmt.Println("  restore-team <deleted-group-id>")
 }
 
@@ -49,58 +50,58 @@ func main() {
 		fmt.Printf("Error creating Teams client: %v\n", err)
 		os.Exit(1)
 	}
-
+	mapper := utils.NewMapper(*client.Teams, *client.Channels)
 	switch cmd {
 	case "create-channel":
 		if len(os.Args) < 4 {
-			fmt.Println("Usage: teams create-channel <team-id> <channel-name>")
+			fmt.Println("Usage: teams create-channel <team-name> <channel-name>")
 			os.Exit(1)
 		}
-		handleCreateChannel(client, os.Args[2:])
+		handleCreateChannel(client, mapper, os.Args[2:])
 	case "list-channels":
 		if len(os.Args) < 3 {
-			fmt.Println("Usage: teams list-channels <team-id>")
+			fmt.Println("Usage: teams list-channels <team-name>")
 			os.Exit(1)
 		}
-		handleListChannels(client, os.Args[2:])
+		handleListChannels(client, mapper, os.Args[2:])
 	case "get-channel":
 		if len(os.Args) < 4 {
-			fmt.Println("Usage: teams get-channel <team-id> <channel-id>")
+			fmt.Println("Usage: teams get-channel <team-name> <channel-name>")
 			os.Exit(1)
 		}
-		handleGetChannel(client, os.Args[2:])
+		handleGetChannel(client, mapper, os.Args[2:])
 	case "delete-channel":
 		if len(os.Args) < 4 {
-			fmt.Println("Usage: teams delete-channel <team-id> <channel-id>")
+			fmt.Println("Usage: teams delete-channel <team-name> <channel-name>")
 			os.Exit(1)
 		}
-		handleDeleteChannel(client, os.Args[2:])
+		handleDeleteChannel(client, mapper, os.Args[2:])
 	case "send-message":
 		if len(os.Args) < 5 {
-			fmt.Println("Usage: teams send-message <team-id> <channel-name> <message>")
+			fmt.Println("Usage: teams send-message <team-name> <channel-name> <message>")
 			os.Exit(1)
 		}
-		handleSendMessage(client, os.Args[2:])
+		handleSendMessage(client, mapper, os.Args[2:])
 	case "list-messages":
 		if len(os.Args) < 4 {
-			fmt.Println("Usage: teams list-messages <team-id> <channel-name> [top]")
+			fmt.Println("Usage: teams list-messages <team-name> <channel-name> [top]")
 			os.Exit(1)
 		}
-		handleListMessages(client, os.Args[2:])
+		handleListMessages(client, mapper, os.Args[2:])
 	case "list-replies":
 		if len(os.Args) < 5 {
-			fmt.Println("Usage: teams list-replies <team-id> <channel-name> <message-id> [top]")
+			fmt.Println("Usage: teams list-replies <team-name> <channel-name> <message-id> [top]")
 			os.Exit(1)
 		}
-		handleListReplies(client, os.Args[2:])
+		handleListReplies(client, mapper, os.Args[2:])
 	case "list-my-teams":
 		handleListMyTeams(client)
 	case "get-team":
 		if len(os.Args) < 3 {
-			fmt.Println("Usage: teams get-team <team-id>")
+			fmt.Println("Usage: teams get-team <team-name>")
 			os.Exit(1)
 		}
-		handleGetTeam(client, os.Args[2:])
+		handleGetTeam(client, mapper, os.Args[2:])
 	case "create-team":
 		if len(os.Args) < 5 {
 			fmt.Println("Usage: teams create-team <display-name> <mail-nickname> <visibility>")
@@ -115,28 +116,28 @@ func main() {
 		handleCreateTeamFromTemplate(client, os.Args[2:])
 	case "update-team":
 		if len(os.Args) < 4 {
-			fmt.Println("Usage: teams update-team <team-id> <new-display-name> [new-description...]")
+			fmt.Println("Usage: teams update-team <team-name> <new-display-name> [new-description...]")
 			os.Exit(1)
 		}
-		handleUpdateTeam(client, os.Args[2:])
+		handleUpdateTeam(client, mapper, os.Args[2:])
 	case "archive-team":
 		if len(os.Args) < 3 {
-			fmt.Println("Usage: teams archive-team <team-id> [spo-readonly=true|false]")
+			fmt.Println("Usage: teams archive-team <team-name> [spo-readonly=true|false]")
 			os.Exit(1)
 		}
-		handleArchiveTeam(client, os.Args[2:])
+		handleArchiveTeam(client, mapper, os.Args[2:])
 	case "unarchive-team":
 		if len(os.Args) < 3 {
-			fmt.Println("Usage: teams unarchive-team <team-id>")
+			fmt.Println("Usage: teams unarchive-team <team-name>")
 			os.Exit(1)
 		}
-		handleUnarchiveTeam(client, os.Args[2:])
+		handleUnarchiveTeam(client, mapper, os.Args[2:])
 	case "delete-team":
 		if len(os.Args) < 3 {
-			fmt.Println("Usage: teams delete-team <team-id>")
+			fmt.Println("Usage: teams delete-team <team-name>")
 			os.Exit(1)
 		}
-		handleDeleteTeam(client, os.Args[2:])
+		handleDeleteTeam(client, mapper, os.Args[2:])
 	case "restore-team":
 		if len(os.Args) < 3 {
 			fmt.Println("Usage: teams restore-team <deleted-group-id>")
@@ -152,9 +153,16 @@ func main() {
 	}
 }
 
-func handleCreateChannel(client *teams.Client, args []string) {
-	teamID := args[0]
+func handleCreateChannel(client *teams.Client, mapper *utils.Mapper, args []string) {
+	rawTeam := args[0]
 	channelName := args[1]
+
+	teamID, err := resolveTeamID(mapper, rawTeam)
+	if err != nil {
+		fmt.Printf("Error resolving team %q: %v\n", rawTeam, err)
+		os.Exit(1)
+	}
+
 	channel, err := client.Channels.Create(context.TODO(), teamID, channelName)
 	if err != nil {
 		fmt.Printf("Error creating channel: %v\n", err)
@@ -163,8 +171,14 @@ func handleCreateChannel(client *teams.Client, args []string) {
 	fmt.Printf("Channel created with ID: %s\n", channel.ID)
 }
 
-func handleListChannels(client *teams.Client, args []string) {
-	teamID := args[0]
+func handleListChannels(client *teams.Client, mapper *utils.Mapper, args []string) {
+	rawTeam := args[0]
+
+	teamID, err := resolveTeamID(mapper, rawTeam)
+	if err != nil {
+		fmt.Printf("Error resolving team %q: %v\n", rawTeam, err)
+		os.Exit(1)
+	}
 	channels, err := client.Channels.ListChannels(context.TODO(), teamID)
 	if err != nil {
 		fmt.Printf("Error listing channels: %v\n", err)
@@ -176,9 +190,22 @@ func handleListChannels(client *teams.Client, args []string) {
 	}
 }
 
-func handleGetChannel(client *teams.Client, args []string) {
-	teamID := args[0]
-	channelID := args[1]
+func handleGetChannel(client *teams.Client, mapper *utils.Mapper, args []string) {
+	rawTeam := args[0]
+	rawChannel := args[1]
+
+	teamID, err := resolveTeamID(mapper, rawTeam)
+	if err != nil {
+		fmt.Printf("Error resolving team %q: %v\n", rawTeam, err)
+		os.Exit(1)
+	}
+
+	channelID, err := resolveChannelID(mapper, teamID, rawChannel)
+	if err != nil {
+		fmt.Printf("Error resolving channel %q in team %q: %v\n", rawChannel, rawTeam, err)
+		os.Exit(1)
+	}
+
 	channel, err := client.Channels.Get(context.TODO(), teamID, channelID)
 	if err != nil {
 		fmt.Printf("Error getting channel: %v\n", err)
@@ -187,10 +214,21 @@ func handleGetChannel(client *teams.Client, args []string) {
 	fmt.Printf("Channel ID: %s, Name: %s, Is General: %v\n", channel.ID, channel.Name, channel.IsGeneral)
 }
 
-func handleDeleteChannel(client *teams.Client, args []string) {
-	teamID := args[0]
-	channelID := args[1]
-	err := client.Channels.Delete(context.TODO(), teamID, channelID)
+func handleDeleteChannel(client *teams.Client, mapper *utils.Mapper, args []string) {
+	rawTeam := args[0]
+	rawChannel := args[1]
+	teamID, err := resolveTeamID(mapper, rawTeam)
+	if err != nil {
+		fmt.Printf("Error resolving team %q: %v\n", rawTeam, err)
+		os.Exit(1)
+	}
+
+	channelID, err := resolveChannelID(mapper, teamID, rawChannel)
+	if err != nil {
+		fmt.Printf("Error resolving channel %q in team %q: %v\n", rawChannel, rawTeam, err)
+		os.Exit(1)
+	}
+	err = client.Channels.Delete(context.TODO(), teamID, channelID)
 	if err != nil {
 		fmt.Printf("Error deleting channel: %v\n", err)
 		os.Exit(1)
@@ -198,31 +236,20 @@ func handleDeleteChannel(client *teams.Client, args []string) {
 	fmt.Println("Channel deleted successfully.")
 }
 
-func handleSendMessage(client *teams.Client, args []string) {
-	teamID := args[0]
-	channelName := args[1]
+func handleSendMessage(client *teams.Client, mapper *utils.Mapper, args []string) {
+	rawTeam := args[0]
+	rawChannel := args[1]
 	messageContent := args[2]
 
-	channels, err := client.Channels.ListChannels(context.TODO(), teamID)
+	teamID, err := resolveTeamID(mapper, rawTeam)
 	if err != nil {
-		fmt.Printf("Error listing channels: %v\n", err)
+		fmt.Printf("Error resolving team %q: %v\n", rawTeam, err)
 		os.Exit(1)
 	}
 
-	var channelID string
-	for _, ch := range channels {
-		if ch.Name == channelName {
-			channelID = ch.ID
-			break
-		}
-	}
-
-	if channelID == "" {
-		fmt.Printf("Error: Channel '%s' not found in team\n", channelName)
-		fmt.Println("Available channels:")
-		for _, ch := range channels {
-			fmt.Printf("- %s\n", ch.Name)
-		}
+	channelID, err := resolveChannelID(mapper, teamID, rawChannel)
+	if err != nil {
+		fmt.Printf("Error resolving channel %q in team %q: %v\n", rawChannel, rawTeam, err)
 		os.Exit(1)
 	}
 
@@ -234,33 +261,22 @@ func handleSendMessage(client *teams.Client, args []string) {
 		os.Exit(1)
 	}
 
-	fmt.Printf("Message sent successfully to channel '%s' (ID: %s)\n", channelName, message.ID)
+	fmt.Printf("Message sent successfully to channel '%s' (ID: %s)\n", rawChannel, message.ID)
 }
 
-func handleListMessages(client *teams.Client, args []string) {
-	teamID := args[0]
-	channelName := args[1]
+func handleListMessages(client *teams.Client, mapper *utils.Mapper, args []string) {
+	rawTeam := args[0]
+	rawChannel := args[1]
 
-	channels, err := client.Channels.ListChannels(context.TODO(), teamID)
+	teamID, err := resolveTeamID(mapper, rawTeam)
 	if err != nil {
-		fmt.Printf("Error listing channels: %v\n", err)
+		fmt.Printf("Error resolving team %q: %v\n", rawTeam, err)
 		os.Exit(1)
 	}
 
-	var channelID string
-	for _, ch := range channels {
-		if ch.Name == channelName {
-			channelID = ch.ID
-			break
-		}
-	}
-
-	if channelID == "" {
-		fmt.Printf("Error: Channel '%s' not found in team\n", channelName)
-		fmt.Println("Available channels:")
-		for _, ch := range channels {
-			fmt.Printf("- %s\n", ch.Name)
-		}
+	channelID, err := resolveChannelID(mapper, teamID, rawChannel)
+	if err != nil {
+		fmt.Printf("Error resolving channel %q in team %q: %v\n", rawChannel, rawTeam, err)
 		os.Exit(1)
 	}
 
@@ -281,7 +297,7 @@ func handleListMessages(client *teams.Client, args []string) {
 		os.Exit(1)
 	}
 
-	fmt.Printf("Messages in channel '%s':\n", channelName)
+	fmt.Printf("Messages in channel '%s':\n", rawChannel)
 	for _, msg := range messages {
 		fmt.Printf("\nID: %s\n", msg.ID)
 		fmt.Printf("From: %s\n", getMessageFrom(msg))
@@ -293,31 +309,20 @@ func handleListMessages(client *teams.Client, args []string) {
 	}
 }
 
-func handleListReplies(client *teams.Client, args []string) {
-	teamID := args[0]
-	channelName := args[1]
+func handleListReplies(client *teams.Client, mapper *utils.Mapper, args []string) {
+	rawTeam := args[0]
+	rawChannel := args[1]
 	messageID := args[2]
 
-	channels, err := client.Channels.ListChannels(context.TODO(), teamID)
+	teamID, err := resolveTeamID(mapper, rawTeam)
 	if err != nil {
-		fmt.Printf("Error listing channels: %v\n", err)
+		fmt.Printf("Error resolving team %q: %v\n", rawTeam, err)
 		os.Exit(1)
 	}
 
-	var channelID string
-	for _, ch := range channels {
-		if ch.Name == channelName {
-			channelID = ch.ID
-			break
-		}
-	}
-
-	if channelID == "" {
-		fmt.Printf("Error: Channel '%s' not found in team\n", channelName)
-		fmt.Println("Available channels:")
-		for _, ch := range channels {
-			fmt.Printf("- %s\n", ch.Name)
-		}
+	channelID, err := resolveChannelID(mapper, teamID, rawChannel)
+	if err != nil {
+		fmt.Printf("Error resolving channel %q in team %q: %v\n", rawChannel, rawTeam, err)
 		os.Exit(1)
 	}
 
@@ -338,7 +343,7 @@ func handleListReplies(client *teams.Client, args []string) {
 		os.Exit(1)
 	}
 
-	fmt.Printf("Replies to message %s:\n", messageID)
+	fmt.Printf("Replies to message %s in channel '%s':\n", messageID, rawChannel)
 	for _, reply := range replies {
 		fmt.Printf("\nID: %s\n", reply.ID)
 		fmt.Printf("From: %s\n", getMessageFrom(reply))
@@ -379,9 +384,16 @@ func handleListMyTeams(client *teams.Client) {
 	}
 }
 
-func handleGetTeam(client *teams.Client, args []string) {
-	teamID := args[0]
+func handleGetTeam(client *teams.Client, mapper *utils.Mapper, args []string) {
+	rawTeam := args[0] // ID lub nazwa
 	ctx := context.TODO()
+
+	teamID, err := resolveTeamID(mapper, rawTeam)
+	if err != nil {
+		fmt.Printf("Error resolving team %q: %v\n", rawTeam, err)
+		os.Exit(1)
+	}
+
 	t, err := client.Teams.Get(ctx, teamID)
 	if err != nil {
 		fmt.Printf("Error getting team: %v\n", err)
@@ -394,7 +406,7 @@ func handleGetTeam(client *teams.Client, args []string) {
 func handleCreateTeam(client *teams.Client, args []string) {
 	displayName := args[0]
 	mailNickname := args[1]
-	visibility := args[2] 
+	visibility := args[2]
 
 	ctx := context.TODO()
 	t, err := client.Teams.CreateViaGroup(ctx, displayName, mailNickname, visibility)
@@ -422,14 +434,20 @@ func handleCreateTeamFromTemplate(client *teams.Client, args []string) {
 	}
 }
 
-func handleUpdateTeam(client *teams.Client, args []string) {
-	teamID := args[0]
+func handleUpdateTeam(client *teams.Client, mapper *utils.Mapper, args []string) {
+	rawTeam := args[0] // ID lub nazwa
 	newName := args[1]
 
 	var newDesc *string
 	if len(args) > 2 {
 		desc := strings.Join(args[2:], " ")
 		newDesc = &desc
+	}
+
+	teamID, err := resolveTeamID(mapper, rawTeam)
+	if err != nil {
+		fmt.Printf("Error resolving team %q: %v\n", rawTeam, err)
+		os.Exit(1)
 	}
 
 	patch := msmodels.NewTeam()
@@ -447,8 +465,8 @@ func handleUpdateTeam(client *teams.Client, args []string) {
 	fmt.Printf("Team updated: %s (ID: %s)\n", t.DisplayName, t.ID)
 }
 
-func handleArchiveTeam(client *teams.Client, args []string) {
-	teamID := args[0]
+func handleArchiveTeam(client *teams.Client, mapper *utils.Mapper, args []string) {
+	rawTeam := args[0] // ID lub nazwa
 	var spo *bool
 	if len(args) > 1 {
 		val, err := strconv.ParseBool(args[1])
@@ -459,6 +477,12 @@ func handleArchiveTeam(client *teams.Client, args []string) {
 		spo = &val
 	}
 
+	teamID, err := resolveTeamID(mapper, rawTeam)
+	if err != nil {
+		fmt.Printf("Error resolving team %q: %v\n", rawTeam, err)
+		os.Exit(1)
+	}
+
 	ctx := context.TODO()
 	if err := client.Teams.Archive(ctx, teamID, spo); err != nil {
 		fmt.Printf("Error archiving team: %v\n", err)
@@ -467,8 +491,15 @@ func handleArchiveTeam(client *teams.Client, args []string) {
 	fmt.Println("Team archived.")
 }
 
-func handleUnarchiveTeam(client *teams.Client, args []string) {
-	teamID := args[0]
+func handleUnarchiveTeam(client *teams.Client, mapper *utils.Mapper, args []string) {
+	rawTeam := args[0] // ID lub nazwa
+
+	teamID, err := resolveTeamID(mapper, rawTeam)
+	if err != nil {
+		fmt.Printf("Error resolving team %q: %v\n", rawTeam, err)
+		os.Exit(1)
+	}
+
 	ctx := context.TODO()
 	if err := client.Teams.Unarchive(ctx, teamID); err != nil {
 		fmt.Printf("Error unarchiving team: %v\n", err)
@@ -477,8 +508,15 @@ func handleUnarchiveTeam(client *teams.Client, args []string) {
 	fmt.Println("Team unarchived.")
 }
 
-func handleDeleteTeam(client *teams.Client, args []string) {
-	teamID := args[0]
+func handleDeleteTeam(client *teams.Client, mapper *utils.Mapper, args []string) {
+	rawTeam := args[0] // ID lub nazwa
+
+	teamID, err := resolveTeamID(mapper, rawTeam)
+	if err != nil {
+		fmt.Printf("Error resolving team %q: %v\n", rawTeam, err)
+		os.Exit(1)
+	}
+
 	ctx := context.TODO()
 	if err := client.Teams.Delete(ctx, teamID); err != nil {
 		fmt.Printf("Error deleting team: %v\n", err)
