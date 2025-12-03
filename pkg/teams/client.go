@@ -7,6 +7,7 @@ import (
 
 	"github.com/pzsp-teams/lib/internal/auth"
 	"github.com/pzsp-teams/lib/pkg/teams/channels"
+	"github.com/pzsp-teams/lib/pkg/teams/teams"
 
 	"github.com/pzsp-teams/lib/internal/sender"
 )
@@ -14,6 +15,7 @@ import (
 // Client will be used later
 type Client struct {
 	Channels *channels.Service
+	Teams *teams.Service
 }
 
 // SenderConfig will be used later
@@ -53,9 +55,12 @@ func newClient(graphClient *graph.GraphServiceClient, opts *SenderConfig) *Clien
 		Timeout:        opts.Timeout,
 	}
 	channelAPI := channels.NewChannelsAPI(graphClient, techParams)
+	teamsAPI := teams.NewTeamsAPI(graphClient, techParams)
 	chSvc := channels.NewService(channelAPI)
+	teamSvc := teams.NewService(teamsAPI)
 
 	return &Client{
 		Channels: chSvc,
+		Teams:    teamSvc,
 	}
 }
