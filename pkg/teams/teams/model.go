@@ -1,5 +1,6 @@
 package teams
 
+// Team represents a Microsoft Teams team
 type Team struct {
 	ID          string
 	DisplayName string
