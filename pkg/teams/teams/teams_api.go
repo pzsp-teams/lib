@@ -41,7 +41,7 @@ func (api *API) CreateFromTemplate(ctx context.Context, displayName, description
 		return "", err
 	}
 	_ = resp
-	return "", &sender.RequestError{Code: "AsyncOperation", Message: "Team creation started (202). Consider group->team flow to know id immediately."}
+	return "id will be given later (async)", nil
 }
 
 // CreateViaGroup will be used later
