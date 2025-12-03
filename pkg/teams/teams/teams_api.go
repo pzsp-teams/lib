@@ -51,7 +51,7 @@ func (api *API) CreateViaGroup(ctx context.Context, displayName, mailNickname, v
 	grp.SetMailNickname(&mailNickname)
 	securityEnabled := false
 	grp.SetSecurityEnabled(&securityEnabled)
-	grp.SetVisibility(&visibility) 
+	grp.SetVisibility(&visibility)
 	createGroup := func(ctx context.Context) (sender.Response, error) {
 		return api.client.Groups().Post(ctx, grp, nil)
 	}
@@ -139,60 +139,60 @@ func (api *API) Update(ctx context.Context, teamID string, patch *models.Team) (
 }
 
 func (api *API) Archive(ctx context.Context, teamID string, spoReadOnlyForMembers *bool) *sender.RequestError {
-    body := graphteams.NewItemArchivePostRequestBody() 
-    if spoReadOnlyForMembers != nil {
-        body.SetShouldSetSpoSiteReadOnlyForMembers(spoReadOnlyForMembers)
-    }
-    call := func(ctx context.Context) (sender.Response, error) {
-        return nil, api.client.
-            Teams().
-            ByTeamId(teamID).
-            Archive().
-            Post(ctx, body, nil)
-    }
-    _, err := sender.SendRequest(ctx, call, api.techParams)
-    return err
+	body := graphteams.NewItemArchivePostRequestBody()
+	if spoReadOnlyForMembers != nil {
+		body.SetShouldSetSpoSiteReadOnlyForMembers(spoReadOnlyForMembers)
+	}
+	call := func(ctx context.Context) (sender.Response, error) {
+		return nil, api.client.
+			Teams().
+			ByTeamId(teamID).
+			Archive().
+			Post(ctx, body, nil)
+	}
+	_, err := sender.SendRequest(ctx, call, api.techParams)
+	return err
 }
 
 func (api *API) Unarchive(ctx context.Context, teamID string) *sender.RequestError {
-    call := func(ctx context.Context) (sender.Response, error) {
-        return nil, api.client.
-            Teams().
-            ByTeamId(teamID).
-            Unarchive().
-            Post(ctx, nil)
-    }
-    _, err := sender.SendRequest(ctx, call, api.techParams)
-    return err
+	call := func(ctx context.Context) (sender.Response, error) {
+		return nil, api.client.
+			Teams().
+			ByTeamId(teamID).
+			Unarchive().
+			Post(ctx, nil)
+	}
+	_, err := sender.SendRequest(ctx, call, api.techParams)
+	return err
 }
 
 func (api *API) Delete(ctx context.Context, teamID string) *sender.RequestError {
-    call := func(ctx context.Context) (sender.Response, error) {
-        return nil, api.client.
-            Groups().
-            ByGroupId(teamID).
-            Delete(ctx, nil)
-    }
-    _, err := sender.SendRequest(ctx, call, api.techParams)
-    return err
+	call := func(ctx context.Context) (sender.Response, error) {
+		return nil, api.client.
+			Groups().
+			ByGroupId(teamID).
+			Delete(ctx, nil)
+	}
+	_, err := sender.SendRequest(ctx, call, api.techParams)
+	return err
 }
 
 func (api *API) RestoreDeleted(ctx context.Context, deletedGroupID string) (models.DirectoryObjectable, *sender.RequestError) {
-    call := func(ctx context.Context) (sender.Response, error) {
-        return api.client.
-            Directory().
-            DeletedItems().
-            ByDirectoryObjectId(deletedGroupID).
-            Restore().
-            Post(ctx, nil) 
-    }
-    resp, err := sender.SendRequest(ctx, call, api.techParams)
-    if err != nil {
-        return nil, err
-    }
-    out, ok := resp.(models.DirectoryObjectable)
-    if !ok {
-        return nil, &sender.RequestError{Code: "TypeCastError", Message: fmt.Sprintf("Expected DirectoryObjectable, got %T", resp)}
-    }
-    return out, nil
+	call := func(ctx context.Context) (sender.Response, error) {
+		return api.client.
+			Directory().
+			DeletedItems().
+			ByDirectoryObjectId(deletedGroupID).
+			Restore().
+			Post(ctx, nil)
+	}
+	resp, err := sender.SendRequest(ctx, call, api.techParams)
+	if err != nil {
+		return nil, err
+	}
+	out, ok := resp.(models.DirectoryObjectable)
+	if !ok {
+		return nil, &sender.RequestError{Code: "TypeCastError", Message: fmt.Sprintf("Expected DirectoryObjectable, got %T", resp)}
+	}
+	return out, nil
 }

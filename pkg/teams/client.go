@@ -15,7 +15,7 @@ import (
 // Client will be used later
 type Client struct {
 	Channels *channels.Service
-	Teams *teams.Service
+	Teams    *teams.Service
 }
 
 // SenderConfig will be used later

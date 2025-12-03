@@ -6,7 +6,6 @@ import (
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
 )
 
-
 type Service struct {
 	api TeamsAPIInterface
 }
@@ -23,7 +22,6 @@ func (s *Service) Get(ctx context.Context, teamID string) (*Team, error) {
 	return mapGraphTeam(resp), nil
 }
 
-
 func (s *Service) ListMyJoined(ctx context.Context) ([]*Team, error) {
 	resp, err := s.api.ListMyJoined(ctx)
 	if err != nil {
@@ -38,7 +36,6 @@ func (s *Service) ListMyJoined(ctx context.Context) ([]*Team, error) {
 	return out, nil
 }
 
-
 func (s *Service) Update(ctx context.Context, teamID string, patch *msmodels.Team) (*Team, error) {
 	resp, err := s.api.Update(ctx, teamID, patch)
 	if err != nil {
@@ -46,7 +43,6 @@ func (s *Service) Update(ctx context.Context, teamID string, patch *msmodels.Tea
 	}
 	return mapGraphTeam(resp), nil
 }
-
 
 func (s *Service) CreateViaGroup(ctx context.Context, displayName, mailNickname, visibility string) (*Team, error) {
 	id, err := s.api.CreateViaGroup(ctx, displayName, mailNickname, visibility)
@@ -100,15 +96,14 @@ func (s *Service) RestoreDeleted(ctx context.Context, deletedGroupID string) (st
 	return *obj.GetId(), nil
 }
 
-
 func mapGraphTeam(t msmodels.Teamable) *Team {
 	if t == nil {
 		return nil
 	}
 	out := &Team{
-		ID:           deref(t.GetId()),
-		DisplayName:  deref(t.GetDisplayName()),
-		Description:  deref(t.GetDescription()),
+		ID:          deref(t.GetId()),
+		DisplayName: deref(t.GetDisplayName()),
+		Description: deref(t.GetDescription()),
 	}
 	if v := t.GetVisibility(); v != nil {
 		out.Visibility = v.String()

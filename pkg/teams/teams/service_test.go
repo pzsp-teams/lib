@@ -9,7 +9,6 @@ import (
 	sender "github.com/pzsp-teams/lib/internal/sender"
 )
 
-
 type fakeTeamsAPI struct {
 	getResp    msmodels.Teamable
 	getErr     *sender.RequestError
@@ -18,18 +17,18 @@ type fakeTeamsAPI struct {
 	updateResp msmodels.Teamable
 	updateErr  *sender.RequestError
 
-	createViaGroupID string
+	createViaGroupID  string
 	createViaGroupErr *sender.RequestError
 
-	createFromTemplateID string
+	createFromTemplateID  string
 	createFromTemplateErr *sender.RequestError
 
 	archiveErr   *sender.RequestError
 	unarchiveErr *sender.RequestError
 	deleteErr    *sender.RequestError
 
-	restoreObj   msmodels.DirectoryObjectable
-	restoreErr   *sender.RequestError
+	restoreObj msmodels.DirectoryObjectable
+	restoreErr *sender.RequestError
 }
 
 func (f *fakeTeamsAPI) CreateFromTemplate(ctx context.Context, displayName, description string, owners []string) (string, *sender.RequestError) {
