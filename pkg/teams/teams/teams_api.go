@@ -65,9 +65,6 @@ func (api *API) CreateViaGroup(ctx context.Context, displayName, mailNickname, v
 	}
 	groupID := *group.GetId()
 	body := models.NewTeam()
-	body.SetAdditionalData(map[string]interface{}{
-		"template@odata.bind": "https://graph.microsoft.com/v1.0/teamsTemplates('standard')",
-	})
 	putTeam := func(ctx context.Context) (sender.Response, error) {
 		return api.client.Groups().ByGroupId(groupID).Team().Put(ctx, body, nil)
 	}
