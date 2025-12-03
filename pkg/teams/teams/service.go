@@ -66,6 +66,9 @@ func (s *Service) CreateViaGroup(ctx context.Context, displayName, mailNickname,
 func (s *Service) CreateFromTemplate(ctx context.Context, displayName, description string, owners []string) (string, error) {
 	id, err := s.api.CreateFromTemplate(ctx, displayName, description, owners)
 	if err != nil {
+		if err.Code == "AsyncOperation" {
+			return id, nil
+		}
 		return "", mapError(err)
 	}
 	return id, nil
