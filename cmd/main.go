@@ -9,9 +9,21 @@ import (
 	channelsPkg "github.com/pzsp-teams/lib/pkg/teams/channels"
 )
 
+func printUsage() {
+	fmt.Println("Usage: teams <command> [arguments]")
+	fmt.Println("\nAvailable commands:")
+	fmt.Println("  create-channel <team-id> <channel-name>")
+	fmt.Println("  list-channels <team-id>")
+	fmt.Println("  get-channel <team-id> <channel-id>")
+	fmt.Println("  delete-channel <team-id> <channel-id>")
+	fmt.Println("  send-message <team-id> <channel-name> <message>")
+	fmt.Println("  list-messages <team-id> <channel-name> [top]")
+	fmt.Println("  list-replies <team-id> <channel-name> <message-id> [top]")
+}
+
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Println("Usage: teams <command> [arguments]")
+		printUsage()
 		os.Exit(1)
 	}
 	cmd := os.Args[1]
@@ -69,6 +81,8 @@ func main() {
 		handleListReplies(client, os.Args[2:])
 	default:
 		fmt.Println("Unknown command:", cmd)
+		fmt.Println()
+		printUsage()
 		os.Exit(1)
 	}
 }
