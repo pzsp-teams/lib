@@ -24,22 +24,13 @@ type SenderConfig struct {
 }
 
 // NewClient will be used later
-func NewClient(ctx context.Context, authConfig *AuthConfig, senderConfig *SenderConfig) (*Client, error) {
-	tokenProvider, err := auth.NewMSALTokenProvider(&auth.MSALCredentials{
-		ClientID:   authConfig.ClientID,
-		Tenant:     authConfig.Tenant,
-		Scopes:     authConfig.Scopes,
-		AuthMethod: auth.Method(authConfig.AuthMethod),
-	})
+func NewClient(ctx context.Context, authConfig *auth.AuthConfig, senderConfig *SenderConfig) (*Client, error) {
+	tokenProvider, err := auth.NewMSALTokenProvider(authConfig)
 	if err != nil {
 		return nil, err
 	}
-	cred := &msalCredential{
-		provider: tokenProvider,
-		email:    authConfig.Email,
-	}
 
-	graphClient, err := graph.NewGraphServiceClientWithCredentials(cred, authConfig.Scopes)
+	graphClient, err := graph.NewGraphServiceClientWithCredentials(tokenProvider, authConfig.Scopes)
 	if err != nil {
 		return nil, err
 	}

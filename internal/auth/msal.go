@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/AzureAD/microsoft-authentication-extensions-for-go/cache"
 	"github.com/AzureAD/microsoft-authentication-extensions-for-go/cache/accessor"
 	"github.com/AzureAD/microsoft-authentication-library-for-go/apps/public"
@@ -26,24 +28,25 @@ const (
 	deviceCode  Method = "DEVICE_CODE"
 )
 
-// MSALTokenProvider will be used later by other packages
-type MSALTokenProvider struct {
-	client     *public.Client
-	authMethod Method
-	scopes     []string
-}
-
 // MSALCredentials will be used later by other packages
-type MSALCredentials struct {
+type AuthConfig struct {
 	ClientID   string
 	Tenant     string
+	Email      string
 	Scopes     []string
 	AuthMethod Method
 }
 
+type MSALTokenProvider struct {
+	client     *public.Client
+	email      string
+	scopes     []string
+	authMethod Method
+}
+
 // NewMSALTokenProvider will be used later by other packages
-func NewMSALTokenProvider(credentials *MSALCredentials) (*MSALTokenProvider, error) {
-	storage, err := accessor.New(credentials.ClientID)
+func NewMSALTokenProvider(config *AuthConfig) (*MSALTokenProvider, error) {
+	storage, err := accessor.New(config.ClientID)
 	if err != nil {
 		return nil, fmt.Errorf("creating persistent storage: %w", err)
 	}
@@ -52,14 +55,14 @@ func NewMSALTokenProvider(credentials *MSALCredentials) (*MSALTokenProvider, err
 		return nil, fmt.Errorf("creating cache dir: %w", err)
 	}
 
-	cacheAccessor, err := cache.New(storage, cacheDIR+"/"+credentials.ClientID)
+	cacheAccessor, err := cache.New(storage, cacheDIR+"/"+config.ClientID)
 	if err != nil {
 		return nil, fmt.Errorf("creating cache: %w", err)
 	}
 
-	authority := authorityURL + credentials.Tenant
+	authority := authorityURL + config.Tenant
 	client, err := public.New(
-		credentials.ClientID,
+		config.ClientID,
 		public.WithAuthority(authority),
 		public.WithCache(cacheAccessor),
 	)
@@ -69,25 +72,27 @@ func NewMSALTokenProvider(credentials *MSALCredentials) (*MSALTokenProvider, err
 
 	return &MSALTokenProvider{
 		client:     &client,
-		authMethod: credentials.AuthMethod,
-		scopes:     credentials.Scopes,
+		email:      config.Email,
+		scopes:     config.Scopes,
+		authMethod: config.AuthMethod,
 	}, nil
 }
 
 // GetToken will be used later by other packages
-func (p *MSALTokenProvider) GetToken(email string) (*AccessToken, error) {
+func (p *MSALTokenProvider) GetToken(ctx context.Context, _ policy.TokenRequestOptions) (azcore.AccessToken, error) {
 	var result public.AuthResult
 	var userFound bool
+	nilToken := azcore.AccessToken{}
 
-	accounts, err := p.client.Accounts(context.TODO())
+	accounts, err := p.client.Accounts(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("fetching cached accounts: %w", err)
+		return nilToken, fmt.Errorf("fetching cached accounts: %w", err)
 	}
 
 	if len(accounts) > 0 {
-		if acc, err := resolveAccount(email, accounts); err == nil {
+		if acc, err := resolveAccount(p.email, accounts); err == nil {
 			if result, err = p.client.AcquireTokenSilent(
-				context.TODO(),
+				ctx,
 				p.scopes,
 				public.WithSilentAccount(*acc),
 			); err == nil {
@@ -100,36 +105,35 @@ func (p *MSALTokenProvider) GetToken(email string) (*AccessToken, error) {
 		switch p.authMethod {
 		case interactive:
 			result, err = p.client.AcquireTokenInteractive(
-				context.TODO(),
+				ctx,
 				p.scopes,
-				public.WithLoginHint(email),
+				public.WithLoginHint(p.email),
 			)
 			if err != nil {
-				return nil, fmt.Errorf("acquiring token interactively: %w", err)
+				return nilToken, fmt.Errorf("acquiring token interactively: %w", err)
 			}
 		case deviceCode:
 			deviceCode, err := p.client.AcquireTokenByDeviceCode(
-				context.TODO(),
+				ctx,
 				p.scopes,
 			)
 			if err != nil {
-				return nil, fmt.Errorf("starting device code flow: %w", err)
+				return nilToken, fmt.Errorf("starting device code flow: %w", err)
 			}
 			fmt.Println(deviceCode.Result.Message)
 
-			result, err = deviceCode.AuthenticationResult(context.TODO())
+			result, err = deviceCode.AuthenticationResult(ctx)
 			if err != nil {
-				return nil, fmt.Errorf("completing device code auth: %w", err)
+				return nilToken, fmt.Errorf("completing device code auth: %w", err)
 			}
 		default:
-			return nil, fmt.Errorf("unsupported auth method: %s", p.authMethod)
+			return nilToken, fmt.Errorf("unsupported auth method: %s", p.authMethod)
 		}
 	}
 
-	return &AccessToken{
-		AccessToken:   result.AccessToken,
-		GrantedScopes: result.GrantedScopes,
-		Expiry:        result.ExpiresOn,
+	return azcore.AccessToken{
+		Token:     result.AccessToken,
+		ExpiresOn: result.ExpiresOn,
 	}, nil
 }
 
