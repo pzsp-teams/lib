@@ -34,27 +34,35 @@ type fakeTeamsAPI struct {
 func (f *fakeTeamsAPI) CreateFromTemplate(ctx context.Context, displayName, description string, owners []string) (string, *sender.RequestError) {
 	return f.createFromTemplateID, f.createFromTemplateErr
 }
+
 func (f *fakeTeamsAPI) CreateViaGroup(ctx context.Context, displayName, mailNickname, visibility string) (string, *sender.RequestError) {
 	return f.createViaGroupID, f.createViaGroupErr
 }
+
 func (f *fakeTeamsAPI) Get(ctx context.Context, teamID string) (msmodels.Teamable, *sender.RequestError) {
 	return f.getResp, f.getErr
 }
+
 func (f *fakeTeamsAPI) ListMyJoined(ctx context.Context) (msmodels.TeamCollectionResponseable, *sender.RequestError) {
 	return f.listResp, f.listErr
 }
+
 func (f *fakeTeamsAPI) Update(ctx context.Context, teamID string, patch *msmodels.Team) (msmodels.Teamable, *sender.RequestError) {
 	return f.updateResp, f.updateErr
 }
+
 func (f *fakeTeamsAPI) Archive(ctx context.Context, teamID string, spoReadOnlyForMembers *bool) *sender.RequestError {
 	return f.archiveErr
 }
+
 func (f *fakeTeamsAPI) Unarchive(ctx context.Context, teamID string) *sender.RequestError {
 	return f.unarchiveErr
 }
+
 func (f *fakeTeamsAPI) Delete(ctx context.Context, teamID string) *sender.RequestError {
 	return f.deleteErr
 }
+
 func (f *fakeTeamsAPI) RestoreDeleted(ctx context.Context, deletedGroupID string) (msmodels.DirectoryObjectable, *sender.RequestError) {
 	return f.restoreObj, f.restoreErr
 }
@@ -104,5 +112,227 @@ func TestService_Delete_MapsError(t *testing.T) {
 	svc := NewService(api)
 	if err := svc.Delete(ctx, "T1"); !errors.Is(err, ErrForbidden) {
 		t.Fatalf("expected ErrForbidden, got %v", err)
+	}
+}
+
+func TestService_Update_MapsTeam(t *testing.T) {
+	ctx := context.Background()
+	api := &fakeTeamsAPI{updateResp: newGraphTeam("7", "Updated")}
+	svc := NewService(api)
+
+	patch := msmodels.NewTeam()
+	got, err := svc.Update(ctx, "7", patch)
+	if err != nil {
+		t.Fatalf("unexpected err: %v", err)
+	}
+	if got.ID != "7" || got.DisplayName != "Updated" {
+		t.Fatalf("bad mapping: %#v", got)
+	}
+}
+
+func TestService_Update_MapsError(t *testing.T) {
+	ctx := context.Background()
+	api := &fakeTeamsAPI{
+		updateErr: &sender.RequestError{
+			Code:    "ResourceNotFound",
+			Message: "no such team",
+		},
+	}
+	svc := NewService(api)
+
+	_, err := svc.Update(ctx, "missing", msmodels.NewTeam())
+	if !errors.Is(err, ErrTeamNotFound) {
+		t.Fatalf("expected ErrTeamNotFound, got %v", err)
+	}
+}
+
+func TestService_CreateViaGroup_MapsTeamAfterCreation(t *testing.T) {
+	ctx := context.Background()
+	api := &fakeTeamsAPI{
+		createViaGroupID: "team-123",
+		getResp:          newGraphTeam("team-123", "My team"),
+	}
+	svc := NewService(api)
+
+	got, err := svc.CreateViaGroup(ctx, "My team", "myteam", "public")
+	if err != nil {
+		t.Fatalf("unexpected err: %v", err)
+	}
+	if got.ID != "team-123" || got.DisplayName != "My team" {
+		t.Fatalf("bad mapping: %#v", got)
+	}
+}
+
+func TestService_CreateViaGroup_MapsCreateError(t *testing.T) {
+	ctx := context.Background()
+	api := &fakeTeamsAPI{
+		createViaGroupErr: &sender.RequestError{
+			Code:    "AccessDenied",
+			Message: "nope",
+		},
+	}
+	svc := NewService(api)
+
+	_, err := svc.CreateViaGroup(ctx, "X", "x", "public")
+	if !errors.Is(err, ErrForbidden) {
+		t.Fatalf("expected ErrForbidden, got %v", err)
+	}
+}
+
+func TestService_CreateViaGroup_MapsGetError(t *testing.T) {
+	ctx := context.Background()
+	api := &fakeTeamsAPI{
+		createViaGroupID: "team-xyz",
+		getErr: &sender.RequestError{
+			Code:    "ResourceNotFound",
+			Message: "not ready",
+		},
+	}
+	svc := NewService(api)
+
+	_, err := svc.CreateViaGroup(ctx, "X", "x", "public")
+	if !errors.Is(err, ErrTeamNotFound) {
+		t.Fatalf("expected ErrTeamNotFound, got %v", err)
+	}
+}
+
+func TestService_CreateFromTemplate_ReturnsID(t *testing.T) {
+	ctx := context.Background()
+	api := &fakeTeamsAPI{
+		createFromTemplateID: "tmpl-123",
+	}
+	svc := NewService(api)
+
+	got, err := svc.CreateFromTemplate(ctx, "Tpl", "Desc", nil)
+	if err != nil {
+		t.Fatalf("unexpected err: %v", err)
+	}
+	if got != "tmpl-123" {
+		t.Fatalf("expected id tmpl-123, got %q", got)
+	}
+}
+
+func TestService_CreateFromTemplate_MapsError(t *testing.T) {
+	ctx := context.Background()
+	api := &fakeTeamsAPI{
+		createFromTemplateErr: &sender.RequestError{
+			Code:    "AccessDenied",
+			Message: "nope",
+		},
+	}
+	svc := NewService(api)
+
+	_, err := svc.CreateFromTemplate(ctx, "Tpl", "Desc", nil)
+	if !errors.Is(err, ErrForbidden) {
+		t.Fatalf("expected ErrForbidden, got %v", err)
+	}
+}
+
+func TestService_Archive_Success(t *testing.T) {
+	ctx := context.Background()
+	api := &fakeTeamsAPI{}
+	svc := NewService(api)
+
+	if err := svc.Archive(ctx, "T1", nil); err != nil {
+		t.Fatalf("unexpected err: %v", err)
+	}
+}
+
+func TestService_Archive_MapsError(t *testing.T) {
+	ctx := context.Background()
+	api := &fakeTeamsAPI{
+		archiveErr: &sender.RequestError{
+			Code:    "AccessDenied",
+			Message: "nope",
+		},
+	}
+	svc := NewService(api)
+
+	if err := svc.Archive(ctx, "T1", nil); !errors.Is(err, ErrForbidden) {
+		t.Fatalf("expected ErrForbidden, got %v", err)
+	}
+}
+
+func TestService_Unarchive_Success(t *testing.T) {
+	ctx := context.Background()
+	api := &fakeTeamsAPI{}
+	svc := NewService(api)
+
+	if err := svc.Unarchive(ctx, "T1"); err != nil {
+		t.Fatalf("unexpected err: %v", err)
+	}
+}
+
+func TestService_Unarchive_MapsError(t *testing.T) {
+	ctx := context.Background()
+	api := &fakeTeamsAPI{
+		unarchiveErr: &sender.RequestError{
+			Code:    "AccessDenied",
+			Message: "nope",
+		},
+	}
+	svc := NewService(api)
+
+	if err := svc.Unarchive(ctx, "T1"); !errors.Is(err, ErrForbidden) {
+		t.Fatalf("expected ErrForbidden, got %v", err)
+	}
+}
+
+func TestService_RestoreDeleted_ReturnsID(t *testing.T) {
+	ctx := context.Background()
+	obj := msmodels.NewDirectoryObject()
+	id := "restored-id"
+	obj.SetId(&id)
+
+	api := &fakeTeamsAPI{restoreObj: obj}
+	svc := NewService(api)
+
+	got, err := svc.RestoreDeleted(ctx, "deleted-1")
+	if err != nil {
+		t.Fatalf("unexpected err: %v", err)
+	}
+	if got != id {
+		t.Fatalf("expected %q, got %q", id, got)
+	}
+}
+
+func TestService_RestoreDeleted_MapsError(t *testing.T) {
+	ctx := context.Background()
+	api := &fakeTeamsAPI{
+		restoreErr: &sender.RequestError{
+			Code:    "NotFound",
+			Message: "missing",
+		},
+	}
+	svc := NewService(api)
+
+	_, err := svc.RestoreDeleted(ctx, "deleted-1")
+	if !errors.Is(err, ErrNotFound) {
+		t.Fatalf("expected ErrNotFound, got %v", err)
+	}
+}
+
+func TestService_RestoreDeleted_EmptyObjectReturnsUnknown(t *testing.T) {
+	ctx := context.Background()
+	obj := msmodels.NewDirectoryObject()
+	api := &fakeTeamsAPI{restoreObj: obj}
+	svc := NewService(api)
+
+	_, err := svc.RestoreDeleted(ctx, "deleted-1")
+	if !errors.Is(err, ErrUnknown) {
+		t.Fatalf("expected ErrUnknown, got %v", err)
+	}
+}
+
+func TestDeref_NilReturnsEmpty(t *testing.T) {
+	if got := deref(nil); got != "" {
+		t.Fatalf("expected empty string, got %q", got)
+	}
+}
+
+func TestDeref_NonNil(t *testing.T) {
+	s := "hello"
+	if got := deref(&s); got != "hello" {
+		t.Fatalf("expected 'hello', got %q", got)
 	}
 }
