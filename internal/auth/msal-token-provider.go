@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 
 	"github.com/AzureAD/microsoft-authentication-extensions-for-go/cache"
 	"github.com/AzureAD/microsoft-authentication-extensions-for-go/cache/accessor"
@@ -12,6 +13,7 @@ import (
 
 const (
 	authorityURL = "https://login.microsoftonline.com/"
+	cacheDIR     = ".cache/"
 )
 
 var errUserNotFound = errors.New("user not found in MSAL cache")
@@ -46,7 +48,11 @@ func NewMSALTokenProvider(credentials *MSALCredentials) (*MSALTokenProvider, err
 		return nil, fmt.Errorf("creating persistent storage: %w", err)
 	}
 
-	cacheAccessor, err := cache.New(storage, credentials.ClientID)
+	if err := os.MkdirAll(cacheDIR, 0o755); err != nil {
+		return nil, fmt.Errorf("creating cache dir: %w", err)
+	}
+
+	cacheAccessor, err := cache.New(storage, cacheDIR+credentials.ClientID)
 	if err != nil {
 		return nil, fmt.Errorf("creating cache: %w", err)
 	}
@@ -61,7 +67,11 @@ func NewMSALTokenProvider(credentials *MSALCredentials) (*MSALTokenProvider, err
 		return nil, fmt.Errorf("creating MSALTokenProvider: %w", err)
 	}
 
-	return &MSALTokenProvider{client: &client, authMethod: credentials.AuthMethod, scopes: credentials.Scopes}, nil
+	return &MSALTokenProvider{
+		client:     &client,
+		authMethod: credentials.AuthMethod,
+		scopes:     credentials.Scopes,
+	}, nil
 }
 
 // GetToken will be used later by other packages
@@ -89,7 +99,11 @@ func (p *MSALTokenProvider) GetToken(email string) (*AccessToken, error) {
 	if !userFound || len(accounts) == 0 {
 		switch p.authMethod {
 		case interactive:
-			result, err = p.client.AcquireTokenInteractive(context.TODO(), p.scopes, public.WithLoginHint(email))
+			result, err = p.client.AcquireTokenInteractive(
+				context.TODO(),
+				p.scopes,
+				public.WithLoginHint(email),
+			)
 			if err != nil {
 				return nil, fmt.Errorf("acquiring token interactively: %w", err)
 			}
