@@ -7,28 +7,27 @@ import (
 	"github.com/pzsp-teams/lib/internal/api"
 )
 
-// MapperInterface will be used later
-type MapperInterface interface {
+// Mapper will be used later
+type Mapper interface {
 	MapTeamNameToTeamID(ctx context.Context, teamName string) (string, error)
 	MapChannelNameToChannelID(ctx context.Context, teamID, channelName string) (string, error)
 }
 
-// Mapper will be used later
-type Mapper struct {
+type mapper struct {
 	teamsAPI    api.Teams
 	channelsAPI api.Channels
 }
 
-// NewMapper will be used later
-func NewMapper(teamsAPI api.Teams, channelsAPI api.Channels) *Mapper {
-	return &Mapper{
+// New will be used later
+func New(teamsAPI api.Teams, channelsAPI api.Channels) *mapper {
+	return &mapper{
 		teamsAPI:    teamsAPI,
 		channelsAPI: channelsAPI,
 	}
 }
 
 // MapTeamNameToTeamID will be used later
-func (m *Mapper) MapTeamNameToTeamID(ctx context.Context, teamName string) (string, error) {
+func (m *mapper) MapTeamNameToTeamID(ctx context.Context, teamName string) (string, error) {
 	listOfTeams, err := m.teamsAPI.ListMyJoined(ctx)
 	if err != nil {
 		return "", err
@@ -48,7 +47,7 @@ func (m *Mapper) MapTeamNameToTeamID(ctx context.Context, teamName string) (stri
 }
 
 // MapChannelNameToChannelID will be used later
-func (m *Mapper) MapChannelNameToChannelID(ctx context.Context, teamID, channelName string) (string, error) {
+func (m *mapper) MapChannelNameToChannelID(ctx context.Context, teamID, channelName string) (string, error) {
 	chans, err := m.channelsAPI.ListChannels(ctx, teamID)
 	if err != nil {
 		return "", err

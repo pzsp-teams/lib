@@ -116,7 +116,7 @@ func TestMapper_MapTeamNameToTeamID_Found(t *testing.T) {
 	teamsFake := &fakeTeamsAPI{listResp: col}
 	channelsFake := &fakeChannelAPI{}
 
-	m := &Mapper{
+	m := &mapper{
 		teamsAPI:    teamsFake,
 		channelsAPI: channelsFake,
 	}
@@ -141,7 +141,7 @@ func TestMapper_MapTeamNameToTeamID_NotFound(t *testing.T) {
 	teamsFake := &fakeTeamsAPI{listResp: col}
 	channelsFake := &fakeChannelAPI{}
 
-	m := &Mapper{
+	m := &mapper{
 		teamsAPI:    teamsFake,
 		channelsAPI: channelsFake,
 	}
@@ -166,7 +166,7 @@ func TestMapper_MapChannelNameToChannelID_Found(t *testing.T) {
 	chFake := &fakeChannelAPI{listResp: col}
 	teamsFake := &fakeTeamsAPI{}
 
-	m := &Mapper{
+	m := &mapper{
 		teamsAPI:    teamsFake,
 		channelsAPI: chFake,
 	}
@@ -191,7 +191,7 @@ func TestMapper_MapChannelNameToChannelID_NotFound(t *testing.T) {
 	chFake := &fakeChannelAPI{listResp: col}
 	teamsFake := &fakeTeamsAPI{}
 
-	m := &Mapper{
+	m := &mapper{
 		teamsAPI:    teamsFake,
 		channelsAPI: chFake,
 	}

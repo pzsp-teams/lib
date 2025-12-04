@@ -10,18 +10,18 @@ import (
 
 // Service will be used later
 type Service struct {
-	api        api.Channels
-	nameMapper mapper.MapperInterface
+	api    api.Channels
+	mapper mapper.Mapper
 }
 
 // NewService will be used later
-func NewService(api api.Channels, m mapper.MapperInterface) *Service {
-	return &Service{api: api, nameMapper: m}
+func NewService(channelsAPI api.Channels, m mapper.Mapper) *Service {
+	return &Service{api: channelsAPI, mapper: m}
 }
 
 // ListChannels will be used later
 func (s *Service) ListChannels(ctx context.Context, teamName string) ([]*Channel, error) {
-	teamID, err := s.nameMapper.MapTeamNameToTeamID(ctx, teamName)
+	teamID, err := s.mapper.MapTeamNameToTeamID(ctx, teamName)
 	if err != nil {
 		return nil, err
 	}
@@ -43,11 +43,11 @@ func (s *Service) ListChannels(ctx context.Context, teamName string) ([]*Channel
 
 // Get will be used later
 func (s *Service) Get(ctx context.Context, teamName, channelName string) (*Channel, error) {
-	teamID, err := s.nameMapper.MapTeamNameToTeamID(ctx, teamName)
+	teamID, err := s.mapper.MapTeamNameToTeamID(ctx, teamName)
 	if err != nil {
 		return nil, err
 	}
-	channelID, err := s.nameMapper.MapChannelNameToChannelID(ctx, teamID, channelName)
+	channelID, err := s.mapper.MapChannelNameToChannelID(ctx, teamID, channelName)
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +65,7 @@ func (s *Service) Get(ctx context.Context, teamName, channelName string) (*Chann
 
 // Create will be used later
 func (s *Service) Create(ctx context.Context, teamName, name string) (*Channel, error) {
-	teamID, err := s.nameMapper.MapTeamNameToTeamID(ctx, teamName)
+	teamID, err := s.mapper.MapTeamNameToTeamID(ctx, teamName)
 	if err != nil {
 		return nil, err
 	}
@@ -85,11 +85,11 @@ func (s *Service) Create(ctx context.Context, teamName, name string) (*Channel, 
 
 // Delete will be used later
 func (s *Service) Delete(ctx context.Context, teamName, channelName string) error {
-	teamID, err := s.nameMapper.MapTeamNameToTeamID(ctx, teamName)
+	teamID, err := s.mapper.MapTeamNameToTeamID(ctx, teamName)
 	if err != nil {
 		return err
 	}
-	channelID, err := s.nameMapper.MapChannelNameToChannelID(ctx, teamID, channelName)
+	channelID, err := s.mapper.MapChannelNameToChannelID(ctx, teamID, channelName)
 	if err != nil {
 		return err
 	}
@@ -102,11 +102,11 @@ func (s *Service) Delete(ctx context.Context, teamName, channelName string) erro
 
 // SendMessage will be used later
 func (s *Service) SendMessage(ctx context.Context, teamName, channelName string, body MessageBody) (*Message, error) {
-	teamID, err := s.nameMapper.MapTeamNameToTeamID(ctx, teamName)
+	teamID, err := s.mapper.MapTeamNameToTeamID(ctx, teamName)
 	if err != nil {
 		return nil, err
 	}
-	channelID, err := s.nameMapper.MapChannelNameToChannelID(ctx, teamID, channelName)
+	channelID, err := s.mapper.MapChannelNameToChannelID(ctx, teamID, channelName)
 	if err != nil {
 		return nil, err
 	}
@@ -125,11 +125,11 @@ func (s *Service) SendMessage(ctx context.Context, teamName, channelName string,
 
 // ListMessages retrieves messages from a channel
 func (s *Service) ListMessages(ctx context.Context, teamName, channelName string, opts *ListMessagesOptions) ([]*Message, error) {
-	teamID, err := s.nameMapper.MapTeamNameToTeamID(ctx, teamName)
+	teamID, err := s.mapper.MapTeamNameToTeamID(ctx, teamName)
 	if err != nil {
 		return nil, err
 	}
-	channelID, err := s.nameMapper.MapChannelNameToChannelID(ctx, teamID, channelName)
+	channelID, err := s.mapper.MapChannelNameToChannelID(ctx, teamID, channelName)
 	if err != nil {
 		return nil, err
 	}
@@ -153,11 +153,11 @@ func (s *Service) ListMessages(ctx context.Context, teamName, channelName string
 
 // GetMessage retrieves a specific message from a channel
 func (s *Service) GetMessage(ctx context.Context, teamName, channelName, messageID string) (*Message, error) {
-	teamID, err := s.nameMapper.MapTeamNameToTeamID(ctx, teamName)
+	teamID, err := s.mapper.MapTeamNameToTeamID(ctx, teamName)
 	if err != nil {
 		return nil, err
 	}
-	channelID, err := s.nameMapper.MapChannelNameToChannelID(ctx, teamID, channelName)
+	channelID, err := s.mapper.MapChannelNameToChannelID(ctx, teamID, channelName)
 	if err != nil {
 		return nil, err
 	}
@@ -170,11 +170,11 @@ func (s *Service) GetMessage(ctx context.Context, teamName, channelName, message
 
 // ListReplies retrieves replies to a specific message
 func (s *Service) ListReplies(ctx context.Context, teamName, channelName, messageID string, top *int32) ([]*Message, error) {
-	teamID, err := s.nameMapper.MapTeamNameToTeamID(ctx, teamName)
+	teamID, err := s.mapper.MapTeamNameToTeamID(ctx, teamName)
 	if err != nil {
 		return nil, err
 	}
-	channelID, err := s.nameMapper.MapChannelNameToChannelID(ctx, teamID, channelName)
+	channelID, err := s.mapper.MapChannelNameToChannelID(ctx, teamID, channelName)
 	if err != nil {
 		return nil, err
 	}
@@ -192,11 +192,11 @@ func (s *Service) ListReplies(ctx context.Context, teamName, channelName, messag
 
 // GetReply retrieves a specific reply to a message
 func (s *Service) GetReply(ctx context.Context, teamName, channelName, messageID, replyID string) (*Message, error) {
-	teamID, err := s.nameMapper.MapTeamNameToTeamID(ctx, teamName)
+	teamID, err := s.mapper.MapTeamNameToTeamID(ctx, teamName)
 	if err != nil {
 		return nil, err
 	}
-	channelID, err := s.nameMapper.MapChannelNameToChannelID(ctx, teamID, channelName)
+	channelID, err := s.mapper.MapChannelNameToChannelID(ctx, teamID, channelName)
 	if err != nil {
 		return nil, err
 	}

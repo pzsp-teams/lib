@@ -133,7 +133,7 @@ func TestService_Delete_MapsError(t *testing.T) {
 	api := &fakeTeamsAPI{deleteErr: &sender.RequestError{Code: "AccessDenied", Message: "nope"}}
 	svc := NewService(api, &fakeMapper{})
 
-	if err := svc.Delete(ctx, "MyTeam"); !errors.Is(err, errForbidden) {
+	if err := svc.Delete(ctx, "MyTeam"); !errors.Is(err, ErrForbidden) {
 		t.Fatalf("expected errForbidden, got %v", err)
 	}
 }
@@ -164,7 +164,7 @@ func TestService_Update_MapsError(t *testing.T) {
 	svc := NewService(api, &fakeMapper{})
 
 	_, err := svc.Update(ctx, "missing-team", msmodels.NewTeam())
-	if !errors.Is(err, errTeamNotFound) {
+	if !errors.Is(err, ErrTeamNotFound) {
 		t.Fatalf("expected errTeamNotFound, got %v", err)
 	}
 }
@@ -197,7 +197,7 @@ func TestService_CreateViaGroup_MapsCreateError(t *testing.T) {
 	svc := NewService(api, &fakeMapper{})
 
 	_, err := svc.CreateViaGroup(ctx, "X", "x", "public")
-	if !errors.Is(err, errForbidden) {
+	if !errors.Is(err, ErrForbidden) {
 		t.Fatalf("expected errForbidden, got %v", err)
 	}
 }
@@ -214,7 +214,7 @@ func TestService_CreateViaGroup_MapsGetError(t *testing.T) {
 	svc := NewService(api, &fakeMapper{})
 
 	_, err := svc.CreateViaGroup(ctx, "X", "x", "public")
-	if !errors.Is(err, errTeamNotFound) {
+	if !errors.Is(err, ErrTeamNotFound) {
 		t.Fatalf("expected errTeamNotFound, got %v", err)
 	}
 }
@@ -246,7 +246,7 @@ func TestService_CreateFromTemplate_MapsError(t *testing.T) {
 	svc := NewService(api, &fakeMapper{})
 
 	_, err := svc.CreateFromTemplate(ctx, "Tpl", "Desc", nil)
-	if !errors.Is(err, errForbidden) {
+	if !errors.Is(err, ErrForbidden) {
 		t.Fatalf("expected errForbidden, got %v", err)
 	}
 }
@@ -272,7 +272,7 @@ func TestService_Archive_MapsError(t *testing.T) {
 	svc := NewService(api, &fakeMapper{})
 
 	readOnlyForMembers := false
-	if err := svc.Archive(ctx, "T1", &readOnlyForMembers); !errors.Is(err, errForbidden) {
+	if err := svc.Archive(ctx, "T1", &readOnlyForMembers); !errors.Is(err, ErrForbidden) {
 		t.Fatalf("expected errForbidden, got %v", err)
 	}
 }
@@ -297,7 +297,7 @@ func TestService_Unarchive_MapsError(t *testing.T) {
 	}
 	svc := NewService(api, &fakeMapper{})
 
-	if err := svc.Unarchive(ctx, "T1"); !errors.Is(err, errForbidden) {
+	if err := svc.Unarchive(ctx, "T1"); !errors.Is(err, ErrForbidden) {
 		t.Fatalf("expected errForbidden, got %v", err)
 	}
 }
@@ -331,7 +331,7 @@ func TestService_RestoreDeleted_MapsError(t *testing.T) {
 	svc := NewService(api, &fakeMapper{})
 
 	_, err := svc.RestoreDeleted(ctx, "deleted-1")
-	if !errors.Is(err, errNotFound) {
+	if !errors.Is(err, ErrNotFound) {
 		t.Fatalf("expected errNotFound, got %v", err)
 	}
 }
@@ -343,7 +343,7 @@ func TestService_RestoreDeleted_EmptyObjectReturnsUnknown(t *testing.T) {
 	svc := NewService(api, &fakeMapper{})
 
 	_, err := svc.RestoreDeleted(ctx, "deleted-1")
-	if !errors.Is(err, errUnknown) {
+	if !errors.Is(err, ErrUnknown) {
 		t.Fatalf("expected errUnknown, got %v", err)
 	}
 }

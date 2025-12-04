@@ -32,9 +32,10 @@ func NewClient(ctx context.Context, authConfig *AuthConfig, senderConfig *Sender
 	}
 
 	techParams := senderConfig.toTechParams()
-	teamsAPI := api.NewTeamsAPI(graphClient, techParams)
-	channelsAPI := api.NewChannelsAPI(graphClient, techParams)
-	nameMapper := mapper.NewMapper(teamsAPI, channelsAPI)
+
+	teamsAPI := api.NewTeams(graphClient, techParams)
+	channelsAPI := api.NewChannels(graphClient, techParams)
+	nameMapper := mapper.New(teamsAPI, channelsAPI)
 	chSvc := channels.NewService(channelsAPI, nameMapper)
 	teamSvc := teams.NewService(teamsAPI, nameMapper)
 

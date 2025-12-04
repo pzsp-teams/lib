@@ -11,11 +11,11 @@ import (
 // Service will be used later
 type Service struct {
 	api        api.Teams
-	nameMapper mapper.MapperInterface
+	nameMapper mapper.Mapper
 }
 
 // NewService will be used later
-func NewService(teamsAPI api.Teams, m mapper.MapperInterface) *Service {
+func NewService(teamsAPI api.Teams, m mapper.Mapper) *Service {
 	return &Service{api: teamsAPI, nameMapper: m}
 }
 
@@ -128,7 +128,7 @@ func (s *Service) RestoreDeleted(ctx context.Context, deletedGroupID string) (st
 		return "", mapError(err)
 	}
 	if obj == nil || obj.GetId() == nil {
-		return "", errUnknown
+		return "", ErrUnknown
 	}
 	return *obj.GetId(), nil
 }
