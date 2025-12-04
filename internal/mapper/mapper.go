@@ -19,7 +19,7 @@ type mapper struct {
 }
 
 // New will be used later
-func New(teamsAPI api.Teams, channelsAPI api.Channels) *mapper {
+func New(teamsAPI api.Teams, channelsAPI api.Channels) Mapper {
 	return &mapper{
 		teamsAPI:    teamsAPI,
 		channelsAPI: channelsAPI,

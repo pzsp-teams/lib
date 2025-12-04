@@ -29,7 +29,7 @@ type channels struct {
 }
 
 // NewChannels will be used later
-func NewChannels(client *graph.GraphServiceClient, techParams sender.RequestTechParams) *channels {
+func NewChannels(client *graph.GraphServiceClient, techParams sender.RequestTechParams) Channels {
 	return &channels{client, techParams}
 }
 
