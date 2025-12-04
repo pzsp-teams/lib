@@ -4,18 +4,18 @@ import (
 	"context"
 
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
-	"github.com/pzsp-teams/lib/internal/channels"
+	"github.com/pzsp-teams/lib/internal/api"
 	"github.com/pzsp-teams/lib/internal/mapper"
 )
 
 // Service will be used later
 type Service struct {
-	api        channels.APIInterface
+	api        api.Channels
 	nameMapper mapper.MapperInterface
 }
 
 // NewService will be used later
-func NewService(api channels.APIInterface, m mapper.MapperInterface) *Service {
+func NewService(api api.Channels, m mapper.MapperInterface) *Service {
 	return &Service{api: api, nameMapper: m}
 }
 

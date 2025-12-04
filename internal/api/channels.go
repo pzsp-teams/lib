@@ -1,28 +1,41 @@
-package channels
+package api
 
 import (
 	"context"
 
 	graph "github.com/microsoftgraph/msgraph-sdk-go"
-	models "github.com/microsoftgraph/msgraph-sdk-go/models"
-	"github.com/microsoftgraph/msgraph-sdk-go/teams"
+	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
+	graphteams "github.com/microsoftgraph/msgraph-sdk-go/teams"
 
 	"github.com/pzsp-teams/lib/internal/sender"
 )
 
-// API will be used later
-type API struct {
+// ChannelsAPIInterface will be used later
+type Channels interface {
+	ListChannels(ctx context.Context, teamID string) (msmodels.ChannelCollectionResponseable, *sender.RequestError)
+	GetChannel(ctx context.Context, teamID, channelID string) (msmodels.Channelable, *sender.RequestError)
+	CreateChannel(ctx context.Context, teamID string, channel msmodels.Channelable) (msmodels.Channelable, *sender.RequestError)
+	DeleteChannel(ctx context.Context, teamID, channelID string) *sender.RequestError
+	SendMessage(ctx context.Context, teamID, channelID string, message msmodels.ChatMessageable) (msmodels.ChatMessageable, *sender.RequestError)
+	ListMessages(ctx context.Context, teamID, channelID string, top *int32) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError)
+	GetMessage(ctx context.Context, teamID, channelID, messageID string) (msmodels.ChatMessageable, *sender.RequestError)
+	ListReplies(ctx context.Context, teamID, channelID, messageID string, top *int32) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError)
+	GetReply(ctx context.Context, teamID, channelID, messageID, replyID string) (msmodels.ChatMessageable, *sender.RequestError)
+}
+
+// ChannelsAPI will be used later
+type ChannelsAPI struct {
 	client     *graph.GraphServiceClient
 	techParams sender.RequestTechParams
 }
 
 // NewChannelsAPI will be used later
-func NewChannelsAPI(client *graph.GraphServiceClient, techParams sender.RequestTechParams) *API {
-	return &API{client, techParams}
+func NewChannelsAPI(client *graph.GraphServiceClient, techParams sender.RequestTechParams) *ChannelsAPI {
+	return &ChannelsAPI{client, techParams}
 }
 
 // ListChannels will be used later
-func (api *API) ListChannels(ctx context.Context, teamID string) (models.ChannelCollectionResponseable, *sender.RequestError) {
+func (api *ChannelsAPI) ListChannels(ctx context.Context, teamID string) (msmodels.ChannelCollectionResponseable, *sender.RequestError) {
 	call := func(ctx context.Context) (sender.Response, error) {
 		return api.client.
 			Teams().
@@ -36,7 +49,7 @@ func (api *API) ListChannels(ctx context.Context, teamID string) (models.Channel
 		return nil, err
 	}
 
-	out, ok := resp.(models.ChannelCollectionResponseable)
+	out, ok := resp.(msmodels.ChannelCollectionResponseable)
 	if !ok {
 		return nil, &sender.RequestError{Code: "TypeCastError", Message: "Expected ChannelCollectionResponseable"}
 	}
@@ -45,7 +58,7 @@ func (api *API) ListChannels(ctx context.Context, teamID string) (models.Channel
 }
 
 // GetChannel will be used later
-func (api *API) GetChannel(ctx context.Context, teamID, channelID string) (models.Channelable, *sender.RequestError) {
+func (api *ChannelsAPI) GetChannel(ctx context.Context, teamID, channelID string) (msmodels.Channelable, *sender.RequestError) {
 	call := func(ctx context.Context) (sender.Response, error) {
 		return api.client.
 			Teams().
@@ -60,7 +73,7 @@ func (api *API) GetChannel(ctx context.Context, teamID, channelID string) (model
 		return nil, err
 	}
 
-	out, ok := resp.(models.Channelable)
+	out, ok := resp.(msmodels.Channelable)
 	if !ok {
 		return nil, &sender.RequestError{Code: "TypeCastError", Message: "Expected Channelable"}
 	}
@@ -69,7 +82,7 @@ func (api *API) GetChannel(ctx context.Context, teamID, channelID string) (model
 }
 
 // CreateChannel will be used later
-func (api *API) CreateChannel(ctx context.Context, teamID string, channel models.Channelable) (models.Channelable, *sender.RequestError) {
+func (api *ChannelsAPI) CreateChannel(ctx context.Context, teamID string, channel msmodels.Channelable) (msmodels.Channelable, *sender.RequestError) {
 	call := func(ctx context.Context) (sender.Response, error) {
 		return api.client.
 			Teams().
@@ -83,7 +96,7 @@ func (api *API) CreateChannel(ctx context.Context, teamID string, channel models
 		return nil, err
 	}
 
-	out, ok := resp.(models.Channelable)
+	out, ok := resp.(msmodels.Channelable)
 	if !ok {
 		return nil, &sender.RequestError{Code: "TypeCastError", Message: "Expected Channelable"}
 	}
@@ -92,7 +105,7 @@ func (api *API) CreateChannel(ctx context.Context, teamID string, channel models
 }
 
 // DeleteChannel will be used later
-func (api *API) DeleteChannel(ctx context.Context, teamID, channelID string) *sender.RequestError {
+func (api *ChannelsAPI) DeleteChannel(ctx context.Context, teamID, channelID string) *sender.RequestError {
 	call := func(ctx context.Context) (sender.Response, error) {
 		err := api.client.
 			Teams().
@@ -108,7 +121,7 @@ func (api *API) DeleteChannel(ctx context.Context, teamID, channelID string) *se
 }
 
 // SendMessage will be used later
-func (api *API) SendMessage(ctx context.Context, teamID, channelID string, message models.ChatMessageable) (models.ChatMessageable, *sender.RequestError) {
+func (api *ChannelsAPI) SendMessage(ctx context.Context, teamID, channelID string, message msmodels.ChatMessageable) (msmodels.ChatMessageable, *sender.RequestError) {
 	call := func(ctx context.Context) (sender.Response, error) {
 		return api.client.
 			Teams().
@@ -124,7 +137,7 @@ func (api *API) SendMessage(ctx context.Context, teamID, channelID string, messa
 		return nil, err
 	}
 
-	out, ok := resp.(models.ChatMessageable)
+	out, ok := resp.(msmodels.ChatMessageable)
 	if !ok {
 		return nil, &sender.RequestError{Code: "TypeCastError", Message: "Expected ChatMessageable"}
 	}
@@ -133,9 +146,9 @@ func (api *API) SendMessage(ctx context.Context, teamID, channelID string, messa
 }
 
 // ListMessages will be used later
-func (api *API) ListMessages(ctx context.Context, teamID, channelID string, top *int32) (models.ChatMessageCollectionResponseable, *sender.RequestError) {
+func (api *ChannelsAPI) ListMessages(ctx context.Context, teamID, channelID string, top *int32) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError) {
 	call := func(ctx context.Context) (sender.Response, error) {
-		queryParameters := &teams.ItemChannelsItemMessagesRequestBuilderGetQueryParameters{}
+		queryParameters := &graphteams.ItemChannelsItemMessagesRequestBuilderGetQueryParameters{}
 		if top != nil {
 			queryParameters.Top = top
 		}
@@ -145,7 +158,7 @@ func (api *API) ListMessages(ctx context.Context, teamID, channelID string, top 
 			Channels().
 			ByChannelId(channelID).
 			Messages().
-			Get(ctx, &teams.ItemChannelsItemMessagesRequestBuilderGetRequestConfiguration{
+			Get(ctx, &graphteams.ItemChannelsItemMessagesRequestBuilderGetRequestConfiguration{
 				QueryParameters: queryParameters,
 			})
 	}
@@ -155,7 +168,7 @@ func (api *API) ListMessages(ctx context.Context, teamID, channelID string, top 
 		return nil, err
 	}
 
-	out, ok := resp.(models.ChatMessageCollectionResponseable)
+	out, ok := resp.(msmodels.ChatMessageCollectionResponseable)
 	if !ok {
 		return nil, &sender.RequestError{Code: "TypeCastError", Message: "Expected ChatMessageCollectionResponseable"}
 	}
@@ -164,7 +177,7 @@ func (api *API) ListMessages(ctx context.Context, teamID, channelID string, top 
 }
 
 // GetMessage will be used later
-func (api *API) GetMessage(ctx context.Context, teamID, channelID, messageID string) (models.ChatMessageable, *sender.RequestError) {
+func (api *ChannelsAPI) GetMessage(ctx context.Context, teamID, channelID, messageID string) (msmodels.ChatMessageable, *sender.RequestError) {
 	call := func(ctx context.Context) (sender.Response, error) {
 		return api.client.
 			Teams().
@@ -181,7 +194,7 @@ func (api *API) GetMessage(ctx context.Context, teamID, channelID, messageID str
 		return nil, err
 	}
 
-	out, ok := resp.(models.ChatMessageable)
+	out, ok := resp.(msmodels.ChatMessageable)
 	if !ok {
 		return nil, &sender.RequestError{Code: "TypeCastError", Message: "Expected ChatMessageable"}
 	}
@@ -190,9 +203,9 @@ func (api *API) GetMessage(ctx context.Context, teamID, channelID, messageID str
 }
 
 // ListReplies will be used later
-func (api *API) ListReplies(ctx context.Context, teamID, channelID, messageID string, top *int32) (models.ChatMessageCollectionResponseable, *sender.RequestError) {
+func (api *ChannelsAPI) ListReplies(ctx context.Context, teamID, channelID, messageID string, top *int32) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError) {
 	call := func(ctx context.Context) (sender.Response, error) {
-		queryParameters := &teams.ItemChannelsItemMessagesItemRepliesRequestBuilderGetQueryParameters{}
+		queryParameters := &graphteams.ItemChannelsItemMessagesItemRepliesRequestBuilderGetQueryParameters{}
 		if top != nil {
 			queryParameters.Top = top
 		}
@@ -204,7 +217,7 @@ func (api *API) ListReplies(ctx context.Context, teamID, channelID, messageID st
 			Messages().
 			ByChatMessageId(messageID).
 			Replies().
-			Get(ctx, &teams.ItemChannelsItemMessagesItemRepliesRequestBuilderGetRequestConfiguration{
+			Get(ctx, &graphteams.ItemChannelsItemMessagesItemRepliesRequestBuilderGetRequestConfiguration{
 				QueryParameters: queryParameters,
 			})
 	}
@@ -214,7 +227,7 @@ func (api *API) ListReplies(ctx context.Context, teamID, channelID, messageID st
 		return nil, err
 	}
 
-	out, ok := resp.(models.ChatMessageCollectionResponseable)
+	out, ok := resp.(msmodels.ChatMessageCollectionResponseable)
 	if !ok {
 		return nil, &sender.RequestError{Code: "TypeCastError", Message: "Expected ChatMessageCollectionResponseable"}
 	}
@@ -223,7 +236,7 @@ func (api *API) ListReplies(ctx context.Context, teamID, channelID, messageID st
 }
 
 // GetReply will be used later
-func (api *API) GetReply(ctx context.Context, teamID, channelID, messageID, replyID string) (models.ChatMessageable, *sender.RequestError) {
+func (api *ChannelsAPI) GetReply(ctx context.Context, teamID, channelID, messageID, replyID string) (msmodels.ChatMessageable, *sender.RequestError) {
 	call := func(ctx context.Context) (sender.Response, error) {
 		return api.client.
 			Teams().
@@ -242,7 +255,7 @@ func (api *API) GetReply(ctx context.Context, teamID, channelID, messageID, repl
 		return nil, err
 	}
 
-	out, ok := resp.(models.ChatMessageable)
+	out, ok := resp.(msmodels.ChatMessageable)
 	if !ok {
 		return nil, &sender.RequestError{Code: "TypeCastError", Message: "Expected ChatMessageable"}
 	}
