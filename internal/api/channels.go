@@ -23,19 +23,18 @@ type Channels interface {
 	GetReply(ctx context.Context, teamID, channelID, messageID, replyID string) (msmodels.ChatMessageable, *sender.RequestError)
 }
 
-// ChannelsAPI will be used later
-type ChannelsAPI struct {
+type channels struct {
 	client     *graph.GraphServiceClient
 	techParams sender.RequestTechParams
 }
 
-// NewChannelsAPI will be used later
-func NewChannelsAPI(client *graph.GraphServiceClient, techParams sender.RequestTechParams) *ChannelsAPI {
-	return &ChannelsAPI{client, techParams}
+// NewChannels will be used later
+func NewChannels(client *graph.GraphServiceClient, techParams sender.RequestTechParams) *channels {
+	return &channels{client, techParams}
 }
 
 // ListChannels will be used later
-func (api *ChannelsAPI) ListChannels(ctx context.Context, teamID string) (msmodels.ChannelCollectionResponseable, *sender.RequestError) {
+func (api *channels) ListChannels(ctx context.Context, teamID string) (msmodels.ChannelCollectionResponseable, *sender.RequestError) {
 	call := func(ctx context.Context) (sender.Response, error) {
 		return api.client.
 			Teams().
@@ -58,7 +57,7 @@ func (api *ChannelsAPI) ListChannels(ctx context.Context, teamID string) (msmode
 }
 
 // GetChannel will be used later
-func (api *ChannelsAPI) GetChannel(ctx context.Context, teamID, channelID string) (msmodels.Channelable, *sender.RequestError) {
+func (api *channels) GetChannel(ctx context.Context, teamID, channelID string) (msmodels.Channelable, *sender.RequestError) {
 	call := func(ctx context.Context) (sender.Response, error) {
 		return api.client.
 			Teams().
@@ -82,7 +81,7 @@ func (api *ChannelsAPI) GetChannel(ctx context.Context, teamID, channelID string
 }
 
 // CreateChannel will be used later
-func (api *ChannelsAPI) CreateChannel(ctx context.Context, teamID string, channel msmodels.Channelable) (msmodels.Channelable, *sender.RequestError) {
+func (api *channels) CreateChannel(ctx context.Context, teamID string, channel msmodels.Channelable) (msmodels.Channelable, *sender.RequestError) {
 	call := func(ctx context.Context) (sender.Response, error) {
 		return api.client.
 			Teams().
@@ -105,7 +104,7 @@ func (api *ChannelsAPI) CreateChannel(ctx context.Context, teamID string, channe
 }
 
 // DeleteChannel will be used later
-func (api *ChannelsAPI) DeleteChannel(ctx context.Context, teamID, channelID string) *sender.RequestError {
+func (api *channels) DeleteChannel(ctx context.Context, teamID, channelID string) *sender.RequestError {
 	call := func(ctx context.Context) (sender.Response, error) {
 		err := api.client.
 			Teams().
@@ -121,7 +120,7 @@ func (api *ChannelsAPI) DeleteChannel(ctx context.Context, teamID, channelID str
 }
 
 // SendMessage will be used later
-func (api *ChannelsAPI) SendMessage(ctx context.Context, teamID, channelID string, message msmodels.ChatMessageable) (msmodels.ChatMessageable, *sender.RequestError) {
+func (api *channels) SendMessage(ctx context.Context, teamID, channelID string, message msmodels.ChatMessageable) (msmodels.ChatMessageable, *sender.RequestError) {
 	call := func(ctx context.Context) (sender.Response, error) {
 		return api.client.
 			Teams().
@@ -146,7 +145,7 @@ func (api *ChannelsAPI) SendMessage(ctx context.Context, teamID, channelID strin
 }
 
 // ListMessages will be used later
-func (api *ChannelsAPI) ListMessages(ctx context.Context, teamID, channelID string, top *int32) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError) {
+func (api *channels) ListMessages(ctx context.Context, teamID, channelID string, top *int32) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError) {
 	call := func(ctx context.Context) (sender.Response, error) {
 		queryParameters := &graphteams.ItemChannelsItemMessagesRequestBuilderGetQueryParameters{}
 		if top != nil {
@@ -177,7 +176,7 @@ func (api *ChannelsAPI) ListMessages(ctx context.Context, teamID, channelID stri
 }
 
 // GetMessage will be used later
-func (api *ChannelsAPI) GetMessage(ctx context.Context, teamID, channelID, messageID string) (msmodels.ChatMessageable, *sender.RequestError) {
+func (api *channels) GetMessage(ctx context.Context, teamID, channelID, messageID string) (msmodels.ChatMessageable, *sender.RequestError) {
 	call := func(ctx context.Context) (sender.Response, error) {
 		return api.client.
 			Teams().
@@ -203,7 +202,7 @@ func (api *ChannelsAPI) GetMessage(ctx context.Context, teamID, channelID, messa
 }
 
 // ListReplies will be used later
-func (api *ChannelsAPI) ListReplies(ctx context.Context, teamID, channelID, messageID string, top *int32) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError) {
+func (api *channels) ListReplies(ctx context.Context, teamID, channelID, messageID string, top *int32) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError) {
 	call := func(ctx context.Context) (sender.Response, error) {
 		queryParameters := &graphteams.ItemChannelsItemMessagesItemRepliesRequestBuilderGetQueryParameters{}
 		if top != nil {
@@ -236,7 +235,7 @@ func (api *ChannelsAPI) ListReplies(ctx context.Context, teamID, channelID, mess
 }
 
 // GetReply will be used later
-func (api *ChannelsAPI) GetReply(ctx context.Context, teamID, channelID, messageID, replyID string) (msmodels.ChatMessageable, *sender.RequestError) {
+func (api *channels) GetReply(ctx context.Context, teamID, channelID, messageID, replyID string) (msmodels.ChatMessageable, *sender.RequestError) {
 	call := func(ctx context.Context) (sender.Response, error) {
 		return api.client.
 			Teams().

@@ -8,21 +8,21 @@ import (
 )
 
 var (
-	errTeamNotFound = errors.New("team not found")
-	errForbidden    = errors.New("forbidden access to team")
-	errUnknown      = errors.New("unknown team error")
-	errNotFound     = errors.New("not found")
+	ErrTeamNotFound = errors.New("team not found")
+	ErrForbidden    = errors.New("forbidden access to team")
+	ErrUnknown      = errors.New("unknown team error")
+	ErrNotFound     = errors.New("not found")
 )
 
 func mapError(e *sender.RequestError) error {
 	switch e.Code {
 	case "ResourceNotFound":
-		return errTeamNotFound
+		return ErrTeamNotFound
 	case "AccessDenied":
-		return errForbidden
+		return ErrForbidden
 	case "NotFound":
-		return fmt.Errorf("%w: %s", errNotFound, e.Message)
+		return fmt.Errorf("%w: %s", ErrNotFound, e.Message)
 	default:
-		return fmt.Errorf("%w: %s (%s)", errUnknown, e.Message, e.Code)
+		return fmt.Errorf("%w: %s (%s)", ErrUnknown, e.Message, e.Code)
 	}
 }
