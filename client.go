@@ -10,8 +10,8 @@ import (
 	"github.com/pzsp-teams/lib/internal/auth"
 	"github.com/pzsp-teams/lib/internal/mapper"
 
-	"github.com/pzsp-teams/lib/pkg/teams/channels"
-	"github.com/pzsp-teams/lib/pkg/teams/teams"
+	"github.com/pzsp-teams/lib/channels"
+	"github.com/pzsp-teams/lib/teams"
 )
 
 type Client struct {
