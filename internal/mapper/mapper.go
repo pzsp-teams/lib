@@ -1,56 +1,68 @@
-package utils
+package mapper
 
 import (
 	"context"
 	"fmt"
 
-	"github.com/pzsp-teams/lib/pkg/teams/channels"
-	"github.com/pzsp-teams/lib/pkg/teams/teams"
+	"github.com/pzsp-teams/lib/internal/channels"
+	"github.com/pzsp-teams/lib/internal/teams"
 )
 
 // MapperInterface will be used later
 type MapperInterface interface {
-	MapTeamNameToTeamID(teamName string) (string, error)
-	MapChannelNameToChannelID(teamID, channelName string) (string, error)
+	MapTeamNameToTeamID(ctx context.Context, teamName string) (string, error)
+	MapChannelNameToChannelID(ctx context.Context, teamID, channelName string) (string, error)
 }
 
 // Mapper will be used later
 type Mapper struct {
-	teamSvc    *teams.Service
-	channelSvc *channels.Service
+	teamsAPI    teams.APIInterface
+	channelsAPI channels.APIInterface
 }
 
 // NewMapper will be used later
-func NewMapper(teamSvc *teams.Service, channelSvc *channels.Service) *Mapper {
+func NewMapper(teamAPI *teams.API, channelAPI *channels.API) *Mapper {
 	return &Mapper{
-		teamSvc:    teamSvc,
-		channelSvc: channelSvc,
+		teamsAPI:    teamAPI,
+		channelsAPI: channelAPI,
 	}
 }
 
 // MapTeamNameToTeamID will be used later
 func (m *Mapper) MapTeamNameToTeamID(ctx context.Context, teamName string) (string, error) {
-	listOfTeams, err := m.teamSvc.ListMyJoined(ctx)
+	listOfTeams, err := m.teamsAPI.ListMyJoined(ctx)
 	if err != nil {
 		return "", err
 	}
-	for _, t := range listOfTeams {
-		if t.DisplayName == teamName {
-			return t.ID, nil
+	if listOfTeams == nil || listOfTeams.GetValue() == nil {
+		return "", fmt.Errorf("no teams available")
+	}
+	for _, t := range listOfTeams.GetValue() {
+		if t.GetDisplayName() != nil && *t.GetDisplayName() == teamName {
+			if t.GetId() == nil {
+				return "", fmt.Errorf("team %q has nil id", teamName)
+			}
+			return *t.GetId(), nil
 		}
 	}
-	return "", fmt.Errorf("team with name '%s' not found", teamName)
+	return "", fmt.Errorf("team with name %q not found", teamName)
 }
 
 // MapChannelNameToChannelID will be used later
 func (m *Mapper) MapChannelNameToChannelID(ctx context.Context, teamID, channelName string) (string, error) {
-	chans, err := m.channelSvc.ListChannels(ctx, teamID)
+	chans, err := m.channelsAPI.ListChannels(ctx, teamID)
 	if err != nil {
 		return "", err
 	}
-	for _, c := range chans {
-		if c.Name == channelName {
-			return c.ID, nil
+	if chans == nil || chans.GetValue() == nil {
+		return "", fmt.Errorf("no channels available in team %q", teamID)
+	}
+	for _, c := range chans.GetValue() {
+		if c.GetDisplayName() != nil && *c.GetDisplayName() == channelName {
+			if c.GetId() == nil {
+				return "", fmt.Errorf("channel %q has nil id in team %q", channelName, teamID)
+			}
+			return *c.GetId(), nil
 		}
 	}
 	return "", fmt.Errorf("channel with name %q not found in team %q", channelName, teamID)

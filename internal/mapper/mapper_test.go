@@ -1,4 +1,4 @@
-package utils
+package mapper
 
 import (
 	"context"
@@ -6,9 +6,7 @@ import (
 	"testing"
 
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
-	sender "github.com/pzsp-teams/lib/internal/sender"
-	channelspkg "github.com/pzsp-teams/lib/pkg/teams/channels"
-	teamspkg "github.com/pzsp-teams/lib/pkg/teams/teams"
+	"github.com/pzsp-teams/lib/internal/sender"
 )
 
 type fakeTeamsAPI struct {
@@ -16,31 +14,39 @@ type fakeTeamsAPI struct {
 	listErr  *sender.RequestError
 }
 
-func (f *fakeTeamsAPI) CreateFromTemplate(ctx context.Context, displayName, description string, owners []string) (string, *sender.RequestError) {
-	return "", nil
-}
-func (f *fakeTeamsAPI) CreateViaGroup(ctx context.Context, displayName, mailNickname, visibility string) (string, *sender.RequestError) {
-	return "", nil
-}
-func (f *fakeTeamsAPI) Get(ctx context.Context, teamID string) (msmodels.Teamable, *sender.RequestError) {
-	return nil, nil
-}
 func (f *fakeTeamsAPI) ListMyJoined(ctx context.Context) (msmodels.TeamCollectionResponseable, *sender.RequestError) {
 	return f.listResp, f.listErr
 }
-func (f *fakeTeamsAPI) Update(ctx context.Context, teamID string, patch *msmodels.Team) (msmodels.Teamable, *sender.RequestError) {
-	return nil, nil
-}
-func (f *fakeTeamsAPI) Archive(ctx context.Context, teamID string, spoReadOnlyForMembers *bool) *sender.RequestError {
+
+func (f *fakeTeamsAPI) Archive(ctx context.Context, teamID string, shouldSetSpoSiteReadOnlyForMembers *bool) *sender.RequestError {
 	return nil
 }
+
 func (f *fakeTeamsAPI) Unarchive(ctx context.Context, teamID string) *sender.RequestError {
 	return nil
 }
+
+func (f *fakeTeamsAPI) CreateFromTemplate(ctx context.Context, displayName, description string, template []string) (string, *sender.RequestError) {
+	return "", nil
+}
+
+func (f *fakeTeamsAPI) CreateViaGroup(ctx context.Context, groupID, displayName, description string) (string, *sender.RequestError) {
+	return "", nil
+}
+
 func (f *fakeTeamsAPI) Delete(ctx context.Context, teamID string) *sender.RequestError {
 	return nil
 }
-func (f *fakeTeamsAPI) RestoreDeleted(ctx context.Context, deletedGroupID string) (msmodels.DirectoryObjectable, *sender.RequestError) {
+
+func (f *fakeTeamsAPI) Get(ctx context.Context, teamID string) (msmodels.Teamable, *sender.RequestError) {
+	return nil, nil
+}
+
+func (f *fakeTeamsAPI) RestoreDeleted(ctx context.Context, teamID string) (msmodels.DirectoryObjectable, *sender.RequestError) {
+	return nil, nil
+}
+
+func (f *fakeTeamsAPI) Update(ctx context.Context, teamID string, team *msmodels.Team) (msmodels.Teamable, *sender.RequestError) {
 	return nil, nil
 }
 
@@ -52,28 +58,36 @@ type fakeChannelAPI struct {
 func (f *fakeChannelAPI) ListChannels(ctx context.Context, teamID string) (msmodels.ChannelCollectionResponseable, *sender.RequestError) {
 	return f.listResp, f.listErr
 }
-func (f *fakeChannelAPI) GetChannel(ctx context.Context, teamID, channelID string) (msmodels.Channelable, *sender.RequestError) {
-	return nil, nil
-}
+
 func (f *fakeChannelAPI) CreateChannel(ctx context.Context, teamID string, channel msmodels.Channelable) (msmodels.Channelable, *sender.RequestError) {
 	return nil, nil
 }
+
 func (f *fakeChannelAPI) DeleteChannel(ctx context.Context, teamID, channelID string) *sender.RequestError {
 	return nil
 }
-func (f *fakeChannelAPI) SendMessage(ctx context.Context, teamID, channelID string, message msmodels.ChatMessageable) (msmodels.ChatMessageable, *sender.RequestError) {
+
+func (f *fakeChannelAPI) GetChannel(ctx context.Context, teamID, channelID string) (msmodels.Channelable, *sender.RequestError) {
 	return nil, nil
 }
-func (f *fakeChannelAPI) ListMessages(ctx context.Context, teamID, channelID string, top *int32) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError) {
-	return nil, nil
-}
+
 func (f *fakeChannelAPI) GetMessage(ctx context.Context, teamID, channelID, messageID string) (msmodels.ChatMessageable, *sender.RequestError) {
 	return nil, nil
 }
+
+func (f *fakeChannelAPI) GetReply(ctx context.Context, teamID, channelID, messageID, replyID string) (msmodels.ChatMessageable, *sender.RequestError) {
+	return nil, nil
+}
+
+func (f *fakeChannelAPI) ListMessages(ctx context.Context, teamID, channelID string, top *int32) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError) {
+	return nil, nil
+}
+
 func (f *fakeChannelAPI) ListReplies(ctx context.Context, teamID, channelID, messageID string, top *int32) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError) {
 	return nil, nil
 }
-func (f *fakeChannelAPI) GetReply(ctx context.Context, teamID, channelID, messageID, replyID string) (msmodels.ChatMessageable, *sender.RequestError) {
+
+func (f *fakeChannelAPI) SendMessage(ctx context.Context, teamID, channelID string, message msmodels.ChatMessageable) (msmodels.ChatMessageable, *sender.RequestError) {
 	return nil, nil
 }
 
@@ -99,13 +113,13 @@ func TestMapper_MapTeamNameToTeamID_Found(t *testing.T) {
 	b := newGraphTeam("2", "Beta")
 	col.SetValue([]msmodels.Teamable{a, b})
 
-	teamsAPI := &fakeTeamsAPI{listResp: col}
-	teamSvc := teamspkg.NewService(teamsAPI)
+	teamsFake := &fakeTeamsAPI{listResp: col}
+	channelsFake := &fakeChannelAPI{}
 
-	channelsAPI := &fakeChannelAPI{}
-	channelSvc := channelspkg.NewService(channelsAPI)
-
-	m := NewMapper(teamSvc, channelSvc)
+	m := &Mapper{
+		teamsAPI:    teamsFake,
+		channelsAPI: channelsFake,
+	}
 
 	id, err := m.MapTeamNameToTeamID(ctx, "Beta")
 	if err != nil {
@@ -124,11 +138,13 @@ func TestMapper_MapTeamNameToTeamID_NotFound(t *testing.T) {
 		newGraphTeam("1", "Alpha"),
 	})
 
-	teamsAPI := &fakeTeamsAPI{listResp: col}
-	teamSvc := teamspkg.NewService(teamsAPI)
-	channelSvc := channelspkg.NewService(&fakeChannelAPI{})
+	teamsFake := &fakeTeamsAPI{listResp: col}
+	channelsFake := &fakeChannelAPI{}
 
-	m := NewMapper(teamSvc, channelSvc)
+	m := &Mapper{
+		teamsAPI:    teamsFake,
+		channelsAPI: channelsFake,
+	}
 
 	_, err := m.MapTeamNameToTeamID(ctx, "Beta")
 	if err == nil {
@@ -147,13 +163,13 @@ func TestMapper_MapChannelNameToChannelID_Found(t *testing.T) {
 	c2 := newGraphChannel("11", "Random")
 	col.SetValue([]msmodels.Channelable{c1, c2})
 
-	chAPI := &fakeChannelAPI{listResp: col}
-	channelSvc := channelspkg.NewService(chAPI)
+	chFake := &fakeChannelAPI{listResp: col}
+	teamsFake := &fakeTeamsAPI{}
 
-	teamsAPI := &fakeTeamsAPI{}
-	teamSvc := teamspkg.NewService(teamsAPI)
-
-	m := NewMapper(teamSvc, channelSvc)
+	m := &Mapper{
+		teamsAPI:    teamsFake,
+		channelsAPI: chFake,
+	}
 
 	id, err := m.MapChannelNameToChannelID(ctx, "team-123", "Random")
 	if err != nil {
@@ -172,13 +188,13 @@ func TestMapper_MapChannelNameToChannelID_NotFound(t *testing.T) {
 		newGraphChannel("10", "General"),
 	})
 
-	chAPI := &fakeChannelAPI{listResp: col}
-	channelSvc := channelspkg.NewService(chAPI)
+	chFake := &fakeChannelAPI{listResp: col}
+	teamsFake := &fakeTeamsAPI{}
 
-	teamsAPI := &fakeTeamsAPI{}
-	teamSvc := teamspkg.NewService(teamsAPI)
-
-	m := NewMapper(teamSvc, channelSvc)
+	m := &Mapper{
+		teamsAPI:    teamsFake,
+		channelsAPI: chFake,
+	}
 
 	_, err := m.MapChannelNameToChannelID(ctx, "team-123", "Random")
 	if err == nil {

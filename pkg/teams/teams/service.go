@@ -4,23 +4,30 @@ import (
 	"context"
 
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
+	"github.com/pzsp-teams/lib/internal/mapper"
+	teamsAPI "github.com/pzsp-teams/lib/internal/teams"
 )
 
 // Service will be used later
 type Service struct {
-	api APIInterface
+	api        teamsAPI.APIInterface
+	nameMapper mapper.MapperInterface
 }
 
 // NewService will be used later
-func NewService(api APIInterface) *Service {
-	return &Service{api: api}
+func NewService(api teamsAPI.APIInterface, m mapper.MapperInterface) *Service {
+	return &Service{api: api, nameMapper: m}
 }
 
 // Get will be used later
-func (s *Service) Get(ctx context.Context, teamID string) (*Team, error) {
-	resp, err := s.api.Get(ctx, teamID)
+func (s *Service) Get(ctx context.Context, teamName string) (*Team, error) {
+	teamID, err := s.nameMapper.MapTeamNameToTeamID(ctx, teamName)
 	if err != nil {
-		return nil, mapError(err)
+		return nil, err
+	}
+	resp, senderErr := s.api.Get(ctx, teamID)
+	if senderErr != nil {
+		return nil, mapError(senderErr)
 	}
 	return mapGraphTeam(resp), nil
 }
@@ -41,10 +48,14 @@ func (s *Service) ListMyJoined(ctx context.Context) ([]*Team, error) {
 }
 
 // Update will be used later
-func (s *Service) Update(ctx context.Context, teamID string, patch *msmodels.Team) (*Team, error) {
-	resp, err := s.api.Update(ctx, teamID, patch)
+func (s *Service) Update(ctx context.Context, teamName string, patch *msmodels.Team) (*Team, error) {
+	teamID, err := s.nameMapper.MapTeamNameToTeamID(ctx, teamName)
 	if err != nil {
-		return nil, mapError(err)
+		return nil, err
+	}
+	resp, senderErr := s.api.Update(ctx, teamID, patch)
+	if senderErr != nil {
+		return nil, mapError(senderErr)
 	}
 	return mapGraphTeam(resp), nil
 }
@@ -75,7 +86,11 @@ func (s *Service) CreateFromTemplate(ctx context.Context, displayName, descripti
 }
 
 // Archive will be used later
-func (s *Service) Archive(ctx context.Context, teamID string, spoReadOnlyForMembers *bool) error {
+func (s *Service) Archive(ctx context.Context, teamName string, spoReadOnlyForMembers *bool) error {
+	teamID, err := s.nameMapper.MapTeamNameToTeamID(ctx, teamName)
+	if err != nil {
+		return err
+	}
 	if e := s.api.Archive(ctx, teamID, spoReadOnlyForMembers); e != nil {
 		return mapError(e)
 	}
@@ -83,7 +98,11 @@ func (s *Service) Archive(ctx context.Context, teamID string, spoReadOnlyForMemb
 }
 
 // Unarchive will be used later
-func (s *Service) Unarchive(ctx context.Context, teamID string) error {
+func (s *Service) Unarchive(ctx context.Context, teamName string) error {
+	teamID, err := s.nameMapper.MapTeamNameToTeamID(ctx, teamName)
+	if err != nil {
+		return err
+	}
 	if e := s.api.Unarchive(ctx, teamID); e != nil {
 		return mapError(e)
 	}
@@ -91,7 +110,11 @@ func (s *Service) Unarchive(ctx context.Context, teamID string) error {
 }
 
 // Delete will be used later
-func (s *Service) Delete(ctx context.Context, teamID string) error {
+func (s *Service) Delete(ctx context.Context, teamName string) error {
+	teamID, err := s.nameMapper.MapTeamNameToTeamID(ctx, teamName)
+	if err != nil {
+		return err
+	}
 	if e := s.api.Delete(ctx, teamID); e != nil {
 		return mapError(e)
 	}

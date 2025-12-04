@@ -9,6 +9,33 @@ import (
 	sender "github.com/pzsp-teams/lib/internal/sender"
 )
 
+type fakeMapper struct {
+	mapTeamErr error
+	mapChanErr error
+
+	lastTeamName         string
+	lastChannelName      string
+	lastTeamIDForChannel string
+}
+
+func (m *fakeMapper) MapTeamNameToTeamID(ctx context.Context, teamName string) (string, error) {
+	m.lastTeamName = teamName
+	if m.mapTeamErr != nil {
+		return "", m.mapTeamErr
+	}
+
+	return teamName, nil
+}
+
+func (m *fakeMapper) MapChannelNameToChannelID(ctx context.Context, teamID, channelName string) (string, error) {
+	m.lastTeamIDForChannel = teamID
+	m.lastChannelName = channelName
+	if m.mapChanErr != nil {
+		return "", m.mapChanErr
+	}
+	return channelName, nil
+}
+
 type fakeChannelAPI struct {
 	listResp        msmodels.ChannelCollectionResponseable
 	listErr         *sender.RequestError
@@ -100,6 +127,15 @@ func newGraphChannel(id, name string) msmodels.Channelable {
 	return channel
 }
 
+func newChatMessage(id, content string) msmodels.ChatMessageable {
+	msg := msmodels.NewChatMessage()
+	msg.SetId(&id)
+	body := msmodels.NewItemBody()
+	body.SetContent(&content)
+	msg.SetBody(body)
+	return msg
+}
+
 func TestService_ListChannels_MapsFieldsAndGeneralFlag(t *testing.T) {
 	ctx := context.Background()
 	col := msmodels.NewChannelCollectionResponse()
@@ -110,7 +146,8 @@ func TestService_ListChannels_MapsFieldsAndGeneralFlag(t *testing.T) {
 	col.SetValue([]msmodels.Channelable{ch1, ch2})
 
 	api := &fakeChannelAPI{listResp: col}
-	svc := NewService(api)
+	m := &fakeMapper{}
+	svc := NewService(api, m)
 
 	got, err := svc.ListChannels(ctx, "team-1")
 	if err != nil {
@@ -127,6 +164,14 @@ func TestService_ListChannels_MapsFieldsAndGeneralFlag(t *testing.T) {
 	if got[1].ID != "2" || got[1].Name != "Random" || got[1].IsGeneral {
 		t.Errorf("unexpected second channel: %+v", got[1])
 	}
+
+	if m.lastTeamName != "team-1" {
+		t.Errorf("expected mapper to be called with team-1, got %q", m.lastTeamName)
+	}
+
+	if api.lastTeamID != "team-1" {
+		t.Errorf("expected api to be called with team-1, got %q", api.lastTeamID)
+	}
 }
 
 func TestService_ListChannels_MapsErrors(t *testing.T) {
@@ -137,7 +182,7 @@ func TestService_ListChannels_MapsErrors(t *testing.T) {
 			Message: "team not found",
 		},
 	}
-	svc := NewService(api)
+	svc := NewService(api, &fakeMapper{})
 
 	_, err := svc.ListChannels(ctx, "non-existing-team")
 	if !errors.Is(err, ErrChannelNotFound) {
@@ -149,7 +194,8 @@ func TestService_Get_MapsSingleChannel(t *testing.T) {
 	ctx := context.Background()
 	ch := newGraphChannel("42", "General")
 	api := &fakeChannelAPI{getResp: ch}
-	svc := NewService(api)
+	m := &fakeMapper{}
+	svc := NewService(api, m)
 
 	got, err := svc.Get(ctx, "team-1", "42")
 	if err != nil {
@@ -158,6 +204,9 @@ func TestService_Get_MapsSingleChannel(t *testing.T) {
 
 	if got.ID != "42" || got.Name != "General" || !got.IsGeneral {
 		t.Errorf("unexpected channel: %+v", got)
+	}
+	if api.lastTeamID != "team-1" || api.lastChanID != "42" {
+		t.Errorf("expected api called with team-1/42, got team=%q, chan=%q", api.lastTeamID, api.lastChanID)
 	}
 }
 
@@ -168,7 +217,8 @@ func TestService_Create_SetsNameAndMapsResult(t *testing.T) {
 	api := &fakeChannelAPI{
 		createResp: created,
 	}
-	svc := NewService(api)
+	m := &fakeMapper{}
+	svc := NewService(api, m)
 
 	got, err := svc.Create(ctx, "team-1", "my-channel")
 	if err != nil {
@@ -186,6 +236,9 @@ func TestService_Create_SetsNameAndMapsResult(t *testing.T) {
 	if dn == nil || *dn != "my-channel" {
 		t.Errorf("expected displayName 'my-channel', got %#v", dn)
 	}
+	if api.lastTeamID != "team-1" {
+		t.Errorf("expected team ID 'team-1', got %q", api.lastTeamID)
+	}
 }
 
 func TestService_Delete_MapsError(t *testing.T) {
@@ -196,7 +249,7 @@ func TestService_Delete_MapsError(t *testing.T) {
 			Message: "nope",
 		},
 	}
-	svc := NewService(api)
+	svc := NewService(api, &fakeMapper{})
 
 	err := svc.Delete(ctx, "team-1", "chan-1")
 	if !errors.Is(err, ErrForbidden) {
@@ -217,15 +270,6 @@ func TestDeref_NonNil(t *testing.T) {
 	}
 }
 
-func newChatMessage(id, content string) msmodels.ChatMessageable {
-	msg := msmodels.NewChatMessage()
-	msg.SetId(&id)
-	body := msmodels.NewItemBody()
-	body.SetContent(&content)
-	msg.SetBody(body)
-	return msg
-}
-
 func TestService_SendMessage_CreatesMessageAndMapsResult(t *testing.T) {
 	ctx := context.Background()
 	msgID := "msg-123"
@@ -233,7 +277,7 @@ func TestService_SendMessage_CreatesMessageAndMapsResult(t *testing.T) {
 
 	respMsg := newChatMessage(msgID, msgContent)
 	api := &fakeChannelAPI{sendMsgResp: respMsg}
-	svc := NewService(api)
+	svc := NewService(api, &fakeMapper{})
 
 	body := MessageBody{Content: msgContent}
 	got, err := svc.SendMessage(ctx, "team-1", "chan-1", body)
@@ -269,7 +313,7 @@ func TestService_SendMessage_MapsError(t *testing.T) {
 			Message: "not allowed",
 		},
 	}
-	svc := NewService(api)
+	svc := NewService(api, &fakeMapper{})
 
 	body := MessageBody{Content: "test"}
 	_, err := svc.SendMessage(ctx, "team-1", "chan-1", body)
@@ -287,7 +331,7 @@ func TestService_ListMessages_MapsMultipleMessages(t *testing.T) {
 	col.SetValue([]msmodels.ChatMessageable{msg1, msg2})
 
 	api := &fakeChannelAPI{listMsgsResp: col}
-	svc := NewService(api)
+	svc := NewService(api, &fakeMapper{})
 
 	got, err := svc.ListMessages(ctx, "team-1", "chan-1", nil)
 	if err != nil {
@@ -310,7 +354,7 @@ func TestService_ListMessages_WithTopOption(t *testing.T) {
 	ctx := context.Background()
 	col := msmodels.NewChatMessageCollectionResponse()
 	api := &fakeChannelAPI{listMsgsResp: col}
-	svc := NewService(api)
+	svc := NewService(api, &fakeMapper{})
 
 	var top int32 = 10
 	opts := &ListMessagesOptions{Top: &top}
@@ -325,7 +369,7 @@ func TestService_GetMessage_ReturnsMessage(t *testing.T) {
 	msg := newChatMessage("msg-42", "Test message")
 
 	api := &fakeChannelAPI{getMsgResp: msg}
-	svc := NewService(api)
+	svc := NewService(api, &fakeMapper{})
 
 	got, err := svc.GetMessage(ctx, "team-1", "chan-1", "msg-42")
 	if err != nil {
@@ -350,7 +394,7 @@ func TestService_ListReplies_MapsReplies(t *testing.T) {
 	col.SetValue([]msmodels.ChatMessageable{reply1, reply2})
 
 	api := &fakeChannelAPI{listRepliesResp: col}
-	svc := NewService(api)
+	svc := NewService(api, &fakeMapper{})
 
 	got, err := svc.ListReplies(ctx, "team-1", "chan-1", "msg-1", nil)
 	if err != nil {
@@ -375,7 +419,7 @@ func TestService_GetReply_ReturnsReply(t *testing.T) {
 	reply := newChatMessage("reply-42", "Test reply")
 
 	api := &fakeChannelAPI{getReplyResp: reply}
-	svc := NewService(api)
+	svc := NewService(api, &fakeMapper{})
 
 	got, err := svc.GetReply(ctx, "team-1", "chan-1", "msg-1", "reply-42")
 	if err != nil {

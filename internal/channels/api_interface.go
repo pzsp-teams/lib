@@ -8,7 +8,7 @@ import (
 )
 
 // ChannelAPIInterface will be used later
-type ChannelAPIInterface interface {
+type APIInterface interface {
 	ListChannels(ctx context.Context, teamID string) (msmodels.ChannelCollectionResponseable, *sender.RequestError)
 	GetChannel(ctx context.Context, teamID, channelID string) (msmodels.Channelable, *sender.RequestError)
 	CreateChannel(ctx context.Context, teamID string, channel msmodels.Channelable) (msmodels.Channelable, *sender.RequestError)
