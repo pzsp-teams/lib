@@ -29,7 +29,7 @@ const (
 )
 
 // MSALCredentials will be used later by other packages
-type AuthConfig struct {
+type MSALCredentials struct {
 	ClientID   string
 	Tenant     string
 	Email      string
@@ -45,7 +45,7 @@ type MSALTokenProvider struct {
 }
 
 // NewMSALTokenProvider will be used later by other packages
-func NewMSALTokenProvider(config *AuthConfig) (*MSALTokenProvider, error) {
+func NewMSALTokenProvider(config *MSALCredentials) (*MSALTokenProvider, error) {
 	storage, err := accessor.New(config.ClientID)
 	if err != nil {
 		return nil, fmt.Errorf("creating persistent storage: %w", err)
@@ -68,7 +68,7 @@ func NewMSALTokenProvider(config *AuthConfig) (*MSALTokenProvider, error) {
 		public.WithCache(cacheAccessor),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("creating MSALTokenProvider: %w", err)
+		return nil, fmt.Errorf("creating msal client: %w", err)
 	}
 
 	return &MSALTokenProvider{

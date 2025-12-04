@@ -2,61 +2,41 @@ package teams
 
 import (
 	"context"
+	"fmt"
 
 	graph "github.com/microsoftgraph/msgraph-sdk-go"
 
+	"github.com/pzsp-teams/lib/internal/api"
 	"github.com/pzsp-teams/lib/internal/auth"
-	channelsAPI "github.com/pzsp-teams/lib/internal/channels"
 	"github.com/pzsp-teams/lib/internal/mapper"
-	teamsAPI "github.com/pzsp-teams/lib/internal/teams"
+
 	"github.com/pzsp-teams/lib/pkg/teams/channels"
 	"github.com/pzsp-teams/lib/pkg/teams/teams"
-
-	"github.com/pzsp-teams/lib/internal/sender"
 )
 
-// Client will be used later
 type Client struct {
 	Channels *channels.Service
 	Teams    *teams.Service
 }
 
-// SenderConfig will be used later
-type SenderConfig struct {
-	MaxRetries     int
-	NextRetryDelay int
-	Timeout        int
-}
-
 // NewClient will be used later
-func NewClient(ctx context.Context, authConfig *auth.AuthConfig, senderConfig *SenderConfig) (*Client, error) {
-	tokenProvider, err := auth.NewMSALTokenProvider(authConfig)
+func NewClient(ctx context.Context, authConfig *AuthConfig, senderConfig *SenderConfig) (*Client, error) {
+	tokenProvider, err := auth.NewMSALTokenProvider(authConfig.toMSALCredentials())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("creating token provider: %w", err)
 	}
 
 	graphClient, err := graph.NewGraphServiceClientWithCredentials(tokenProvider, authConfig.Scopes)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("creating graph client: %w", err)
 	}
 
-	return newClient(graphClient, senderConfig), nil
-}
+	techParams := senderConfig.toTechParams()
+	teamsAPI := api.NewTeamsAPI(graphClient, techParams)
+	channelsAPI := api.NewChannelsAPI(graphClient, techParams)
+	nameMapper := mapper.NewMapper(teamsAPI, channelsAPI)
+	chSvc := channels.NewService(channelsAPI, nameMapper)
+	teamSvc := teams.NewService(teamsAPI, nameMapper)
 
-func newClient(graphClient *graph.GraphServiceClient, opts *SenderConfig) *Client {
-	techParams := sender.RequestTechParams{
-		MaxRetries:     opts.MaxRetries,
-		NextRetryDelay: opts.NextRetryDelay,
-		Timeout:        opts.Timeout,
-	}
-	channelAPI := channelsAPI.NewChannelsAPI(graphClient, techParams)
-	teamAPI := teamsAPI.NewTeamsAPI(graphClient, techParams)
-	nameMapper := mapper.NewMapper(teamAPI, channelAPI)
-	chSvc := channels.NewService(channelAPI, nameMapper)
-	teamSvc := teams.NewService(teamAPI, nameMapper)
-
-	return &Client{
-		Channels: chSvc,
-		Teams:    teamSvc,
-	}
+	return &Client{Channels: chSvc, Teams: teamSvc}, nil
 }

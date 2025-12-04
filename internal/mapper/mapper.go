@@ -4,8 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/pzsp-teams/lib/internal/channels"
-	"github.com/pzsp-teams/lib/internal/teams"
+	"github.com/pzsp-teams/lib/internal/api"
 )
 
 // MapperInterface will be used later
@@ -16,15 +15,15 @@ type MapperInterface interface {
 
 // Mapper will be used later
 type Mapper struct {
-	teamsAPI    teams.APIInterface
-	channelsAPI channels.APIInterface
+	teamsAPI    api.Teams
+	channelsAPI api.Channels
 }
 
 // NewMapper will be used later
-func NewMapper(teamAPI *teams.API, channelAPI *channels.API) *Mapper {
+func NewMapper(teamsAPI api.Teams, channelsAPI api.Channels) *Mapper {
 	return &Mapper{
-		teamsAPI:    teamAPI,
-		channelsAPI: channelAPI,
+		teamsAPI:    teamsAPI,
+		channelsAPI: channelsAPI,
 	}
 }
 

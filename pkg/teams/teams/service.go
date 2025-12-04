@@ -4,19 +4,19 @@ import (
 	"context"
 
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
+	"github.com/pzsp-teams/lib/internal/api"
 	"github.com/pzsp-teams/lib/internal/mapper"
-	teamsAPI "github.com/pzsp-teams/lib/internal/teams"
 )
 
 // Service will be used later
 type Service struct {
-	api        teamsAPI.APIInterface
+	api        api.Teams
 	nameMapper mapper.MapperInterface
 }
 
 // NewService will be used later
-func NewService(api teamsAPI.APIInterface, m mapper.MapperInterface) *Service {
-	return &Service{api: api, nameMapper: m}
+func NewService(teamsAPI api.Teams, m mapper.MapperInterface) *Service {
+	return &Service{api: teamsAPI, nameMapper: m}
 }
 
 // Get will be used later
@@ -128,7 +128,7 @@ func (s *Service) RestoreDeleted(ctx context.Context, deletedGroupID string) (st
 		return "", mapError(err)
 	}
 	if obj == nil || obj.GetId() == nil {
-		return "", ErrUnknown
+		return "", errUnknown
 	}
 	return *obj.GetId(), nil
 }
