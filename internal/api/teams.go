@@ -30,7 +30,7 @@ type teams struct {
 }
 
 // NewTeams will be used later
-func NewTeams(client *graph.GraphServiceClient, techParams sender.RequestTechParams) *teams {
+func NewTeams(client *graph.GraphServiceClient, techParams sender.RequestTechParams) Teams {
 	return &teams{client, techParams}
 }
 
