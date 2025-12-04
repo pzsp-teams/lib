@@ -4,41 +4,56 @@ import (
 	"context"
 
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
+	"github.com/pzsp-teams/lib/internal/channels"
+	"github.com/pzsp-teams/lib/internal/mapper"
 )
 
 // Service will be used later
 type Service struct {
-	api ChannelAPIInterface
+	api        channels.APIInterface
+	nameMapper mapper.MapperInterface
 }
 
 // NewService will be used later
-func NewService(api ChannelAPIInterface) *Service {
-	return &Service{api: api}
+func NewService(api channels.APIInterface, m mapper.MapperInterface) *Service {
+	return &Service{api: api, nameMapper: m}
 }
 
 // ListChannels will be used later
-func (s *Service) ListChannels(ctx context.Context, teamID string) ([]*Channel, error) {
-	resp, err := s.api.ListChannels(ctx, teamID)
+func (s *Service) ListChannels(ctx context.Context, teamName string) ([]*Channel, error) {
+	teamID, err := s.nameMapper.MapTeamNameToTeamID(ctx, teamName)
 	if err != nil {
-		return nil, mapError(err)
+		return nil, err
 	}
-	var channels []*Channel
+	resp, senderErr := s.api.ListChannels(ctx, teamID)
+	if senderErr != nil {
+		return nil, mapError(senderErr)
+	}
+	var chans []*Channel
 	for _, ch := range resp.GetValue() {
 		name := deref(ch.GetDisplayName())
-		channels = append(channels, &Channel{
+		chans = append(chans, &Channel{
 			ID:        deref(ch.GetId()),
 			Name:      name,
 			IsGeneral: name == "General",
 		})
 	}
-	return channels, nil
+	return chans, nil
 }
 
 // Get will be used later
-func (s *Service) Get(ctx context.Context, teamID, channelID string) (*Channel, error) {
-	resp, err := s.api.GetChannel(ctx, teamID, channelID)
+func (s *Service) Get(ctx context.Context, teamName, channelName string) (*Channel, error) {
+	teamID, err := s.nameMapper.MapTeamNameToTeamID(ctx, teamName)
 	if err != nil {
-		return nil, mapError(err)
+		return nil, err
+	}
+	channelID, err := s.nameMapper.MapChannelNameToChannelID(ctx, teamID, channelName)
+	if err != nil {
+		return nil, err
+	}
+	resp, senderErr := s.api.GetChannel(ctx, teamID, channelID)
+	if senderErr != nil {
+		return nil, mapError(senderErr)
 	}
 	name := deref(resp.GetDisplayName())
 	return &Channel{
@@ -49,13 +64,17 @@ func (s *Service) Get(ctx context.Context, teamID, channelID string) (*Channel, 
 }
 
 // Create will be used later
-func (s *Service) Create(ctx context.Context, teamID, name string) (*Channel, error) {
+func (s *Service) Create(ctx context.Context, teamName, name string) (*Channel, error) {
+	teamID, err := s.nameMapper.MapTeamNameToTeamID(ctx, teamName)
+	if err != nil {
+		return nil, err
+	}
 	newChannel := msmodels.NewChannel()
 	newChannel.SetDisplayName(&name)
 
-	created, err := s.api.CreateChannel(ctx, teamID, newChannel)
-	if err != nil {
-		return nil, mapError(err)
+	created, senderErr := s.api.CreateChannel(ctx, teamID, newChannel)
+	if senderErr != nil {
+		return nil, mapError(senderErr)
 	}
 	return &Channel{
 		ID:        deref(created.GetId()),
@@ -65,39 +84,63 @@ func (s *Service) Create(ctx context.Context, teamID, name string) (*Channel, er
 }
 
 // Delete will be used later
-func (s *Service) Delete(ctx context.Context, teamID, channelID string) error {
-	err := s.api.DeleteChannel(ctx, teamID, channelID)
+func (s *Service) Delete(ctx context.Context, teamName, channelName string) error {
+	teamID, err := s.nameMapper.MapTeamNameToTeamID(ctx, teamName)
 	if err != nil {
-		return mapError(err)
+		return err
+	}
+	channelID, err := s.nameMapper.MapChannelNameToChannelID(ctx, teamID, channelName)
+	if err != nil {
+		return err
+	}
+	senderErr := s.api.DeleteChannel(ctx, teamID, channelID)
+	if senderErr != nil {
+		return mapError(senderErr)
 	}
 	return nil
 }
 
 // SendMessage will be used later
-func (s *Service) SendMessage(ctx context.Context, teamID, channelID string, body MessageBody) (*Message, error) {
+func (s *Service) SendMessage(ctx context.Context, teamName, channelName string, body MessageBody) (*Message, error) {
+	teamID, err := s.nameMapper.MapTeamNameToTeamID(ctx, teamName)
+	if err != nil {
+		return nil, err
+	}
+	channelID, err := s.nameMapper.MapChannelNameToChannelID(ctx, teamID, channelName)
+	if err != nil {
+		return nil, err
+	}
 	message := msmodels.NewChatMessage()
 	messageBody := msmodels.NewItemBody()
 	messageBody.SetContent(&body.Content)
 	message.SetBody(messageBody)
 
-	resp, err := s.api.SendMessage(ctx, teamID, channelID, message)
-	if err != nil {
-		return nil, mapError(err)
+	resp, senderErr := s.api.SendMessage(ctx, teamID, channelID, message)
+	if senderErr != nil {
+		return nil, mapError(senderErr)
 	}
 
 	return mapChatMessageToMessage(resp), nil
 }
 
 // ListMessages retrieves messages from a channel
-func (s *Service) ListMessages(ctx context.Context, teamID, channelID string, opts *ListMessagesOptions) ([]*Message, error) {
+func (s *Service) ListMessages(ctx context.Context, teamName, channelName string, opts *ListMessagesOptions) ([]*Message, error) {
+	teamID, err := s.nameMapper.MapTeamNameToTeamID(ctx, teamName)
+	if err != nil {
+		return nil, err
+	}
+	channelID, err := s.nameMapper.MapChannelNameToChannelID(ctx, teamID, channelName)
+	if err != nil {
+		return nil, err
+	}
 	var top *int32
 	if opts != nil && opts.Top != nil {
 		top = opts.Top
 	}
 
-	resp, err := s.api.ListMessages(ctx, teamID, channelID, top)
-	if err != nil {
-		return nil, mapError(err)
+	resp, senderErr := s.api.ListMessages(ctx, teamID, channelID, top)
+	if senderErr != nil {
+		return nil, mapError(senderErr)
 	}
 
 	var messages []*Message
@@ -109,22 +152,36 @@ func (s *Service) ListMessages(ctx context.Context, teamID, channelID string, op
 }
 
 // GetMessage retrieves a specific message from a channel
-func (s *Service) GetMessage(ctx context.Context, teamID, channelID, messageID string) (*Message, error) {
-	resp, err := s.api.GetMessage(ctx, teamID, channelID, messageID)
+func (s *Service) GetMessage(ctx context.Context, teamName, channelName, messageID string) (*Message, error) {
+	teamID, err := s.nameMapper.MapTeamNameToTeamID(ctx, teamName)
 	if err != nil {
-		return nil, mapError(err)
+		return nil, err
 	}
-
+	channelID, err := s.nameMapper.MapChannelNameToChannelID(ctx, teamID, channelName)
+	if err != nil {
+		return nil, err
+	}
+	resp, senderErr := s.api.GetMessage(ctx, teamID, channelID, messageID)
+	if senderErr != nil {
+		return nil, mapError(senderErr)
+	}
 	return mapChatMessageToMessage(resp), nil
 }
 
 // ListReplies retrieves replies to a specific message
-func (s *Service) ListReplies(ctx context.Context, teamID, channelID, messageID string, top *int32) ([]*Message, error) {
-	resp, err := s.api.ListReplies(ctx, teamID, channelID, messageID, top)
+func (s *Service) ListReplies(ctx context.Context, teamName, channelName, messageID string, top *int32) ([]*Message, error) {
+	teamID, err := s.nameMapper.MapTeamNameToTeamID(ctx, teamName)
 	if err != nil {
-		return nil, mapError(err)
+		return nil, err
 	}
-
+	channelID, err := s.nameMapper.MapChannelNameToChannelID(ctx, teamID, channelName)
+	if err != nil {
+		return nil, err
+	}
+	resp, senderErr := s.api.ListReplies(ctx, teamID, channelID, messageID, top)
+	if senderErr != nil {
+		return nil, mapError(senderErr)
+	}
 	var replies []*Message
 	for _, reply := range resp.GetValue() {
 		replies = append(replies, mapChatMessageToMessage(reply))
@@ -134,12 +191,19 @@ func (s *Service) ListReplies(ctx context.Context, teamID, channelID, messageID 
 }
 
 // GetReply retrieves a specific reply to a message
-func (s *Service) GetReply(ctx context.Context, teamID, channelID, messageID, replyID string) (*Message, error) {
-	resp, err := s.api.GetReply(ctx, teamID, channelID, messageID, replyID)
+func (s *Service) GetReply(ctx context.Context, teamName, channelName, messageID, replyID string) (*Message, error) {
+	teamID, err := s.nameMapper.MapTeamNameToTeamID(ctx, teamName)
 	if err != nil {
-		return nil, mapError(err)
+		return nil, err
 	}
-
+	channelID, err := s.nameMapper.MapChannelNameToChannelID(ctx, teamID, channelName)
+	if err != nil {
+		return nil, err
+	}
+	resp, senderErr := s.api.GetReply(ctx, teamID, channelID, messageID, replyID)
+	if senderErr != nil {
+		return nil, mapError(senderErr)
+	}
 	return mapChatMessageToMessage(resp), nil
 }
 

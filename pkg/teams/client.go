@@ -6,6 +6,9 @@ import (
 	graph "github.com/microsoftgraph/msgraph-sdk-go"
 
 	"github.com/pzsp-teams/lib/internal/auth"
+	channelsAPI "github.com/pzsp-teams/lib/internal/channels"
+	"github.com/pzsp-teams/lib/internal/mapper"
+	teamsAPI "github.com/pzsp-teams/lib/internal/teams"
 	"github.com/pzsp-teams/lib/pkg/teams/channels"
 	"github.com/pzsp-teams/lib/pkg/teams/teams"
 
@@ -46,10 +49,11 @@ func newClient(graphClient *graph.GraphServiceClient, opts *SenderConfig) *Clien
 		NextRetryDelay: opts.NextRetryDelay,
 		Timeout:        opts.Timeout,
 	}
-	channelAPI := channels.NewChannelsAPI(graphClient, techParams)
-	teamsAPI := teams.NewTeamsAPI(graphClient, techParams)
-	chSvc := channels.NewService(channelAPI)
-	teamSvc := teams.NewService(teamsAPI)
+	channelAPI := channelsAPI.NewChannelsAPI(graphClient, techParams)
+	teamAPI := teamsAPI.NewTeamsAPI(graphClient, techParams)
+	nameMapper := mapper.NewMapper(teamAPI, channelAPI)
+	chSvc := channels.NewService(channelAPI, nameMapper)
+	teamSvc := teams.NewService(teamAPI, nameMapper)
 
 	return &Client{
 		Channels: chSvc,
