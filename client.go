@@ -1,4 +1,4 @@
-package teams
+package lib
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 
 	graph "github.com/microsoftgraph/msgraph-sdk-go"
 
+	"github.com/pzsp-teams/lib/chats"
 	"github.com/pzsp-teams/lib/internal/api"
 	"github.com/pzsp-teams/lib/internal/auth"
 	"github.com/pzsp-teams/lib/internal/mapper"
@@ -17,6 +18,7 @@ import (
 type Client struct {
 	Channels *channels.Service
 	Teams    *teams.Service
+	Chats    *chats.Service
 }
 
 // NewClient will be used later
@@ -35,12 +37,18 @@ func NewClient(ctx context.Context, authConfig *AuthConfig, senderConfig *Sender
 
 	teamsAPI := api.NewTeams(graphClient, techParams)
 	channelsAPI := api.NewChannels(graphClient, techParams)
+	chatAPI := api.NewChat(graphClient, techParams)
 
 	teamMapper := mapper.NewTeamMapper(teamsAPI, channelsAPI)
 	channelMapper := mapper.NewChannelMapper(channelsAPI)
 
 	teamSvc := teams.NewService(teamsAPI, teamMapper)
-	chSvc := channels.NewService(channelsAPI, teamMapper, channelMapper)
+	channelSvc := channels.NewService(channelsAPI, teamMapper, channelMapper)
+	chatSvc := chats.NewService(chatAPI)
 
-	return &Client{Channels: chSvc, Teams: teamSvc}, nil
+	return &Client{
+		Channels: channelSvc,
+		Teams:    teamSvc,
+		Chats:    chatSvc,
+	}, nil
 }

@@ -1,4 +1,4 @@
-package teams
+package lib
 
 import (
 	"github.com/pzsp-teams/lib/internal/auth"
