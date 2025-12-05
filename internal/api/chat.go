@@ -71,3 +71,18 @@ func (c *chatsAPI) Create(ctx context.Context, emails []string, topic string) (m
 	}
 	return out, nil
 }
+
+func (c *chatsAPI) ListMyJoined(ctx context.Context) (msmodels.ChatCollectionResponseable, *sender.RequestError) {
+	call := func(ctx context.Context) (sender.Response, error) {
+		return c.client.Me().Chats().Get(ctx, nil)
+	}
+	resp, err := sender.SendRequest(ctx, call, c.techParams)
+	if err != nil {
+		return nil, err
+	}
+	out, ok := resp.(msmodels.ChatCollectionResponseable)
+	if !ok {
+		return nil, &sender.RequestError{Code: "TypeCastError", Message: "Expected ChatCollectionResponseable"}
+	}
+	return out, nil
+}
