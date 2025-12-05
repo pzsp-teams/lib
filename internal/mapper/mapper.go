@@ -71,8 +71,8 @@ func resolveTeamIDByName(ref string, list msmodels.TeamCollectionResponseable) (
 				fmt.Sprintf("%s (ID: %s)", deref(t.GetDisplayName()), deref(t.GetId())))
 		}
 		return "", fmt.Errorf(
-			"multiple teams named %q found: %s. Please use one of the IDs instead",
-			ref, strings.Join(options, "; "),
+			"multiple teams named %q found: \n%s.\nPlease use one of the IDs instead",
+			ref, strings.Join(options, ";\n"),
 		)
 	}
 }
@@ -121,8 +121,8 @@ func resolveChannelIDByName(teamID, ref string, chans msmodels.ChannelCollection
 				fmt.Sprintf("%s (ID: %s)", deref(c.GetDisplayName()), deref(c.GetId())))
 		}
 		return "", fmt.Errorf(
-			"multiple channels named %q found in team %q: %s. Please use one of the IDs instead",
-			ref, teamID, strings.Join(options, "\n "),
+			"multiple channels named %q found in team %q: \n%s.\nPlease use one of the IDs instead",
+			ref, teamID, strings.Join(options, ";\n"),
 		)
 	}
 }
