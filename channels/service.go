@@ -63,8 +63,8 @@ func (s *Service) Get(ctx context.Context, teamName, channelName string) (*Chann
 	}, nil
 }
 
-// Create will be used later
-func (s *Service) Create(ctx context.Context, teamName, name string) (*Channel, error) {
+// CreateStandardChannel creates a standard channel in a team. All members of the team will have access to the channel.
+func (s *Service) CreateStandardChannel(ctx context.Context, teamName, name string) (*Channel, error) {
 	teamID, err := s.mapper.MapTeamNameToTeamID(ctx, teamName)
 	if err != nil {
 		return nil, err
@@ -83,6 +83,7 @@ func (s *Service) Create(ctx context.Context, teamName, name string) (*Channel, 
 	}, nil
 }
 
+// CreatePrivateChannel creates a private channel in a team with specified members and owners.
 func (s *Service) CreatePrivateChannel(ctx context.Context, teamName, name string, memberRefs, ownerRefs []string) (*Channel, error) {
 	teamID, err := s.mapper.MapTeamNameToTeamID(ctx, teamName)
 	if err != nil {

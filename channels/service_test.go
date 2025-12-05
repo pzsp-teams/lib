@@ -225,7 +225,7 @@ func TestService_Create_SetsNameAndMapsResult(t *testing.T) {
 	m := &fakeMapper{}
 	svc := NewService(api, m)
 
-	got, err := svc.Create(ctx, "team-1", "my-channel")
+	got, err := svc.CreateStandardChannel(ctx, "team-1", "my-channel")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
