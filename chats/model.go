@@ -5,13 +5,5 @@ type Chat struct {
 	ChatType string
 	Members  []string
 	IsHidden bool
-}
-
-type DirectChat struct {
-	Chat
-}
-
-type GroupChat struct {
-	Chat
-	Topic string
+	Topic    *string
 }
