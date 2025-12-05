@@ -265,12 +265,12 @@ func (s *Service) RemoveMember(ctx context.Context, teamName, channelName, userR
 	return nil
 }
 
-func (s *Service) resolveTeamAndChannelID(ctx context.Context, teamName, channelName string) (string, string, error) {
-	teamID, err := s.mapper.MapTeamNameToTeamID(ctx, teamName)
+func (s *Service) resolveTeamAndChannelID(ctx context.Context, teamName, channelName string) (teamID, channelID string, err error) {
+	teamID, err = s.mapper.MapTeamNameToTeamID(ctx, teamName)
 	if err != nil {
 		return "", "", err
 	}
-	channelID, err := s.mapper.MapChannelNameToChannelID(ctx, teamID, channelName)
+	channelID, err = s.mapper.MapChannelNameToChannelID(ctx, teamID, channelName)
 	if err != nil {
 		return "", "", err
 	}
