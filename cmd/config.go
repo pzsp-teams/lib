@@ -6,8 +6,7 @@ import (
 	"strings"
 
 	"github.com/joho/godotenv"
-	"github.com/pzsp-teams/lib/internal/auth"
-	teams "github.com/pzsp-teams/lib/pkg/teams"
+	teams "github.com/pzsp-teams/lib"
 )
 
 func newSenderConfig() *teams.SenderConfig {
@@ -18,14 +17,14 @@ func newSenderConfig() *teams.SenderConfig {
 	}
 }
 
-func loadAuthConfig() *auth.AuthConfig {
+func loadAuthConfig() *teams.AuthConfig {
 	_ = godotenv.Load()
-	cfg := &auth.AuthConfig{
+	cfg := &teams.AuthConfig{
 		ClientID:   getEnv("CLIENT_ID", ""),
 		Tenant:     getEnv("TENANT_ID", ""),
 		Email:      getEnv("EMAIL", ""),
 		Scopes:     strings.Split(getEnv("SCOPES", "https://graph.microsoft.com/.default"), ","),
-		AuthMethod: auth.Method(getEnv("AUTH_METHOD", "DEVICE_CODE")),
+		AuthMethod: getEnv("AUTH_METHOD", "DEVICE_CODE"),
 	}
 	validate(cfg)
 	return cfg
@@ -38,7 +37,7 @@ func getEnv(key, fallback string) string {
 	return fallback
 }
 
-func validate(cfg *auth.AuthConfig) {
+func validate(cfg *teams.AuthConfig) {
 	if cfg.ClientID == "" {
 		log.Fatal("Missing CLIENT ID")
 	}
