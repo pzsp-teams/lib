@@ -3,6 +3,7 @@ package mapper
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
 	"github.com/pzsp-teams/lib/internal/api"
@@ -108,7 +109,7 @@ func matchesUserRef(um msmodels.AadUserConversationMemberable, userRef string) b
 		if !ok {
 			continue
 		}
-		if v, ok := raw.(string); ok && v == userRef {
+		if v, ok := raw.(string); ok && strings.EqualFold(v, userRef) {
 			return true
 		}
 	}
