@@ -10,15 +10,15 @@ import (
 )
 
 type ChatsAPI interface {
-	CreateChat(ctx context.Context, guestNames []string, guestRole string) (msmodels.Chatable, *sender.RequestError)
-	// CreateGroupChat(ctx context.Context)
-	// GetChat()
-	// DeleteChat()
-	// GetMember()
-	// ListMembers()
+	Create(ctx context.Context, emails []string, topic string) (msmodels.Chatable, *sender.RequestError)
+	//	ListMyJoined(ctx context.Context) (msmodels.ChatCollectionResponseable, *sender.RequestError)
+	// Get()
+	// Delete()
+	// GetChatMember()
+	// ListChatMembers()
 	// AddMember()
 	// RemoveMember()
-	// ListMessagesInChat()
+	// ListMessages()
 	// ListPinnedMessages()
 	// PinMessage()
 	// UnpinMessage()
@@ -33,30 +33,24 @@ func NewChat(client *graph.GraphServiceClient, techParams sender.RequestTechPara
 	return &chatsAPI{client, techParams}
 }
 
-func (c *chatsAPI) CreateChat(ctx context.Context, guestNames []string, guestRole string) (msmodels.Chatable, *sender.RequestError) {
-	chatType := msmodels.GROUP_CHATTYPE
-	if len(guestNames) == 1 {
-		chatType = msmodels.ONEONONE_CHATTYPE
-	}
+func (c *chatsAPI) Create(ctx context.Context, emails []string, topic string) (msmodels.Chatable, *sender.RequestError) {
 	body := msmodels.NewChat()
+	chatType := msmodels.ONEONONE_CHATTYPE
+	if len(emails) > 2 {
+		chatType = msmodels.GROUP_CHATTYPE
+		body.SetTopic(&topic)
+	}
 	body.SetChatType(&chatType)
 
-	me, _ := c.client.Me().Get(ctx, nil)
-
-	ids := []string{*me.GetId()}
-	ids = append(ids, guestNames...)
-	members := make([]msmodels.ConversationMemberable, len(ids))
-
-	for i, id := range ids {
+	members := make([]msmodels.ConversationMemberable, len(emails))
+	for i, name := range emails {
 		chatMember := msmodels.NewAadUserConversationMember()
-		roles := []string{guestRole}
-		if i == 0 {
-			roles = []string{"owner"}
-		}
+		roles := []string{"owner"}
 		chatMember.SetRoles(roles)
 		data := map[string]any{
-			"user@odata.bind": fmt.Sprintf("https://graph.microsoft.com/v1.0/users('%s')", id),
+			"user@odata.bind": fmt.Sprintf("https://graph.microsoft.com/v1.0/users('%s')", name),
 		}
+
 		chatMember.SetAdditionalData(data)
 		members[i] = chatMember
 	}
