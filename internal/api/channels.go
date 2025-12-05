@@ -23,6 +23,10 @@ type Channels interface {
 	GetMessage(ctx context.Context, teamID, channelID, messageID string) (msmodels.ChatMessageable, *sender.RequestError)
 	ListReplies(ctx context.Context, teamID, channelID, messageID string, top *int32) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError)
 	GetReply(ctx context.Context, teamID, channelID, messageID, replyID string) (msmodels.ChatMessageable, *sender.RequestError)
+	ListMembers(ctx context.Context, teamID, channelID string) (msmodels.ConversationMemberCollectionResponseable, *sender.RequestError)
+    AddMember(ctx context.Context, teamID, channelID, userRef, role string) (msmodels.ConversationMemberable, *sender.RequestError)
+    UpdateMemberRole(ctx context.Context, teamID, channelID, memberID string, role string) (msmodels.ConversationMemberable, *sender.RequestError)
+    RemoveMember(ctx context.Context, teamID, channelID, memberID string) *sender.RequestError
 }
 
 type channels struct {
@@ -304,4 +308,102 @@ func (api *channels) GetReply(ctx context.Context, teamID, channelID, messageID,
 	}
 
 	return out, nil
+}
+
+
+func (api *channels) ListMembers(ctx context.Context, teamID, channelID string) (msmodels.ConversationMemberCollectionResponseable, *sender.RequestError) {
+	call := func(ctx context.Context) (sender.Response, error) {
+		return api.client.
+			Teams().
+			ByTeamId(teamID).
+			Channels().
+			ByChannelId(channelID).
+			Members().
+			Get(ctx, nil)
+	}
+	
+	resp, err := sender.SendRequest(ctx, call, api.techParams)
+	if err != nil {
+		return nil, err
+	}
+	
+	out, ok := resp.(msmodels.ConversationMemberCollectionResponseable)
+	if !ok {
+		return nil, &sender.RequestError{Code: "TypeCastError", Message: "Expected ConversationMemberCollectionResponseable"}
+	}
+	
+	return out, nil
+}
+
+func (api *channels) AddMember(ctx context.Context, teamID, channelID, userRef, role string) (msmodels.ConversationMemberable, *sender.RequestError) {
+	member := msmodels.NewAadUserConversationMember()
+	member.SetRoles([]string{role})
+		member.SetAdditionalData(map[string]any{
+		"user@odata.bind": fmt.Sprintf("https://graph.microsoft.com/v1.0/users('%s')", userRef),
+	})
+	call := func(ctx context.Context) (sender.Response, error) {
+		return api.client.
+			Teams().
+			ByTeamId(teamID).
+			Channels().
+			ByChannelId(channelID).
+			Members().
+			Post(ctx, member, nil)
+	}
+
+	resp, err := sender.SendRequest(ctx, call, api.techParams)
+	if err != nil {
+		return nil, err
+	}
+
+	out, ok := resp.(msmodels.ConversationMemberable)
+	if !ok {
+		return nil, &sender.RequestError{Code: "TypeCastError", Message: "Expected ConversationMemberable"}
+	}
+
+	return out, nil
+}
+
+func (api *channels) UpdateMemberRole(ctx context.Context, teamID, channelID, memberID string, role string) (msmodels.ConversationMemberable, *sender.RequestError) {
+	member := msmodels.NewAadUserConversationMember()
+	member.SetRoles([]string{role})
+	call := func(ctx context.Context) (sender.Response, error) {
+		return api.client.
+			Teams().
+			ByTeamId(teamID).
+			Channels().
+			ByChannelId(channelID).
+			Members().
+			ByConversationMemberId(memberID).
+			Patch(ctx, member, nil)
+	}
+
+	resp, err := sender.SendRequest(ctx, call, api.techParams)
+	if err != nil {
+		return nil, err
+	}
+
+	out, ok := resp.(msmodels.ConversationMemberable)
+	if !ok {
+		return nil, &sender.RequestError{Code: "TypeCastError", Message: "Expected ConversationMemberable"}
+	}
+
+	return out, nil
+}
+
+func (api *channels) RemoveMember(ctx context.Context, teamID, channelID, memberID string) *sender.RequestError {
+	call := func(ctx context.Context) (sender.Response, error) {
+		err := api.client.
+			Teams().
+			ByTeamId(teamID).
+			Channels().
+			ByChannelId(channelID).
+			Members().
+			ByConversationMemberId(memberID).
+			Delete(ctx, nil)
+		return nil, err
+	}
+
+	_, err := sender.SendRequest(ctx, call, api.techParams)
+	return err
 }
