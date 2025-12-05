@@ -349,10 +349,14 @@ func mapConversationMemberToChannelMember(member msmodels.ConversationMemberable
 	if member == nil {
 		return nil
 	}
-
+	roles := member.GetRoles()
+	role := ""
+	if len(roles) > 0 {
+		role = roles[0]
+	}
 	channelMember := &ChannelMember{
 		ID:   deref(member.GetId()),
-		Role: member.GetRoles()[0],
+		Role: role,
 	}
 
 	if userMember, ok := member.(*msmodels.AadUserConversationMember); ok {
