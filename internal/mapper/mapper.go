@@ -39,11 +39,15 @@ func (m *mapper) MapTeamRefToTeamID(ctx context.Context, teamRef string) (string
 	if err != nil {
 		return "", err
 	}
-	if listOfTeams == nil || listOfTeams.GetValue() == nil || len(listOfTeams.GetValue()) == 0 {
+	return resolveTeamIDByName(ref, listOfTeams)
+}
+
+func resolveTeamIDByName(ref string, list msmodels.TeamCollectionResponseable) (string, error) {
+	if list == nil || list.GetValue() == nil || len(list.GetValue()) == 0 {
 		return "", fmt.Errorf("no teams available")
 	}
 	var matches []msmodels.Teamable
-	for _, t := range listOfTeams.GetValue() {
+	for _, t := range list.GetValue() {
 		if t == nil {
 			continue
 		}
@@ -85,6 +89,10 @@ func (m *mapper) MapChannelRefToChannelID(ctx context.Context, teamID, channelRe
 	if err != nil {
 		return "", err
 	}
+	return resolveChannelIDByName(teamID, ref, chans)
+}
+
+func resolveChannelIDByName(teamID, ref string, chans msmodels.ChannelCollectionResponseable) (string, error) {
 	if chans == nil || chans.GetValue() == nil || len(chans.GetValue()) == 0 {
 		return "", fmt.Errorf("no channels available in team %q", teamID)
 	}
