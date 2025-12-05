@@ -9,14 +9,16 @@ import (
 
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
 
-	"github.com/pzsp-teams/lib/pkg/teams"
-	channelsPkg "github.com/pzsp-teams/lib/pkg/teams/channels"
+	lib "github.com/pzsp-teams/lib"
+	channelsPkg "github.com/pzsp-teams/lib/channels"
 )
 
 func printUsage() {
 	fmt.Println("Usage: teams <command> [arguments]")
 	fmt.Println("\nChannel commands:")
 	fmt.Println("  create-channel <team-name> <channel-name>")
+	fmt.Println("  create-private-channel <team-name> <channel-name> <members> [owners]")
+	fmt.Println("      members / owners: comma-separated user ids or emails")
 	fmt.Println("  list-channels <team-name>")
 	fmt.Println("  get-channel <team-name> <channel-name>")
 	fmt.Println("  delete-channel <team-name> <channel-name>")
@@ -44,7 +46,7 @@ func main() {
 	authConfig := loadAuthConfig()
 	senderConfig := newSenderConfig()
 
-	client, err := teams.NewClient(context.TODO(), authConfig, senderConfig)
+	client, err := lib.NewClient(context.TODO(), authConfig, senderConfig)
 	if err != nil {
 		fmt.Printf("Error creating Teams client: %v\n", err)
 		os.Exit(1)
@@ -57,6 +59,14 @@ func main() {
 			os.Exit(1)
 		}
 		handleCreateChannel(client, os.Args[2:])
+
+	case "create-private-channel":
+		if len(os.Args) < 5 {
+			fmt.Println("Usage: teams create-private-channel <team-name> <channel-name> <members> [owners]")
+			fmt.Println("       members / owners: comma-separated user ids or emails")
+			os.Exit(1)
+		}
+		handleCreatePrivateChannel(client, os.Args[2:])
 
 	case "list-channels":
 		if len(os.Args) < 3 {
@@ -167,11 +177,11 @@ func main() {
 	}
 }
 
-func handleCreateChannel(client *teams.Client, args []string) {
+func handleCreateChannel(client *lib.Client, args []string) {
 	teamName := args[0]
 	channelName := args[1]
 
-	channel, err := client.Channels.Create(context.TODO(), teamName, channelName)
+	channel, err := client.Channels.CreateStandardChannel(context.TODO(), teamName, channelName)
 	if err != nil {
 		fmt.Printf("Error creating channel: %v\n", err)
 		os.Exit(1)
@@ -179,7 +189,48 @@ func handleCreateChannel(client *teams.Client, args []string) {
 	fmt.Printf("Channel created with ID: %s\n", channel.ID)
 }
 
-func handleListChannels(client *teams.Client, args []string) {
+func handleCreatePrivateChannel(client *lib.Client, args []string) {
+	teamName := args[0]
+	channelName := args[1]
+	rawMembers := args[2]
+
+	memberRefs := parseUserList(rawMembers)
+	if len(memberRefs) == 0 {
+		fmt.Println("Error: at least one member must be specified (comma-separated list of user ids/emails)")
+		os.Exit(1)
+	}
+
+	var ownerRefs []string
+	if len(args) > 3 {
+		ownerRefs = parseUserList(args[3])
+	}
+
+	channel, err := client.Channels.CreatePrivateChannel(context.TODO(), teamName, channelName, memberRefs, ownerRefs)
+	if err != nil {
+		fmt.Printf("Error creating private channel: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("Private channel created: %s (ID: %s)\n", channel.Name, channel.ID)
+	fmt.Printf("Members: %v\n", memberRefs)
+	if len(ownerRefs) > 0 {
+		fmt.Printf("Owners: %v\n", ownerRefs)
+	}
+}
+
+func parseUserList(arg string) []string {
+	parts := strings.Split(arg, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
+func handleListChannels(client *lib.Client, args []string) {
 	teamName := args[0]
 
 	channels, err := client.Channels.ListChannels(context.TODO(), teamName)
@@ -193,7 +244,7 @@ func handleListChannels(client *teams.Client, args []string) {
 	}
 }
 
-func handleGetChannel(client *teams.Client, args []string) {
+func handleGetChannel(client *lib.Client, args []string) {
 	teamName := args[0]
 	channelName := args[1]
 
@@ -205,7 +256,7 @@ func handleGetChannel(client *teams.Client, args []string) {
 	fmt.Printf("Channel ID: %s, Name: %s, Is General: %v\n", channel.ID, channel.Name, channel.IsGeneral)
 }
 
-func handleDeleteChannel(client *teams.Client, args []string) {
+func handleDeleteChannel(client *lib.Client, args []string) {
 	teamName := args[0]
 	channelName := args[1]
 
@@ -217,7 +268,7 @@ func handleDeleteChannel(client *teams.Client, args []string) {
 	fmt.Println("Channel deleted successfully.")
 }
 
-func handleSendMessage(client *teams.Client, args []string) {
+func handleSendMessage(client *lib.Client, args []string) {
 	teamName := args[0]
 	channelName := args[1]
 	messageContent := args[2]
@@ -233,7 +284,7 @@ func handleSendMessage(client *teams.Client, args []string) {
 	fmt.Printf("Message sent successfully to channel '%s' (ID: %s)\n", channelName, message.ID)
 }
 
-func handleListMessages(client *teams.Client, args []string) {
+func handleListMessages(client *lib.Client, args []string) {
 	teamName := args[0]
 	channelName := args[1]
 
@@ -266,7 +317,7 @@ func handleListMessages(client *teams.Client, args []string) {
 	}
 }
 
-func handleListReplies(client *teams.Client, args []string) {
+func handleListReplies(client *lib.Client, args []string) {
 	teamName := args[0]
 	channelName := args[1]
 	messageID := args[2]
@@ -307,8 +358,7 @@ func getMessageFrom(msg *channelsPkg.Message) string {
 	return "Unknown"
 }
 
-
-func handleListMyTeams(client *teams.Client) {
+func handleListMyTeams(client *lib.Client) {
 	ctx := context.TODO()
 	ts, err := client.Teams.ListMyJoined(ctx)
 	if err != nil {
@@ -330,7 +380,7 @@ func handleListMyTeams(client *teams.Client) {
 	}
 }
 
-func handleGetTeam(client *teams.Client, args []string) {
+func handleGetTeam(client *lib.Client, args []string) {
 	teamName := args[0]
 	ctx := context.TODO()
 
@@ -343,7 +393,7 @@ func handleGetTeam(client *teams.Client, args []string) {
 		t.ID, t.DisplayName, t.Description, t.Visibility, t.IsArchived)
 }
 
-func handleCreateTeam(client *teams.Client, args []string) {
+func handleCreateTeam(client *lib.Client, args []string) {
 	displayName := args[0]
 	mailNickname := displayName
 	visibility := "public"
@@ -357,7 +407,7 @@ func handleCreateTeam(client *teams.Client, args []string) {
 	fmt.Printf("Team created: %s (ID: %s)\n", t.DisplayName, t.ID)
 }
 
-func handleCreateTeamFromTemplate(client *teams.Client, args []string) {
+func handleCreateTeamFromTemplate(client *lib.Client, args []string) {
 	displayName := args[0]
 	description := ""
 	if len(args) > 1 {
@@ -377,7 +427,7 @@ func handleCreateTeamFromTemplate(client *teams.Client, args []string) {
 	}
 }
 
-func handleUpdateTeam(client *teams.Client, args []string) {
+func handleUpdateTeam(client *lib.Client, args []string) {
 	teamName := args[0]
 	newName := args[1]
 
@@ -402,7 +452,7 @@ func handleUpdateTeam(client *teams.Client, args []string) {
 	fmt.Printf("Team updated: %s (ID: %s)\n", t.DisplayName, t.ID)
 }
 
-func handleArchiveTeam(client *teams.Client, args []string) {
+func handleArchiveTeam(client *lib.Client, args []string) {
 	teamName := args[0]
 	var spo *bool
 	if len(args) > 1 {
@@ -422,7 +472,7 @@ func handleArchiveTeam(client *teams.Client, args []string) {
 	fmt.Println("Team archived.")
 }
 
-func handleUnarchiveTeam(client *teams.Client, args []string) {
+func handleUnarchiveTeam(client *lib.Client, args []string) {
 	teamName := args[0]
 	ctx := context.TODO()
 	if err := client.Teams.Unarchive(ctx, teamName); err != nil {
@@ -432,7 +482,7 @@ func handleUnarchiveTeam(client *teams.Client, args []string) {
 	fmt.Println("Team unarchived.")
 }
 
-func handleDeleteTeam(client *teams.Client, args []string) {
+func handleDeleteTeam(client *lib.Client, args []string) {
 	teamName := args[0]
 	ctx := context.TODO()
 	if err := client.Teams.Delete(ctx, teamName); err != nil {
@@ -442,7 +492,7 @@ func handleDeleteTeam(client *teams.Client, args []string) {
 	fmt.Println("Team delete request sent (soft-delete in M365 Group).")
 }
 
-func handleRestoreTeam(client *teams.Client, args []string) {
+func handleRestoreTeam(client *lib.Client, args []string) {
 	deletedGroupID := args[0]
 	ctx := context.TODO()
 	id, err := client.Teams.RestoreDeleted(ctx, deletedGroupID)
