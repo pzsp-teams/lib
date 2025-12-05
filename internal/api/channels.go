@@ -25,7 +25,7 @@ type Channels interface {
 	GetReply(ctx context.Context, teamID, channelID, messageID, replyID string) (msmodels.ChatMessageable, *sender.RequestError)
 	ListMembers(ctx context.Context, teamID, channelID string) (msmodels.ConversationMemberCollectionResponseable, *sender.RequestError)
 	AddMember(ctx context.Context, teamID, channelID, userRef, role string) (msmodels.ConversationMemberable, *sender.RequestError)
-	UpdateMemberRole(ctx context.Context, teamID, channelID, memberID string, role string) (msmodels.ConversationMemberable, *sender.RequestError)
+	UpdateMemberRole(ctx context.Context, teamID, channelID, memberID, role string) (msmodels.ConversationMemberable, *sender.RequestError)
 	RemoveMember(ctx context.Context, teamID, channelID, memberID string) *sender.RequestError
 }
 
