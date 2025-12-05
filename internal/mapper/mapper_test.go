@@ -63,6 +63,10 @@ func (f *fakeChannelAPI) CreateChannel(ctx context.Context, teamID string, chann
 	return nil, nil
 }
 
+func (f *fakeChannelAPI) CreatePrivateChannelWithMembers(ctx context.Context, teamID, displayName string, memberIDs, ownerIDs []string) (msmodels.Channelable, *sender.RequestError) {
+	return nil, nil
+}
+
 func (f *fakeChannelAPI) DeleteChannel(ctx context.Context, teamID, channelID string) *sender.RequestError {
 	return nil
 }
