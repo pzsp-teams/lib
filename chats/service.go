@@ -3,7 +3,6 @@ package chats
 import (
 	"context"
 
-	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
 	"github.com/pzsp-teams/lib/internal/api"
 )
 
@@ -34,21 +33,46 @@ func (s *Service) CreateGroup(ctx context.Context, ownerEmail string, recipientE
 	return mapGraphChat(resp), nil
 }
 
-func (s *Service) ListMyJoined()
+func (s *Service) SendMessage(ctx context.Context, chatID, content string) (*ChatMessage, error) {
+	resp, err := s.chatAPI.SendMessage(ctx, chatID, content)
+	if err != nil {
+		return nil, mapError(err)
+	}
+	return mapGraphChatMessage(resp), nil
+}
 
-func mapGraphChat(graphChat msmodels.Chatable) *Chat {
-	graphMembers := graphChat.GetMembers()
-	members := make([]string, len(graphMembers))
-	for i, member := range graphMembers {
-		members[i] = deref(member.GetDisplayName())
+func (s *Service) ListMyJoined(ctx context.Context) ([]*Chat, error) {
+	resp, err := s.chatAPI.ListMyJoined(ctx)
+	if err != nil {
+		return nil, mapError(err)
 	}
-	return &Chat{
-		ID:       deref(graphChat.GetId()),
-		ChatType: deref(graphChat.GetChatType()).String(),
-		Members:  members,
-		IsHidden: deref(graphChat.GetIsHiddenForAllMembers()),
-		Topic:    graphChat.GetTopic(),
+	chats := make([]*Chat, len(resp.GetValue()))
+	for i, c := range resp.GetValue() {
+		chats[i] = mapGraphChat(c)
 	}
+	return chats, nil
+}
+
+func (s *Service) ListMembers(ctx context.Context, chatID string) ([]*ChatMember, error) {
+	resp, err := s.chatAPI.ListMembers(ctx, chatID)
+	if err != nil {
+		return nil, mapError(err)
+	}
+	members := make([]*ChatMember, len(resp.GetValue()))
+	for i, m := range resp.GetValue() {
+		if result := mapGraphChatMember(m); result != nil {
+			members[i] = result
+		}
+	}
+	return members, nil
+}
+
+func (s *Service) AddMember(ctx context.Context, chatID, email string) (*ChatMember, error) {
+	resp, err := s.chatAPI.AddMember(ctx, chatID, email)
+	if err != nil {
+		return nil, mapError(err)
+	}
+	return mapGraphChatMember(resp), nil
 }
 
 func deref[T any](t *T) T {

@@ -6,17 +6,16 @@ import (
 
 	graph "github.com/microsoftgraph/msgraph-sdk-go"
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
+	graphusers "github.com/microsoftgraph/msgraph-sdk-go/users"
 	"github.com/pzsp-teams/lib/internal/sender"
 )
 
 type ChatsAPI interface {
 	Create(ctx context.Context, emails []string, topic string) (msmodels.Chatable, *sender.RequestError)
-	//	ListMyJoined(ctx context.Context) (msmodels.ChatCollectionResponseable, *sender.RequestError)
-	// Get()
-	// Delete()
-	// GetChatMember()
-	// ListChatMembers()
-	// AddMember()
+	SendMessage(ctx context.Context, chatID, content string) (msmodels.ChatMessageable, *sender.RequestError)
+	ListMyJoined(ctx context.Context) (msmodels.ChatCollectionResponseable, *sender.RequestError)
+	ListMembers(ctx context.Context, chatID string) (msmodels.ConversationMemberCollectionResponseable, *sender.RequestError)
+	AddMember(ctx context.Context, chatID, email string) (msmodels.ConversationMemberable, *sender.RequestError)
 	// RemoveMember()
 	// ListMessages()
 	// ListPinnedMessages()
@@ -72,9 +71,40 @@ func (c *chatsAPI) Create(ctx context.Context, emails []string, topic string) (m
 	return out, nil
 }
 
-func (c *chatsAPI) ListMyJoined(ctx context.Context) (msmodels.ChatCollectionResponseable, *sender.RequestError) {
+func (c *chatsAPI) SendMessage(ctx context.Context, chatID, content string) (msmodels.ChatMessageable, *sender.RequestError) {
+	requestBody := msmodels.NewChatMessage()
+	body := msmodels.NewItemBody()
+	bodyType := msmodels.TEXT_BODYTYPE
+	body.SetContentType(&bodyType)
+	body.SetContent(&content)
+	requestBody.SetBody(body)
+
 	call := func(ctx context.Context) (sender.Response, error) {
-		return c.client.Me().Chats().Get(ctx, nil)
+		return c.client.Chats().ByChatId(chatID).Messages().Post(ctx, requestBody, nil)
+	}
+
+	resp, err := sender.SendRequest(ctx, call, c.techParams)
+	if err != nil {
+		return nil, err
+	}
+
+	out, ok := resp.(msmodels.ChatMessageable)
+	if !ok {
+		return nil, &sender.RequestError{Code: "TypeCastError", Message: "Expected ChatMessageable"}
+	}
+	return out, nil
+}
+
+func (c *chatsAPI) ListMyJoined(ctx context.Context) (msmodels.ChatCollectionResponseable, *sender.RequestError) {
+	requestParameters := &graphusers.ItemChatsRequestBuilderGetQueryParameters{
+		Expand:  []string{"members"},
+		Orderby: []string{"lastMessagePreview/createdDateTime desc"},
+	}
+	configuration := &graphusers.ItemChatsRequestBuilderGetRequestConfiguration{
+		QueryParameters: requestParameters,
+	}
+	call := func(ctx context.Context) (sender.Response, error) {
+		return c.client.Me().Chats().Get(ctx, configuration)
 	}
 	resp, err := sender.SendRequest(ctx, call, c.techParams)
 	if err != nil {
@@ -84,5 +114,47 @@ func (c *chatsAPI) ListMyJoined(ctx context.Context) (msmodels.ChatCollectionRes
 	if !ok {
 		return nil, &sender.RequestError{Code: "TypeCastError", Message: "Expected ChatCollectionResponseable"}
 	}
+	return out, nil
+}
+
+func (c *chatsAPI) ListMembers(ctx context.Context, chatID string) (msmodels.ConversationMemberCollectionResponseable, *sender.RequestError) {
+	call := func(ctx context.Context) (sender.Response, error) {
+		return c.client.Chats().ByChatId(chatID).Members().Get(ctx, nil)
+	}
+
+	resp, err := sender.SendRequest(ctx, call, c.techParams)
+	if err != nil {
+		return nil, err
+	}
+
+	out, ok := resp.(msmodels.ConversationMemberCollectionResponseable)
+	if !ok {
+		return nil, &sender.RequestError{Code: "TypeCastError", Message: "Expected ConversationMemberCollectionResponseable"}
+	}
+	return out, nil
+}
+
+func (c *chatsAPI) AddMember(ctx context.Context, chatID, email string) (msmodels.ConversationMemberable, *sender.RequestError) {
+	chatMember := msmodels.NewAadUserConversationMember()
+	chatMember.SetRoles([]string{"owner"})
+	data := map[string]any{
+		"user@odata.bind": fmt.Sprintf("https://graph.microsoft.com/v1.0/users('%s')", email),
+	}
+	chatMember.SetAdditionalData(data)
+
+	call := func(ctx context.Context) (sender.Response, error) {
+		return c.client.Chats().ByChatId(chatID).Members().Post(ctx, chatMember, nil)
+	}
+
+	resp, err := sender.SendRequest(ctx, call, c.techParams)
+	if err != nil {
+		return nil, err
+	}
+
+	out, ok := resp.(msmodels.ConversationMemberable)
+	if !ok {
+		return nil, &sender.RequestError{Code: "TypeCastError", Message: "Expected ConversationMemberable"}
+	}
+
 	return out, nil
 }
