@@ -14,7 +14,7 @@ type fakeMapper struct {
 	mapErr       error
 }
 
-func (m *fakeMapper) MapTeamNameToTeamID(ctx context.Context, teamName string) (string, error) {
+func (m *fakeMapper) MapTeamRefToTeamID(ctx context.Context, teamName string) (string, error) {
 	m.lastTeamName = teamName
 	if m.mapErr != nil {
 		return "", m.mapErr
@@ -22,7 +22,7 @@ func (m *fakeMapper) MapTeamNameToTeamID(ctx context.Context, teamName string) (
 	return teamName, nil
 }
 
-func (m *fakeMapper) MapChannelNameToChannelID(ctx context.Context, teamID, channelName string) (string, error) {
+func (m *fakeMapper) MapChannelRefToChannelID(ctx context.Context, teamID, channelName string) (string, error) {
 	return channelName, nil
 }
 

@@ -143,7 +143,7 @@ func TestMapper_MapTeamNameToTeamID_Found(t *testing.T) {
 		channelsAPI: channelsFake,
 	}
 
-	id, err := m.MapTeamNameToTeamID(ctx, "Beta")
+	id, err := m.MapTeamRefToTeamID(ctx, "Beta")
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -168,7 +168,7 @@ func TestMapper_MapTeamNameToTeamID_NotFound(t *testing.T) {
 		channelsAPI: channelsFake,
 	}
 
-	_, err := m.MapTeamNameToTeamID(ctx, "Beta")
+	_, err := m.MapTeamRefToTeamID(ctx, "Beta")
 	if err == nil {
 		t.Fatalf("expected error, got nil")
 	}
@@ -193,7 +193,7 @@ func TestMapper_MapChannelNameToChannelID_Found(t *testing.T) {
 		channelsAPI: chFake,
 	}
 
-	id, err := m.MapChannelNameToChannelID(ctx, "team-123", "Random")
+	id, err := m.MapChannelRefToChannelID(ctx, "team-123", "Random")
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -218,7 +218,7 @@ func TestMapper_MapChannelNameToChannelID_NotFound(t *testing.T) {
 		channelsAPI: chFake,
 	}
 
-	_, err := m.MapChannelNameToChannelID(ctx, "team-123", "Random")
+	_, err := m.MapChannelRefToChannelID(ctx, "team-123", "Random")
 	if err == nil {
 		t.Fatalf("expected error, got nil")
 	}
