@@ -122,7 +122,7 @@ func resolveChannelIDByName(teamID, ref string, chans msmodels.ChannelCollection
 		}
 		return "", fmt.Errorf(
 			"multiple channels named %q found in team %q: %s. Please use one of the IDs instead",
-			ref, teamID, strings.Join(options, "; "),
+			ref, teamID, strings.Join(options, "\n "),
 		)
 	}
 }
