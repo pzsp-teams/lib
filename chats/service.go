@@ -2,12 +2,9 @@ package chats
 
 import (
 	"context"
-	"errors"
 
 	"github.com/pzsp-teams/lib/internal/api"
 )
-
-var ErrNotEnoughGuests error = errors.New("you have to specify at least 1 guest to create chat")
 
 type Service struct {
 	chatAPI api.ChatsAPI
@@ -17,18 +14,35 @@ func NewService(chatAPI api.ChatsAPI) *Service {
 	return &Service{chatAPI: chatAPI}
 }
 
-func (s *Service) CreateChat(ctx context.Context, guestNames []string, guestRole string) (*Chat, error) {
-	if len(guestNames) < 1 {
-		return nil, ErrNotEnoughGuests
-	}
-	resp, err := s.chatAPI.CreateChat(ctx, guestNames, guestRole)
+func (s *Service) CreateOneToOne(ctx context.Context, ownerEmail, recipientEmail string) (*DirectChat, error) {
+	resp, err := s.chatAPI.Create(ctx, []string{ownerEmail, recipientEmail}, "")
 	if err != nil {
 		return nil, mapError(err)
 	}
-	return &Chat{
-		ID:       deref(resp.GetId()),
-		ChatType: (deref(resp.GetChatType())).String(),
-		IsHidden: deref(resp.GetIsHiddenForAllMembers()),
+	return &DirectChat{
+		Chat: Chat{
+			ID:       deref(resp.GetId()),
+			ChatType: (deref(resp.GetChatType())).String(),
+			IsHidden: deref(resp.GetIsHiddenForAllMembers()),
+		},
+	}, nil
+}
+
+func (s *Service) CreateGroup(ctx context.Context, ownerEmail string, recipientEmails []string, topic string) (*GroupChat, error) {
+	allEmails := make([]string, 0, 1+len(recipientEmails))
+	allEmails = append(allEmails, ownerEmail)
+	allEmails = append(allEmails, recipientEmails...)
+	resp, err := s.chatAPI.Create(ctx, allEmails, topic)
+	if err != nil {
+		return nil, mapError(err)
+	}
+	return &GroupChat{
+		Chat: Chat{
+			ID:       deref(resp.GetId()),
+			ChatType: (deref(resp.GetChatType())).String(),
+			IsHidden: deref(resp.GetIsHiddenForAllMembers()),
+		},
+		Topic: topic,
 	}, nil
 }
 
