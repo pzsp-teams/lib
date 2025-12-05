@@ -106,15 +106,15 @@ func (api *channels) CreateStandardChannel(ctx context.Context, teamID string, c
 }
 
 // CreatePrivateChannelWithMembers creates a private channel in a team with specified members and owners.
-func (api *channels) CreatePrivateChannelWithMembers(ctx context.Context, teamID, displayName string, memberIDs, ownerIDs []string) (msmodels.Channelable, *sender.RequestError) {
+func (api *channels) CreatePrivateChannelWithMembers(ctx context.Context, teamID, displayName string, memberRefs, ownerRefs []string) (msmodels.Channelable, *sender.RequestError) {
 	ch := msmodels.NewChannel()
 	ch.SetDisplayName(&displayName)
 	mt := msmodels.PRIVATE_CHANNELMEMBERSHIPTYPE
 	ch.SetMembershipType(&mt)
 
-	members := make([]msmodels.ConversationMemberable, 0, len(memberIDs)+len(ownerIDs))
-	addToMembers(&members, memberIDs, "member")
-	addToMembers(&members, ownerIDs, "owner")
+	members := make([]msmodels.ConversationMemberable, 0, len(memberRefs)+len(ownerRefs))
+	addToMembers(&members, memberRefs, "member")
+	addToMembers(&members, ownerRefs, "owner")
 	ch.SetMembers(members)
 	call := func(ctx context.Context) (sender.Response, error) {
 		return api.client.
@@ -137,12 +137,12 @@ func (api *channels) CreatePrivateChannelWithMembers(ctx context.Context, teamID
 	return out, nil
 }
 
-func addToMembers(members *[]msmodels.ConversationMemberable, userIDs []string, role string) {
-	for _, userID := range userIDs {
+func addToMembers(members *[]msmodels.ConversationMemberable, userRefs []string, role string) {
+	for _, userRef := range userRefs {
 		member := msmodels.NewAadUserConversationMember()
 		member.SetRoles([]string{role})
 		member.SetAdditionalData(map[string]any{
-			"user@odata.bind": fmt.Sprintf("https://graph.microsoft.com/v1.0/users('%s')", userID),
+			"user@odata.bind": fmt.Sprintf("https://graph.microsoft.com/v1.0/users('%s')", userRef),
 		})
 		*members = append(*members, member)
 	}
