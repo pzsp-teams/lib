@@ -9,75 +9,21 @@ import (
 	"github.com/pzsp-teams/lib/internal/api"
 )
 
-type Mapper interface {
-	MapTeamRefToTeamID(ctx context.Context, teamRef string) (string, error)
-	MapChannelRefToChannelID(ctx context.Context, teamID, channelRef string) (string, error)
+type ChannelMapper interface {
+	MapChannelRefToChannelID(ctx context.Context, teamID, channelName string) (string, error)
 	MapUserRefToMemberID(ctx context.Context, teamID, channelID, userRef string) (string, error)
 }
 
-type mapper struct {
-	teamsAPI    api.Teams
-	channelsAPI api.Channels
+type channelMapper struct {
+	channelsAPI api.ChannelAPI
 }
 
-func New(teamsAPI api.Teams, channelsAPI api.Channels) Mapper {
-	return &mapper{
-		teamsAPI:    teamsAPI,
-		channelsAPI: channelsAPI,
-	}
+func NewChannelMapper(channelsAPI api.ChannelAPI) ChannelMapper {
+	return &channelMapper{channelsAPI: channelsAPI}
 }
 
-func (m *mapper) MapTeamRefToTeamID(ctx context.Context, teamRef string) (string, error) {
-	ref := strings.TrimSpace(teamRef)
-	if ref == "" {
-		return "", fmt.Errorf("empty team reference")
-	}
-	if isLikelyGUID(ref) {
-		return ref, nil
-	}
-	listOfTeams, err := m.teamsAPI.ListMyJoined(ctx)
-	if err != nil {
-		return "", err
-	}
-	return resolveTeamIDByName(ref, listOfTeams)
-}
-
-func resolveTeamIDByName(ref string, list msmodels.TeamCollectionResponseable) (string, error) {
-	if list == nil || list.GetValue() == nil || len(list.GetValue()) == 0 {
-		return "", fmt.Errorf("no teams available")
-	}
-	var matches []msmodels.Teamable
-	for _, t := range list.GetValue() {
-		if t == nil {
-			continue
-		}
-		if deref(t.GetDisplayName()) == ref {
-			matches = append(matches, t)
-		}
-	}
-	switch len(matches) {
-	case 0:
-		return "", fmt.Errorf("team with name %q not found", ref)
-	case 1:
-		id := deref(matches[0].GetId())
-		if id == "" {
-			return "", fmt.Errorf("team %q has nil id", ref)
-		}
-		return id, nil
-	default:
-		var options []string
-		for _, t := range matches {
-			options = append(options,
-				fmt.Sprintf("%s (ID: %s)", deref(t.GetDisplayName()), deref(t.GetId())))
-		}
-		return "", fmt.Errorf(
-			"multiple teams named %q found: \n%s.\nPlease use one of the IDs instead",
-			ref, strings.Join(options, ";\n"),
-		)
-	}
-}
-
-func (m *mapper) MapChannelRefToChannelID(ctx context.Context, teamID, channelRef string) (string, error) {
+// MapChannelNameToChannelID will be used later
+func (m *channelMapper) MapChannelRefToChannelID(ctx context.Context, teamID, channelRef string) (string, error) {
 	ref := strings.TrimSpace(channelRef)
 	if ref == "" {
 		return "", fmt.Errorf("empty channel reference")
@@ -96,7 +42,7 @@ func resolveChannelIDByName(teamID, ref string, chans msmodels.ChannelCollection
 	if chans == nil || chans.GetValue() == nil || len(chans.GetValue()) == 0 {
 		return "", fmt.Errorf("no channels available in team %q", teamID)
 	}
-	var matches []msmodels.Channelable
+	matches := make([]msmodels.Channelable, 0, len(chans.GetValue()))
 	for _, c := range chans.GetValue() {
 		if c == nil {
 			continue
@@ -127,7 +73,7 @@ func resolveChannelIDByName(teamID, ref string, chans msmodels.ChannelCollection
 	}
 }
 
-func (m *mapper) MapUserRefToMemberID(ctx context.Context, teamID, channelID, userRef string) (string, error) {
+func (m *channelMapper) MapUserRefToMemberID(ctx context.Context, teamID, channelID, userRef string) (string, error) {
 	resp, err := m.channelsAPI.ListMembers(ctx, teamID, channelID)
 	if err != nil {
 		return "", err
@@ -150,6 +96,11 @@ func (m *mapper) MapUserRefToMemberID(ctx context.Context, teamID, channelID, us
 	}
 
 	return "", fmt.Errorf("member %q not found in channel %q", userRef, channelID)
+}
+
+func isLikelyChannelID(s string) bool {
+	s = strings.TrimSpace(s)
+	return strings.HasPrefix(s, "19:") && strings.Contains(s, "@thread.")
 }
 
 func matchesUserRef(um msmodels.AadUserConversationMemberable, userRef string) bool {
@@ -176,41 +127,4 @@ func matchesUserRef(um msmodels.AadUserConversationMemberable, userRef string) b
 		}
 	}
 	return false
-}
-
-func isLikelyGUID(s string) bool {
-	if len(s) != 36 {
-		return false
-	}
-	for i, r := range s {
-		switch i {
-		case 8, 13, 18, 23:
-			if r != '-' {
-				return false
-			}
-		default:
-			if !isHexDigit(r) {
-				return false
-			}
-		}
-	}
-	return true
-}
-
-func isHexDigit(r rune) bool {
-	return (r >= '0' && r <= '9') ||
-		(r >= 'a' && r <= 'f') ||
-		(r >= 'A' && r <= 'F')
-}
-
-func isLikelyChannelID(s string) bool {
-	s = strings.TrimSpace(s)
-	return strings.HasPrefix(s, "19:") && strings.Contains(s, "@thread.")
-}
-
-func deref(s *string) string {
-	if s == nil {
-		return ""
-	}
-	return *s
 }
