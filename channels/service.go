@@ -225,6 +225,90 @@ func (s *Service) GetReply(ctx context.Context, teamName, channelName, messageID
 	return mapChatMessageToMessage(resp), nil
 }
 
+func (s *Service) ListMembers(ctx context.Context, teamName, channelName string) ([]*ChannelMember, error) {
+	teamID, err := s.mapper.MapTeamNameToTeamID(ctx, teamName)
+	if err != nil {
+		return nil, err
+	}
+	channelID, err := s.mapper.MapChannelNameToChannelID(ctx, teamID, channelName)
+	if err != nil {
+		return nil, err
+	}
+	resp, senderErr := s.api.ListMembers(ctx, teamID, channelID)
+	if senderErr != nil {
+		return nil, mapError(senderErr)
+	}
+	var members []*ChannelMember
+	for _, member := range resp.GetValue() {
+		members = append(members, mapConversationMemberToChannelMember(member))
+	}
+	return members, nil
+}
+
+func (s *Service) AddMember(ctx context.Context, teamName, channelName, userRef string, isOwner bool) (*ChannelMember, error) {
+	teamID, err := s.mapper.MapTeamNameToTeamID(ctx, teamName)
+	if err != nil {
+		return nil, err
+	}
+	channelID, err := s.mapper.MapChannelNameToChannelID(ctx, teamID, channelName)
+	if err != nil {
+		return nil, err
+	}
+	role := "member"
+	if isOwner {
+		role = "owner"
+	}
+	created, senderErr := s.api.AddMember(ctx, teamID, channelID, userRef, role)
+	if senderErr != nil {
+		return nil, mapError(senderErr)
+	}
+	return mapConversationMemberToChannelMember(created), nil
+}
+
+func (s *Service) UpdateMemberRole(ctx context.Context, teamName, channelName, userRef string, isOwner bool) (*ChannelMember, error) {
+	teamID, err := s.mapper.MapTeamNameToTeamID(ctx, teamName)
+	if err != nil {
+		return nil, err
+	}
+	channelID, err := s.mapper.MapChannelNameToChannelID(ctx, teamID, channelName)
+	if err != nil {
+		return nil, err
+	}
+	memberID, err := s.mapper.MapUserRefToMemberID(ctx, teamID, channelID, userRef)
+	if err != nil {
+		return nil, err
+	}
+	role := "member"
+	if isOwner {
+		role = "owner"
+	}
+	updated, senderErr := s.api.UpdateMemberRole(ctx, teamID, channelID, memberID, role)
+	if senderErr != nil {
+		return nil, mapError(senderErr)
+	}
+	return mapConversationMemberToChannelMember(updated), nil
+}
+
+func (s *Service) RemoveMember(ctx context.Context, teamName, channelName, userRef string) error {
+	teamID, err := s.mapper.MapTeamNameToTeamID(ctx, teamName)
+	if err != nil {
+		return err
+	}
+	channelID, err := s.mapper.MapChannelNameToChannelID(ctx, teamID, channelName)
+	if err != nil {
+		return err
+	}
+	memberID, err := s.mapper.MapUserRefToMemberID(ctx, teamID, channelID, userRef)
+	if err != nil {
+		return err
+	}
+	senderErr := s.api.RemoveMember(ctx, teamID, channelID, memberID)
+	if senderErr != nil {
+		return mapError(senderErr)
+	}
+	return nil
+}
+
 func mapChatMessageToMessage(msg msmodels.ChatMessageable) *Message {
 	if msg == nil {
 		return nil
@@ -259,6 +343,24 @@ func mapChatMessageToMessage(msg msmodels.ChatMessageable) *Message {
 	}
 
 	return message
+}
+
+func mapConversationMemberToChannelMember(member msmodels.ConversationMemberable) *ChannelMember {
+	if member == nil {
+		return nil
+	}
+
+	channelMember := &ChannelMember{
+		ID:   deref(member.GetId()),
+		Role: member.GetRoles()[0],
+	}
+
+	if userMember, ok := member.(*msmodels.AadUserConversationMember); ok {
+		channelMember.UserID = deref(userMember.GetUserId())
+		channelMember.DisplayName = deref(userMember.GetDisplayName())
+	}
+
+	return channelMember
 }
 
 func deref(s *string) string {
