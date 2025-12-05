@@ -15,7 +15,7 @@ import (
 type Channels interface {
 	ListChannels(ctx context.Context, teamID string) (msmodels.ChannelCollectionResponseable, *sender.RequestError)
 	GetChannel(ctx context.Context, teamID, channelID string) (msmodels.Channelable, *sender.RequestError)
-	CreateChannel(ctx context.Context, teamID string, channel msmodels.Channelable) (msmodels.Channelable, *sender.RequestError)
+	CreateStandardChannel(ctx context.Context, teamID string, channel msmodels.Channelable) (msmodels.Channelable, *sender.RequestError)
 	CreatePrivateChannelWithMembers(ctx context.Context, teamID, displayName string, memberIDs, ownersID[]string) (msmodels.Channelable, *sender.RequestError)
 	DeleteChannel(ctx context.Context, teamID, channelID string) *sender.RequestError
 	SendMessage(ctx context.Context, teamID, channelID string, message msmodels.ChatMessageable) (msmodels.ChatMessageable, *sender.RequestError)
@@ -82,8 +82,8 @@ func (api *channels) GetChannel(ctx context.Context, teamID, channelID string) (
 	return out, nil
 }
 
-// CreateChannel will be used later
-func (api *channels) CreateChannel(ctx context.Context, teamID string, channel msmodels.Channelable) (msmodels.Channelable, *sender.RequestError) {
+// CreateStandardChannel creates a standard channel in a team. All members of the team will have access to the channel.
+func (api *channels) CreateStandardChannel(ctx context.Context, teamID string, channel msmodels.Channelable) (msmodels.Channelable, *sender.RequestError) {
 	call := func(ctx context.Context) (sender.Response, error) {
 		return api.client.
 			Teams().
@@ -105,7 +105,7 @@ func (api *channels) CreateChannel(ctx context.Context, teamID string, channel m
 	return out, nil
 }
 
-// CreatePrivateChannelWithMembers will be used later
+// CreatePrivateChannelWithMembers creates a private channel in a team with specified members and owners.
 func (api *channels) CreatePrivateChannelWithMembers(ctx context.Context, teamID, displayName string, memberIDs, ownerIDs []string) (msmodels.Channelable, *sender.RequestError) {
 	ch := msmodels.NewChannel()
 	ch.SetDisplayName(&displayName)

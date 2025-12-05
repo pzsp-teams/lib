@@ -73,7 +73,7 @@ func (f *fakeChannelAPI) GetChannel(ctx context.Context, teamID, channelID strin
 	return f.getResp, f.getErr
 }
 
-func (f *fakeChannelAPI) CreateChannel(ctx context.Context, teamID string, channel msmodels.Channelable) (msmodels.Channelable, *sender.RequestError) {
+func (f *fakeChannelAPI) CreateStandardChannel(ctx context.Context, teamID string, channel msmodels.Channelable) (msmodels.Channelable, *sender.RequestError) {
 	f.lastTeamID = teamID
 	f.lastCreate = channel
 	return f.createResp, f.createErr
