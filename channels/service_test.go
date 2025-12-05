@@ -125,6 +125,24 @@ func (f *fakeChannelAPI) GetReply(ctx context.Context, teamID, channelID, messag
 	return f.getReplyResp, f.getReplyErr
 }
 
+func (f *fakeChannelAPI) AddMember(ctx context.Context, teamID, channelID, userID, role string) (msmodels.ConversationMemberable, *sender.RequestError) {
+	return nil, nil
+}
+
+func (f *fakeChannelAPI) ListMembers(ctx context.Context, teamID, channelID string) (msmodels.ConversationMemberCollectionResponseable, *sender.RequestError) {
+	return nil, nil
+}
+
+func (f *fakeChannelAPI) RemoveMember(ctx context.Context, teamID, channelID, userID string) *sender.RequestError {
+	return nil
+}
+
+func (f *fakeChannelAPI) UpdateMemberRole(ctx context.Context, teamID, channelID, userID, role string) (msmodels.ConversationMemberable, *sender.RequestError) {
+	return nil, nil
+}
+
+
+
 func newGraphChannel(id, name string) msmodels.Channelable {
 	channel := msmodels.NewChannel()
 	channel.SetId(&id)

@@ -95,6 +95,24 @@ func (f *fakeChannelAPI) SendMessage(ctx context.Context, teamID, channelID stri
 	return nil, nil
 }
 
+func (f *fakeChannelAPI) AddMember(ctx context.Context, teamID, channelID, memberID, ownerID string) (msmodels.ConversationMemberable, *sender.RequestError) {
+	return nil, nil
+}
+
+func (f *fakeChannelAPI) ListMembers(ctx context.Context, teamID, channelID string) (msmodels.ConversationMemberCollectionResponseable, *sender.RequestError) {
+	return nil, nil
+}
+
+func (f *fakeChannelAPI) RemoveMember(ctx context.Context, teamID, channelID, memberID string) *sender.RequestError {
+	return nil
+}
+
+
+
+func (f *fakeChannelAPI) UpdateMemberRole(ctx context.Context, teamID, channelID, memberID, role string) (msmodels.ConversationMemberable, *sender.RequestError) {
+	return nil, nil
+}
+
 func newGraphTeam(id, name string) msmodels.Teamable {
 	t := msmodels.NewTeam()
 	t.SetId(&id)
