@@ -9,21 +9,12 @@ import (
 	sender "github.com/pzsp-teams/lib/internal/sender"
 )
 
-type fakeMapper struct {
-	mapTeamErr      error
-	mapChanErr      error
-	mapUserRefErr   error
-	lastTeamName    string
-	lastChannelName string
-
-	lastTeamIDForChannel string
-
-	lastUserRef          string
-	lastTeamIDForUser    string
-	lastChannelIDForUser string
+type fakeTeamMapper struct {
+	mapTeamErr   error
+	lastTeamName string
 }
 
-func (m *fakeMapper) MapTeamRefToTeamID(ctx context.Context, teamName string) (string, error) {
+func (m *fakeTeamMapper) MapTeamRefToTeamID(ctx context.Context, teamName string) (string, error) {
 	m.lastTeamName = teamName
 	if m.mapTeamErr != nil {
 		return "", m.mapTeamErr
@@ -31,7 +22,17 @@ func (m *fakeMapper) MapTeamRefToTeamID(ctx context.Context, teamName string) (s
 	return teamName, nil
 }
 
-func (m *fakeMapper) MapChannelRefToChannelID(ctx context.Context, teamID, channelName string) (string, error) {
+type fakeChannelMapper struct {
+	mapChanErr           error
+	mapUserRefErr        error
+	lastChannelName      string
+	lastTeamIDForChannel string
+	lastUserRef          string
+	lastTeamIDForUser    string
+	lastChannelIDForUser string
+}
+
+func (m *fakeChannelMapper) MapChannelRefToChannelID(ctx context.Context, teamID, channelName string) (string, error) {
 	m.lastTeamIDForChannel = teamID
 	m.lastChannelName = channelName
 	if m.mapChanErr != nil {
@@ -40,7 +41,7 @@ func (m *fakeMapper) MapChannelRefToChannelID(ctx context.Context, teamID, chann
 	return channelName, nil
 }
 
-func (m *fakeMapper) MapUserRefToMemberID(ctx context.Context, teamID, channelID, userRef string) (string, error) {
+func (m *fakeChannelMapper) MapUserRefToMemberID(ctx context.Context, teamID, channelID, userRef string) (string, error) {
 	m.lastTeamIDForUser = teamID
 	m.lastChannelIDForUser = channelID
 	m.lastUserRef = userRef
@@ -227,8 +228,8 @@ func TestService_ListChannels_MapsFieldsAndGeneralFlag(t *testing.T) {
 	col.SetValue([]msmodels.Channelable{ch1, ch2})
 
 	api := &fakeChannelAPI{listResp: col}
-	m := &fakeMapper{}
-	svc := NewService(api, m)
+	m := &fakeTeamMapper{}
+	svc := NewService(api, m, &fakeChannelMapper{})
 
 	got, err := svc.ListChannels(ctx, "team-1")
 	if err != nil {
@@ -263,7 +264,7 @@ func TestService_ListChannels_MapsErrors(t *testing.T) {
 			Message: "team not found",
 		},
 	}
-	svc := NewService(api, &fakeMapper{})
+	svc := NewService(api, &fakeTeamMapper{}, &fakeChannelMapper{})
 
 	_, err := svc.ListChannels(ctx, "non-existing-team")
 	if !errors.Is(err, ErrChannelNotFound) {
@@ -275,8 +276,7 @@ func TestService_Get_MapsSingleChannel(t *testing.T) {
 	ctx := context.Background()
 	ch := newGraphChannel("42", "General")
 	api := &fakeChannelAPI{getResp: ch}
-	m := &fakeMapper{}
-	svc := NewService(api, m)
+	svc := NewService(api, &fakeTeamMapper{}, &fakeChannelMapper{})
 
 	got, err := svc.Get(ctx, "team-1", "42")
 	if err != nil {
@@ -298,8 +298,7 @@ func TestService_Create_SetsNameAndMapsResult(t *testing.T) {
 	api := &fakeChannelAPI{
 		createResp: created,
 	}
-	m := &fakeMapper{}
-	svc := NewService(api, m)
+	svc := NewService(api, &fakeTeamMapper{}, &fakeChannelMapper{})
 
 	got, err := svc.CreateStandardChannel(ctx, "team-1", "my-channel")
 	if err != nil {
@@ -330,7 +329,7 @@ func TestService_Delete_MapsError(t *testing.T) {
 			Message: "nope",
 		},
 	}
-	svc := NewService(api, &fakeMapper{})
+	svc := NewService(api, &fakeTeamMapper{}, &fakeChannelMapper{})
 
 	err := svc.Delete(ctx, "team-1", "chan-1")
 	if !errors.Is(err, ErrForbidden) {
@@ -358,7 +357,7 @@ func TestService_SendMessage_CreatesMessageAndMapsResult(t *testing.T) {
 
 	respMsg := newChatMessage(msgID, msgContent)
 	api := &fakeChannelAPI{sendMsgResp: respMsg}
-	svc := NewService(api, &fakeMapper{})
+	svc := NewService(api, &fakeTeamMapper{}, &fakeChannelMapper{})
 
 	body := MessageBody{Content: msgContent}
 	got, err := svc.SendMessage(ctx, "team-1", "chan-1", body)
@@ -394,7 +393,7 @@ func TestService_SendMessage_MapsError(t *testing.T) {
 			Message: "not allowed",
 		},
 	}
-	svc := NewService(api, &fakeMapper{})
+	svc := NewService(api, &fakeTeamMapper{}, &fakeChannelMapper{})
 
 	body := MessageBody{Content: "test"}
 	_, err := svc.SendMessage(ctx, "team-1", "chan-1", body)
@@ -412,7 +411,7 @@ func TestService_ListMessages_MapsMultipleMessages(t *testing.T) {
 	col.SetValue([]msmodels.ChatMessageable{msg1, msg2})
 
 	api := &fakeChannelAPI{listMsgsResp: col}
-	svc := NewService(api, &fakeMapper{})
+	svc := NewService(api, &fakeTeamMapper{}, &fakeChannelMapper{})
 
 	got, err := svc.ListMessages(ctx, "team-1", "chan-1", nil)
 	if err != nil {
@@ -435,7 +434,7 @@ func TestService_ListMessages_WithTopOption(t *testing.T) {
 	ctx := context.Background()
 	col := msmodels.NewChatMessageCollectionResponse()
 	api := &fakeChannelAPI{listMsgsResp: col}
-	svc := NewService(api, &fakeMapper{})
+	svc := NewService(api, &fakeTeamMapper{}, &fakeChannelMapper{})
 
 	var top int32 = 10
 	opts := &ListMessagesOptions{Top: &top}
@@ -450,7 +449,7 @@ func TestService_GetMessage_ReturnsMessage(t *testing.T) {
 	msg := newChatMessage("msg-42", "Test message")
 
 	api := &fakeChannelAPI{getMsgResp: msg}
-	svc := NewService(api, &fakeMapper{})
+	svc := NewService(api, &fakeTeamMapper{}, &fakeChannelMapper{})
 
 	got, err := svc.GetMessage(ctx, "team-1", "chan-1", "msg-42")
 	if err != nil {
@@ -475,7 +474,7 @@ func TestService_ListReplies_MapsReplies(t *testing.T) {
 	col.SetValue([]msmodels.ChatMessageable{reply1, reply2})
 
 	api := &fakeChannelAPI{listRepliesResp: col}
-	svc := NewService(api, &fakeMapper{})
+	svc := NewService(api, &fakeTeamMapper{}, &fakeChannelMapper{})
 
 	got, err := svc.ListReplies(ctx, "team-1", "chan-1", "msg-1", nil)
 	if err != nil {
@@ -500,7 +499,7 @@ func TestService_GetReply_ReturnsReply(t *testing.T) {
 	reply := newChatMessage("reply-42", "Test reply")
 
 	api := &fakeChannelAPI{getReplyResp: reply}
-	svc := NewService(api, &fakeMapper{})
+	svc := NewService(api, &fakeTeamMapper{}, &fakeChannelMapper{})
 
 	got, err := svc.GetReply(ctx, "team-1", "chan-1", "msg-1", "reply-42")
 	if err != nil {
@@ -533,8 +532,9 @@ func TestService_CreatePrivateChannel_Success(t *testing.T) {
 	api := &fakeChannelAPI{
 		createResp: created,
 	}
-	m := &fakeMapper{}
-	svc := NewService(api, m)
+	tm := &fakeTeamMapper{}
+	cm := &fakeChannelMapper{}
+	svc := NewService(api, tm, cm)
 
 	memberRefs := []string{"user1", "user2"}
 	ownerRefs := []string{"leader1"}
@@ -554,8 +554,8 @@ func TestService_CreatePrivateChannel_Success(t *testing.T) {
 	if got.IsGeneral {
 		t.Errorf("expected IsGeneral=false for private channel, got true")
 	}
-	if m.lastTeamName != "team-priv" {
-		t.Errorf("expected mapper to be called with team-priv, got %q", m.lastTeamName)
+	if tm.lastTeamName != "team-priv" {
+		t.Errorf("expected mapper to be called with team-priv, got %q", tm.lastTeamName)
 	}
 	if api.lastTeamID != "team-priv" {
 		t.Errorf("expected api to be called with team-priv, got %q", api.lastTeamID)
@@ -566,9 +566,12 @@ func TestService_CreatePrivateChannel_MapperError(t *testing.T) {
 	ctx := context.Background()
 	mapErr := errors.New("mapper failed")
 
-	m := &fakeMapper{mapTeamErr: mapErr}
 	api := &fakeChannelAPI{}
-	svc := NewService(api, m)
+
+	tm := &fakeTeamMapper{mapTeamErr: mapErr}
+	cm := &fakeChannelMapper{}
+
+	svc := NewService(api, tm, cm)
 
 	_, err := svc.CreatePrivateChannel(ctx, "some-team", "Secret", nil, nil)
 	if err == nil {
@@ -587,7 +590,11 @@ func TestService_CreatePrivateChannel_MapsError(t *testing.T) {
 			Message: "nope",
 		},
 	}
-	svc := NewService(api, &fakeMapper{})
+
+	tm := &fakeTeamMapper{}
+	cm := &fakeChannelMapper{}
+
+	svc := NewService(api, tm, cm)
 
 	_, err := svc.CreatePrivateChannel(ctx, "team-1", "Secret", nil, nil)
 	if err == nil {
@@ -607,8 +614,11 @@ func TestService_ListMembers_MapsMembers(t *testing.T) {
 	col.SetValue([]msmodels.ConversationMemberable{m1, m2})
 
 	api := &fakeChannelAPI{membersResp: col}
-	m := &fakeMapper{}
-	svc := NewService(api, m)
+
+	tm := &fakeTeamMapper{}
+	cm := &fakeChannelMapper{}
+
+	svc := NewService(api, tm, cm)
 
 	got, err := svc.ListMembers(ctx, "team-1", "chan-1")
 	if err != nil {
@@ -626,8 +636,8 @@ func TestService_ListMembers_MapsMembers(t *testing.T) {
 		t.Errorf("unexpected second member: %+v", got[1])
 	}
 
-	if m.lastTeamName != "team-1" || m.lastChannelName != "chan-1" {
-		t.Errorf("expected mapper called with team-1/chan-1, got team=%q, chan=%q", m.lastTeamName, m.lastChannelName)
+	if tm.lastTeamName != "team-1" || cm.lastChannelName != "chan-1" {
+		t.Errorf("expected mapper called with team-1/chan-1, got team=%q, chan=%q", tm.lastTeamName, cm.lastChannelName)
 	}
 	if api.lastTeamID != "team-1" || api.lastChanID != "chan-1" {
 		t.Errorf("expected api called with team-1/chan-1, got team=%q, chan=%q", api.lastTeamID, api.lastChanID)
@@ -642,7 +652,11 @@ func TestService_ListMembers_MapsError(t *testing.T) {
 			Message: "nope",
 		},
 	}
-	svc := NewService(api, &fakeMapper{})
+
+	tm := &fakeTeamMapper{}
+	cm := &fakeChannelMapper{}
+
+	svc := NewService(api, tm, cm)
 
 	_, err := svc.ListMembers(ctx, "team-1", "chan-1")
 	if err == nil {
@@ -658,8 +672,11 @@ func TestService_AddMember_OwnerRole(t *testing.T) {
 
 	member := newAadUserMember("m-10", "u-10", "OwnerUser", []string{"owner"})
 	api := &fakeChannelAPI{addMemberResp: member}
-	m := &fakeMapper{}
-	svc := NewService(api, m)
+
+	tm := &fakeTeamMapper{}
+	cm := &fakeChannelMapper{}
+
+	svc := NewService(api, tm, cm)
 
 	got, err := svc.AddMember(ctx, "team-1", "chan-1", "user-ref", true)
 	if err != nil {
@@ -686,7 +703,11 @@ func TestService_AddMember_MapsError(t *testing.T) {
 			Message: "nope",
 		},
 	}
-	svc := NewService(api, &fakeMapper{})
+
+	tm := &fakeTeamMapper{}
+	cm := &fakeChannelMapper{}
+
+	svc := NewService(api, tm, cm)
 
 	_, err := svc.AddMember(ctx, "team-1", "chan-1", "user-ref", false)
 	if err == nil {
@@ -702,8 +723,11 @@ func TestService_UpdateMemberRole_OwnerRole(t *testing.T) {
 
 	member := newAadUserMember("m-20", "u-20", "PromotedUser", []string{"owner"})
 	api := &fakeChannelAPI{updateMemberResp: member}
-	m := &fakeMapper{}
-	svc := NewService(api, m)
+
+	tm := &fakeTeamMapper{}
+	cm := &fakeChannelMapper{}
+
+	svc := NewService(api, tm, cm)
 
 	got, err := svc.UpdateMemberRole(ctx, "team-1", "chan-1", "user-ref", true)
 	if err != nil {
@@ -714,9 +738,9 @@ func TestService_UpdateMemberRole_OwnerRole(t *testing.T) {
 		t.Errorf("unexpected mapped member: %+v", got)
 	}
 
-	if m.lastUserRef != "user-ref" || m.lastTeamIDForUser != "team-1" || m.lastChannelIDForUser != "chan-1" {
+	if cm.lastUserRef != "user-ref" || cm.lastTeamIDForUser != "team-1" || cm.lastChannelIDForUser != "chan-1" {
 		t.Errorf("expected mapper called with team-1/chan-1/user-ref, got team=%q chan=%q user=%q",
-			m.lastTeamIDForUser, m.lastChannelIDForUser, m.lastUserRef)
+			cm.lastTeamIDForUser, cm.lastChannelIDForUser, cm.lastUserRef)
 	}
 
 	if api.lastUpdateMemberID != "user-ref" || api.lastUpdateRole != "owner" {
@@ -729,8 +753,11 @@ func TestService_UpdateMemberRole_MapperError(t *testing.T) {
 	ctx := context.Background()
 	mapErr := errors.New("map user failed")
 	api := &fakeChannelAPI{}
-	m := &fakeMapper{mapUserRefErr: mapErr}
-	svc := NewService(api, m)
+
+	tm := &fakeTeamMapper{}
+	cm := &fakeChannelMapper{mapUserRefErr: mapErr}
+
+	svc := NewService(api, tm, cm)
 
 	_, err := svc.UpdateMemberRole(ctx, "team-1", "chan-1", "user-ref", true)
 	if err == nil {
@@ -749,7 +776,11 @@ func TestService_UpdateMemberRole_MapsError(t *testing.T) {
 			Message: "nope",
 		},
 	}
-	svc := NewService(api, &fakeMapper{})
+
+	tm := &fakeTeamMapper{}
+	cm := &fakeChannelMapper{}
+
+	svc := NewService(api, tm, cm)
 
 	_, err := svc.UpdateMemberRole(ctx, "team-1", "chan-1", "user-ref", false)
 	if err == nil {
@@ -764,8 +795,11 @@ func TestService_RemoveMember_Success(t *testing.T) {
 	ctx := context.Background()
 
 	api := &fakeChannelAPI{}
-	m := &fakeMapper{}
-	svc := NewService(api, m)
+
+	tm := &fakeTeamMapper{}
+	cm := &fakeChannelMapper{}
+
+	svc := NewService(api, tm, cm)
 
 	err := svc.RemoveMember(ctx, "team-1", "chan-1", "user-ref")
 	if err != nil {
@@ -788,7 +822,11 @@ func TestService_RemoveMember_MapsError(t *testing.T) {
 			Message: "nope",
 		},
 	}
-	svc := NewService(api, &fakeMapper{})
+
+	tm := &fakeTeamMapper{}
+	cm := &fakeChannelMapper{}
+
+	svc := NewService(api, tm, cm)
 
 	err := svc.RemoveMember(ctx, "team-1", "chan-1", "user-ref")
 	if err == nil {

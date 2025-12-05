@@ -10,22 +10,23 @@ import (
 
 // Service will be used later
 type Service struct {
-	api    api.Channels
-	mapper mapper.Mapper
+	channelAPI    api.ChannelAPI
+	teamMapper    mapper.TeamMapper
+	channelMapper mapper.ChannelMapper
 }
 
 // NewService will be used later
-func NewService(channelsAPI api.Channels, m mapper.Mapper) *Service {
-	return &Service{api: channelsAPI, mapper: m}
+func NewService(channelsAPI api.ChannelAPI, tm mapper.TeamMapper, cm mapper.ChannelMapper) *Service {
+	return &Service{channelAPI: channelsAPI, teamMapper: tm, channelMapper: cm}
 }
 
 // ListChannels will be used later
 func (s *Service) ListChannels(ctx context.Context, teamRef string) ([]*Channel, error) {
-	teamID, err := s.mapper.MapTeamRefToTeamID(ctx, teamRef)
+	teamID, err := s.teamMapper.MapTeamRefToTeamID(ctx, teamRef)
 	if err != nil {
 		return nil, err
 	}
-	resp, senderErr := s.api.ListChannels(ctx, teamID)
+	resp, senderErr := s.channelAPI.ListChannels(ctx, teamID)
 	if senderErr != nil {
 		return nil, mapError(senderErr)
 	}
@@ -47,7 +48,7 @@ func (s *Service) Get(ctx context.Context, teamRef, channelRef string) (*Channel
 	if err != nil {
 		return nil, err
 	}
-	resp, senderErr := s.api.GetChannel(ctx, teamID, channelID)
+	resp, senderErr := s.channelAPI.GetChannel(ctx, teamID, channelID)
 	if senderErr != nil {
 		return nil, mapError(senderErr)
 	}
@@ -61,14 +62,14 @@ func (s *Service) Get(ctx context.Context, teamRef, channelRef string) (*Channel
 
 // CreateStandardChannel creates a standard channel in a team. All members of the team will have access to the channel.
 func (s *Service) CreateStandardChannel(ctx context.Context, teamRef, name string) (*Channel, error) {
-	teamID, err := s.mapper.MapTeamRefToTeamID(ctx, teamRef)
+	teamID, err := s.teamMapper.MapTeamRefToTeamID(ctx, teamRef)
 	if err != nil {
 		return nil, err
 	}
 	newChannel := msmodels.NewChannel()
 	newChannel.SetDisplayName(&name)
 
-	created, senderErr := s.api.CreateStandardChannel(ctx, teamID, newChannel)
+	created, senderErr := s.channelAPI.CreateStandardChannel(ctx, teamID, newChannel)
 	if senderErr != nil {
 		return nil, mapError(senderErr)
 	}
@@ -81,12 +82,12 @@ func (s *Service) CreateStandardChannel(ctx context.Context, teamRef, name strin
 
 // CreatePrivateChannel creates a private channel in a team with specified members and owners.
 func (s *Service) CreatePrivateChannel(ctx context.Context, teamRef, name string, memberRefs, ownerRefs []string) (*Channel, error) {
-	teamID, err := s.mapper.MapTeamRefToTeamID(ctx, teamRef)
+	teamID, err := s.teamMapper.MapTeamRefToTeamID(ctx, teamRef)
 	if err != nil {
 		return nil, err
 	}
 
-	created, senderErr := s.api.CreatePrivateChannelWithMembers(ctx, teamID, name, memberRefs, ownerRefs)
+	created, senderErr := s.channelAPI.CreatePrivateChannelWithMembers(ctx, teamID, name, memberRefs, ownerRefs)
 	if senderErr != nil {
 		return nil, mapError(senderErr)
 	}
@@ -103,7 +104,7 @@ func (s *Service) Delete(ctx context.Context, teamRef, channelRef string) error 
 	if err != nil {
 		return err
 	}
-	senderErr := s.api.DeleteChannel(ctx, teamID, channelID)
+	senderErr := s.channelAPI.DeleteChannel(ctx, teamID, channelID)
 	if senderErr != nil {
 		return mapError(senderErr)
 	}
@@ -118,7 +119,7 @@ func (s *Service) SendMessage(ctx context.Context, teamRef, channelRef string, b
 	}
 	message := msmodels.NewChatMessage()
 	message.SetBody(body.ToGraphItemBody())
-	resp, senderErr := s.api.SendMessage(ctx, teamID, channelID, message)
+	resp, senderErr := s.channelAPI.SendMessage(ctx, teamID, channelID, message)
 	if senderErr != nil {
 		return nil, mapError(senderErr)
 	}
@@ -137,7 +138,7 @@ func (s *Service) ListMessages(ctx context.Context, teamRef, channelRef string, 
 		top = opts.Top
 	}
 
-	resp, senderErr := s.api.ListMessages(ctx, teamID, channelID, top)
+	resp, senderErr := s.channelAPI.ListMessages(ctx, teamID, channelID, top)
 	if senderErr != nil {
 		return nil, mapError(senderErr)
 	}
@@ -156,7 +157,7 @@ func (s *Service) GetMessage(ctx context.Context, teamRef, channelRef, messageID
 	if err != nil {
 		return nil, err
 	}
-	resp, senderErr := s.api.GetMessage(ctx, teamID, channelID, messageID)
+	resp, senderErr := s.channelAPI.GetMessage(ctx, teamID, channelID, messageID)
 	if senderErr != nil {
 		return nil, mapError(senderErr)
 	}
@@ -169,7 +170,7 @@ func (s *Service) ListReplies(ctx context.Context, teamRef, channelRef, messageI
 	if err != nil {
 		return nil, err
 	}
-	resp, senderErr := s.api.ListReplies(ctx, teamID, channelID, messageID, top)
+	resp, senderErr := s.channelAPI.ListReplies(ctx, teamID, channelID, messageID, top)
 	if senderErr != nil {
 		return nil, mapError(senderErr)
 	}
@@ -187,7 +188,7 @@ func (s *Service) GetReply(ctx context.Context, teamRef, channelRef, messageID, 
 	if err != nil {
 		return nil, err
 	}
-	resp, senderErr := s.api.GetReply(ctx, teamID, channelID, messageID, replyID)
+	resp, senderErr := s.channelAPI.GetReply(ctx, teamID, channelID, messageID, replyID)
 	if senderErr != nil {
 		return nil, mapError(senderErr)
 	}
@@ -199,7 +200,7 @@ func (s *Service) ListMembers(ctx context.Context, teamRef, channelRef string) (
 	if err != nil {
 		return nil, err
 	}
-	resp, senderErr := s.api.ListMembers(ctx, teamID, channelID)
+	resp, senderErr := s.channelAPI.ListMembers(ctx, teamID, channelID)
 	if senderErr != nil {
 		return nil, mapError(senderErr)
 	}
@@ -219,7 +220,7 @@ func (s *Service) AddMember(ctx context.Context, teamRef, channelRef, userRef st
 	if isOwner {
 		role = "owner"
 	}
-	created, senderErr := s.api.AddMember(ctx, teamID, channelID, userRef, role)
+	created, senderErr := s.channelAPI.AddMember(ctx, teamID, channelID, userRef, role)
 	if senderErr != nil {
 		return nil, mapError(senderErr)
 	}
@@ -231,7 +232,7 @@ func (s *Service) UpdateMemberRole(ctx context.Context, teamRef, channelRef, use
 	if err != nil {
 		return nil, err
 	}
-	memberID, err := s.mapper.MapUserRefToMemberID(ctx, teamID, channelID, userRef)
+	memberID, err := s.channelMapper.MapUserRefToMemberID(ctx, teamID, channelID, userRef)
 	if err != nil {
 		return nil, err
 	}
@@ -239,7 +240,7 @@ func (s *Service) UpdateMemberRole(ctx context.Context, teamRef, channelRef, use
 	if isOwner {
 		role = "owner"
 	}
-	updated, senderErr := s.api.UpdateMemberRole(ctx, teamID, channelID, memberID, role)
+	updated, senderErr := s.channelAPI.UpdateMemberRole(ctx, teamID, channelID, memberID, role)
 	if senderErr != nil {
 		return nil, mapError(senderErr)
 	}
@@ -251,11 +252,11 @@ func (s *Service) RemoveMember(ctx context.Context, teamRef, channelRef, userRef
 	if err != nil {
 		return err
 	}
-	memberID, err := s.mapper.MapUserRefToMemberID(ctx, teamID, channelID, userRef)
+	memberID, err := s.channelMapper.MapUserRefToMemberID(ctx, teamID, channelID, userRef)
 	if err != nil {
 		return err
 	}
-	senderErr := s.api.RemoveMember(ctx, teamID, channelID, memberID)
+	senderErr := s.channelAPI.RemoveMember(ctx, teamID, channelID, memberID)
 	if senderErr != nil {
 		return mapError(senderErr)
 	}
@@ -263,11 +264,11 @@ func (s *Service) RemoveMember(ctx context.Context, teamRef, channelRef, userRef
 }
 
 func (s *Service) resolveTeamAndChannelID(ctx context.Context, teamRef, channelRef string) (teamID, channelID string, err error) {
-	teamID, err = s.mapper.MapTeamRefToTeamID(ctx, teamRef)
+	teamID, err = s.teamMapper.MapTeamRefToTeamID(ctx, teamRef)
 	if err != nil {
 		return "", "", err
 	}
-	channelID, err = s.mapper.MapChannelRefToChannelID(ctx, teamID, channelRef)
+	channelID, err = s.channelMapper.MapChannelRefToChannelID(ctx, teamID, channelRef)
 	if err != nil {
 		return "", "", err
 	}

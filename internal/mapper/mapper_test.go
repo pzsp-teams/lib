@@ -136,11 +136,9 @@ func TestMapper_MapTeamNameToTeamID_Found(t *testing.T) {
 	col.SetValue([]msmodels.Teamable{a, b})
 
 	teamsFake := &fakeTeamsAPI{listResp: col}
-	channelsFake := &fakeChannelAPI{}
 
-	m := &mapper{
-		teamsAPI:    teamsFake,
-		channelsAPI: channelsFake,
+	m := &teamMapper{
+		teamsAPI: teamsFake,
 	}
 
 	id, err := m.MapTeamRefToTeamID(ctx, "Beta")
@@ -161,11 +159,9 @@ func TestMapper_MapTeamNameToTeamID_NotFound(t *testing.T) {
 	})
 
 	teamsFake := &fakeTeamsAPI{listResp: col}
-	channelsFake := &fakeChannelAPI{}
 
-	m := &mapper{
-		teamsAPI:    teamsFake,
-		channelsAPI: channelsFake,
+	m := &teamMapper{
+		teamsAPI: teamsFake,
 	}
 
 	_, err := m.MapTeamRefToTeamID(ctx, "Beta")
@@ -186,10 +182,8 @@ func TestMapper_MapChannelNameToChannelID_Found(t *testing.T) {
 	col.SetValue([]msmodels.Channelable{c1, c2})
 
 	chFake := &fakeChannelAPI{listResp: col}
-	teamsFake := &fakeTeamsAPI{}
 
-	m := &mapper{
-		teamsAPI:    teamsFake,
+	m := &channelMapper{
 		channelsAPI: chFake,
 	}
 
@@ -211,10 +205,8 @@ func TestMapper_MapChannelNameToChannelID_NotFound(t *testing.T) {
 	})
 
 	chFake := &fakeChannelAPI{listResp: col}
-	teamsFake := &fakeTeamsAPI{}
 
-	m := &mapper{
-		teamsAPI:    teamsFake,
+	m := &channelMapper{
 		channelsAPI: chFake,
 	}
 
@@ -252,10 +244,8 @@ func TestMapper_MapUserRefToMemberID_MatchByUserID(t *testing.T) {
 	col.SetValue([]msmodels.ConversationMemberable{m1})
 
 	chFake := &fakeChannelAPI{membersResp: col}
-	teamsFake := &fakeTeamsAPI{}
 
-	m := &mapper{
-		teamsAPI:    teamsFake,
+	m := &channelMapper{
 		channelsAPI: chFake,
 	}
 
@@ -276,10 +266,8 @@ func TestMapper_MapUserRefToMemberID_MatchByDisplayName(t *testing.T) {
 	col.SetValue([]msmodels.ConversationMemberable{m1})
 
 	chFake := &fakeChannelAPI{membersResp: col}
-	teamsFake := &fakeTeamsAPI{}
 
-	m := &mapper{
-		teamsAPI:    teamsFake,
+	m := &channelMapper{
 		channelsAPI: chFake,
 	}
 
@@ -305,9 +293,8 @@ func TestMapper_MapUserRefToMemberID_MatchByUPNOrMail(t *testing.T) {
 	col.SetValue([]msmodels.ConversationMemberable{m1, m2})
 
 	chFake := &fakeChannelAPI{membersResp: col}
-	teamsFake := &fakeTeamsAPI{}
-	m := &mapper{
-		teamsAPI:    teamsFake,
+
+	m := &channelMapper{
 		channelsAPI: chFake,
 	}
 
@@ -332,9 +319,7 @@ func TestMapper_MapUserRefToMemberID_NoMembers(t *testing.T) {
 	ctx := context.Background()
 
 	chFake := &fakeChannelAPI{membersResp: nil}
-	teamsFake := &fakeTeamsAPI{}
-	m := &mapper{
-		teamsAPI:    teamsFake,
+	m := &channelMapper{
 		channelsAPI: chFake,
 	}
 
@@ -355,9 +340,8 @@ func TestMapper_MapUserRefToMemberID_NotFound(t *testing.T) {
 	col.SetValue([]msmodels.ConversationMemberable{m1})
 
 	chFake := &fakeChannelAPI{membersResp: col}
-	teamsFake := &fakeTeamsAPI{}
-	m := &mapper{
-		teamsAPI:    teamsFake,
+
+	m := &channelMapper{
 		channelsAPI: chFake,
 	}
 

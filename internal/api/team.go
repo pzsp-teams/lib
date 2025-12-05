@@ -12,7 +12,7 @@ import (
 	"github.com/pzsp-teams/lib/internal/sender"
 )
 
-type Teams interface {
+type TeamAPI interface {
 	CreateFromTemplate(ctx context.Context, displayName, description string, owners []string) (string, *sender.RequestError)
 	CreateViaGroup(ctx context.Context, displayName, mailNickname, visibility string) (string, *sender.RequestError)
 	Get(ctx context.Context, teamID string) (msmodels.Teamable, *sender.RequestError)
@@ -24,18 +24,18 @@ type Teams interface {
 	RestoreDeleted(ctx context.Context, deletedGroupID string) (msmodels.DirectoryObjectable, *sender.RequestError)
 }
 
-type teams struct {
+type teamAPI struct {
 	client     *graph.GraphServiceClient
 	techParams sender.RequestTechParams
 }
 
 // NewTeams will be used later
-func NewTeams(client *graph.GraphServiceClient, techParams sender.RequestTechParams) Teams {
-	return &teams{client, techParams}
+func NewTeams(client *graph.GraphServiceClient, techParams sender.RequestTechParams) TeamAPI {
+	return &teamAPI{client, techParams}
 }
 
 // CreateFromTemplate will be used later
-func (api *teams) CreateFromTemplate(ctx context.Context, displayName, description string, owners []string) (string, *sender.RequestError) {
+func (t *teamAPI) CreateFromTemplate(ctx context.Context, displayName, description string, owners []string) (string, *sender.RequestError) {
 	body := msmodels.NewTeam()
 	body.SetDisplayName(&displayName)
 	body.SetDescription(&description)
@@ -45,9 +45,9 @@ func (api *teams) CreateFromTemplate(ctx context.Context, displayName, descripti
 		"template@odata.bind": "https://graph.microsoft.com/v1.0/teamsTemplates('standard')",
 	})
 	call := func(ctx context.Context) (sender.Response, error) {
-		return api.client.Teams().Post(ctx, body, nil)
+		return t.client.Teams().Post(ctx, body, nil)
 	}
-	resp, err := sender.SendRequest(ctx, call, api.techParams)
+	resp, err := sender.SendRequest(ctx, call, t.techParams)
 	if err != nil {
 		return "", err
 	}
@@ -56,7 +56,7 @@ func (api *teams) CreateFromTemplate(ctx context.Context, displayName, descripti
 }
 
 // CreateViaGroup will be used later
-func (api *teams) CreateViaGroup(ctx context.Context, displayName, mailNickname, visibility string) (string, *sender.RequestError) {
+func (t *teamAPI) CreateViaGroup(ctx context.Context, displayName, mailNickname, visibility string) (string, *sender.RequestError) {
 	grp := msmodels.NewGroup()
 	grp.SetDisplayName(&displayName)
 	grp.SetDescription(&displayName)
@@ -68,9 +68,9 @@ func (api *teams) CreateViaGroup(ctx context.Context, displayName, mailNickname,
 	grp.SetSecurityEnabled(&securityEnabled)
 	grp.SetVisibility(&visibility)
 	createGroup := func(ctx context.Context) (sender.Response, error) {
-		return api.client.Groups().Post(ctx, grp, nil)
+		return t.client.Groups().Post(ctx, grp, nil)
 	}
-	gresp, gerr := sender.SendRequest(ctx, createGroup, api.techParams)
+	gresp, gerr := sender.SendRequest(ctx, createGroup, t.techParams)
 	if gerr != nil {
 		return "", gerr
 	}
@@ -81,24 +81,24 @@ func (api *teams) CreateViaGroup(ctx context.Context, displayName, mailNickname,
 	groupID := *group.GetId()
 	body := msmodels.NewTeam()
 	putTeam := func(ctx context.Context) (sender.Response, error) {
-		return api.client.Groups().ByGroupId(groupID).Team().Put(ctx, body, nil)
+		return t.client.Groups().ByGroupId(groupID).Team().Put(ctx, body, nil)
 	}
-	if _, err := sender.SendRequest(ctx, putTeam, api.techParams); err != nil {
+	if _, err := sender.SendRequest(ctx, putTeam, t.techParams); err != nil {
 		return "", err
 	}
-	if err := api.waitTeamReady(ctx, groupID, 30*time.Second); err != nil {
+	if err := t.waitTeamReady(ctx, groupID, 30*time.Second); err != nil {
 		return "", err
 	}
 	return groupID, nil
 }
 
-func (api *teams) waitTeamReady(ctx context.Context, teamID string, timeout time.Duration) *sender.RequestError {
+func (t *teamAPI) waitTeamReady(ctx context.Context, teamID string, timeout time.Duration) *sender.RequestError {
 	deadline := time.Now().Add(timeout)
 	for {
 		call := func(ctx context.Context) (sender.Response, error) {
-			return api.client.Teams().ByTeamId(teamID).Get(ctx, nil)
+			return t.client.Teams().ByTeamId(teamID).Get(ctx, nil)
 		}
-		if _, err := sender.SendRequest(ctx, call, api.techParams); err == nil {
+		if _, err := sender.SendRequest(ctx, call, t.techParams); err == nil {
 			return nil
 		}
 		if time.Now().After(deadline) {
@@ -109,11 +109,11 @@ func (api *teams) waitTeamReady(ctx context.Context, teamID string, timeout time
 }
 
 // Get will be used later
-func (api *teams) Get(ctx context.Context, teamID string) (msmodels.Teamable, *sender.RequestError) {
+func (t *teamAPI) Get(ctx context.Context, teamID string) (msmodels.Teamable, *sender.RequestError) {
 	call := func(ctx context.Context) (sender.Response, error) {
-		return api.client.Teams().ByTeamId(teamID).Get(ctx, nil)
+		return t.client.Teams().ByTeamId(teamID).Get(ctx, nil)
 	}
-	resp, err := sender.SendRequest(ctx, call, api.techParams)
+	resp, err := sender.SendRequest(ctx, call, t.techParams)
 	if err != nil {
 		return nil, err
 	}
@@ -125,11 +125,11 @@ func (api *teams) Get(ctx context.Context, teamID string) (msmodels.Teamable, *s
 }
 
 // ListMyJoined will be used later
-func (api *teams) ListMyJoined(ctx context.Context) (msmodels.TeamCollectionResponseable, *sender.RequestError) {
+func (t *teamAPI) ListMyJoined(ctx context.Context) (msmodels.TeamCollectionResponseable, *sender.RequestError) {
 	call := func(ctx context.Context) (sender.Response, error) {
-		return api.client.Me().JoinedTeams().Get(ctx, nil)
+		return t.client.Me().JoinedTeams().Get(ctx, nil)
 	}
-	resp, err := sender.SendRequest(ctx, call, api.techParams)
+	resp, err := sender.SendRequest(ctx, call, t.techParams)
 	if err != nil {
 		return nil, err
 	}
@@ -141,11 +141,11 @@ func (api *teams) ListMyJoined(ctx context.Context) (msmodels.TeamCollectionResp
 }
 
 // Update will be used later
-func (api *teams) Update(ctx context.Context, teamID string, patch *msmodels.Team) (msmodels.Teamable, *sender.RequestError) {
+func (t *teamAPI) Update(ctx context.Context, teamID string, patch *msmodels.Team) (msmodels.Teamable, *sender.RequestError) {
 	call := func(ctx context.Context) (sender.Response, error) {
-		return api.client.Teams().ByTeamId(teamID).Patch(ctx, patch, nil)
+		return t.client.Teams().ByTeamId(teamID).Patch(ctx, patch, nil)
 	}
-	resp, err := sender.SendRequest(ctx, call, api.techParams)
+	resp, err := sender.SendRequest(ctx, call, t.techParams)
 	if err != nil {
 		return nil, err
 	}
@@ -157,58 +157,58 @@ func (api *teams) Update(ctx context.Context, teamID string, patch *msmodels.Tea
 }
 
 // Archive will be used later
-func (api *teams) Archive(ctx context.Context, teamID string, spoReadOnlyForMembers *bool) *sender.RequestError {
+func (t *teamAPI) Archive(ctx context.Context, teamID string, spoReadOnlyForMembers *bool) *sender.RequestError {
 	body := graphteams.NewItemArchivePostRequestBody()
 	if spoReadOnlyForMembers != nil {
 		body.SetShouldSetSpoSiteReadOnlyForMembers(spoReadOnlyForMembers)
 	}
 	call := func(ctx context.Context) (sender.Response, error) {
-		return nil, api.client.
+		return nil, t.client.
 			Teams().
 			ByTeamId(teamID).
 			Archive().
 			Post(ctx, body, nil)
 	}
-	_, err := sender.SendRequest(ctx, call, api.techParams)
+	_, err := sender.SendRequest(ctx, call, t.techParams)
 	return err
 }
 
 // Unarchive will be used later
-func (api *teams) Unarchive(ctx context.Context, teamID string) *sender.RequestError {
+func (t *teamAPI) Unarchive(ctx context.Context, teamID string) *sender.RequestError {
 	call := func(ctx context.Context) (sender.Response, error) {
-		return nil, api.client.
+		return nil, t.client.
 			Teams().
 			ByTeamId(teamID).
 			Unarchive().
 			Post(ctx, nil)
 	}
-	_, err := sender.SendRequest(ctx, call, api.techParams)
+	_, err := sender.SendRequest(ctx, call, t.techParams)
 	return err
 }
 
 // Delete will be used later
-func (api *teams) Delete(ctx context.Context, teamID string) *sender.RequestError {
+func (t *teamAPI) Delete(ctx context.Context, teamID string) *sender.RequestError {
 	call := func(ctx context.Context) (sender.Response, error) {
-		return nil, api.client.
+		return nil, t.client.
 			Groups().
 			ByGroupId(teamID).
 			Delete(ctx, nil)
 	}
-	_, err := sender.SendRequest(ctx, call, api.techParams)
+	_, err := sender.SendRequest(ctx, call, t.techParams)
 	return err
 }
 
 // RestoreDeleted will be used later
-func (api *teams) RestoreDeleted(ctx context.Context, deletedGroupID string) (msmodels.DirectoryObjectable, *sender.RequestError) {
+func (t *teamAPI) RestoreDeleted(ctx context.Context, deletedGroupID string) (msmodels.DirectoryObjectable, *sender.RequestError) {
 	call := func(ctx context.Context) (sender.Response, error) {
-		return api.client.
+		return t.client.
 			Directory().
 			DeletedItems().
 			ByDirectoryObjectId(deletedGroupID).
 			Restore().
 			Post(ctx, nil)
 	}
-	resp, err := sender.SendRequest(ctx, call, api.techParams)
+	resp, err := sender.SendRequest(ctx, call, t.techParams)
 	if err != nil {
 		return nil, err
 	}
