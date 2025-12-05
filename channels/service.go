@@ -72,7 +72,7 @@ func (s *Service) Create(ctx context.Context, teamName, name string) (*Channel, 
 	newChannel := msmodels.NewChannel()
 	newChannel.SetDisplayName(&name)
 
-	created, senderErr := s.api.CreateChannel(ctx, teamID, newChannel)
+	created, senderErr := s.api.CreateStandardChannel(ctx, teamID, newChannel)
 	if senderErr != nil {
 		return nil, mapError(senderErr)
 	}

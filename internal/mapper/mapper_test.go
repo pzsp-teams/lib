@@ -59,7 +59,7 @@ func (f *fakeChannelAPI) ListChannels(ctx context.Context, teamID string) (msmod
 	return f.listResp, f.listErr
 }
 
-func (f *fakeChannelAPI) CreateChannel(ctx context.Context, teamID string, channel msmodels.Channelable) (msmodels.Channelable, *sender.RequestError) {
+func (f *fakeChannelAPI) CreateStandardChannel(ctx context.Context, teamID string, channel msmodels.Channelable) (msmodels.Channelable, *sender.RequestError) {
 	return nil, nil
 }
 
