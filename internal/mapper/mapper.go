@@ -4,13 +4,14 @@ import (
 	"context"
 	"fmt"
 
+	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
 	"github.com/pzsp-teams/lib/internal/api"
 )
 
-// Mapper will be used later
 type Mapper interface {
 	MapTeamNameToTeamID(ctx context.Context, teamName string) (string, error)
 	MapChannelNameToChannelID(ctx context.Context, teamID, channelName string) (string, error)
+	MapUserRefToMemberID(ctx context.Context, teamID, channelID, userRef string) (string, error)
 }
 
 type mapper struct {
@@ -18,7 +19,6 @@ type mapper struct {
 	channelsAPI api.Channels
 }
 
-// New will be used later
 func New(teamsAPI api.Teams, channelsAPI api.Channels) Mapper {
 	return &mapper{
 		teamsAPI:    teamsAPI,
@@ -26,7 +26,6 @@ func New(teamsAPI api.Teams, channelsAPI api.Channels) Mapper {
 	}
 }
 
-// MapTeamNameToTeamID will be used later
 func (m *mapper) MapTeamNameToTeamID(ctx context.Context, teamName string) (string, error) {
 	listOfTeams, err := m.teamsAPI.ListMyJoined(ctx)
 	if err != nil {
@@ -46,7 +45,6 @@ func (m *mapper) MapTeamNameToTeamID(ctx context.Context, teamName string) (stri
 	return "", fmt.Errorf("team with name %q not found", teamName)
 }
 
-// MapChannelNameToChannelID will be used later
 func (m *mapper) MapChannelNameToChannelID(ctx context.Context, teamID, channelName string) (string, error) {
 	chans, err := m.channelsAPI.ListChannels(ctx, teamID)
 	if err != nil {
@@ -64,4 +62,63 @@ func (m *mapper) MapChannelNameToChannelID(ctx context.Context, teamID, channelN
 		}
 	}
 	return "", fmt.Errorf("channel with name %q not found in team %q", channelName, teamID)
+}
+
+func (m *mapper) MapUserRefToMemberID(ctx context.Context, teamID, channelID, userRef string) (string, error) {
+	resp, err := m.channelsAPI.ListMembers(ctx, teamID, channelID)
+	if err != nil {
+		return "", err
+	}
+	if resp == nil || resp.GetValue() == nil {
+		return "", fmt.Errorf("no members found in channel %q", channelID)
+	}
+
+	for _, member := range resp.GetValue() {
+		if member == nil {
+			continue
+		}
+		um, ok := member.(msmodels.AadUserConversationMemberable)
+		if !ok {
+			continue
+		}
+		if matchesUserRef(um, userRef) {
+			return deref(member.GetId()), nil
+		}
+	}
+
+	return "", fmt.Errorf("member %q not found in channel %q", userRef, channelID)
+}
+
+func matchesUserRef(um msmodels.AadUserConversationMemberable, userRef string) bool {
+	if userRef == "" {
+		return false
+	}
+	if deref(um.GetUserId()) == userRef {
+		return true
+	}
+	if deref(um.GetDisplayName()) == userRef {
+		return true
+	}
+	ad := um.GetAdditionalData()
+	if ad == nil {
+		return false
+	}
+	for _, key := range []string{"userPrincipalName", "mail", "email"} {
+		raw, ok := ad[key]
+		if !ok {
+			continue
+		}
+		if v, ok := raw.(string); ok && v == userRef {
+			return true
+		}
+	}
+
+	return false
+}
+
+func deref(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
 }

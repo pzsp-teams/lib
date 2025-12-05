@@ -51,8 +51,10 @@ func (f *fakeTeamsAPI) Update(ctx context.Context, teamID string, team *msmodels
 }
 
 type fakeChannelAPI struct {
-	listResp msmodels.ChannelCollectionResponseable
-	listErr  *sender.RequestError
+	listResp    msmodels.ChannelCollectionResponseable
+	listErr     *sender.RequestError
+	membersResp msmodels.ConversationMemberCollectionResponseable
+	membersErr  *sender.RequestError
 }
 
 func (f *fakeChannelAPI) ListChannels(ctx context.Context, teamID string) (msmodels.ChannelCollectionResponseable, *sender.RequestError) {
@@ -100,14 +102,12 @@ func (f *fakeChannelAPI) AddMember(ctx context.Context, teamID, channelID, membe
 }
 
 func (f *fakeChannelAPI) ListMembers(ctx context.Context, teamID, channelID string) (msmodels.ConversationMemberCollectionResponseable, *sender.RequestError) {
-	return nil, nil
+	return f.membersResp, f.membersErr
 }
 
 func (f *fakeChannelAPI) RemoveMember(ctx context.Context, teamID, channelID, memberID string) *sender.RequestError {
 	return nil
 }
-
-
 
 func (f *fakeChannelAPI) UpdateMemberRole(ctx context.Context, teamID, channelID, memberID, role string) (msmodels.ConversationMemberable, *sender.RequestError) {
 	return nil, nil
@@ -223,6 +223,149 @@ func TestMapper_MapChannelNameToChannelID_NotFound(t *testing.T) {
 		t.Fatalf("expected error, got nil")
 	}
 	if !strings.Contains(err.Error(), "channel with name") {
+		t.Errorf("unexpected error message: %v", err)
+	}
+}
+
+func newAadMember(memberID, userID, displayName string, add map[string]any) msmodels.ConversationMemberable {
+	m := msmodels.NewAadUserConversationMember()
+	if memberID != "" {
+		m.SetId(&memberID)
+	}
+	if userID != "" {
+		m.SetUserId(&userID)
+	}
+	if displayName != "" {
+		m.SetDisplayName(&displayName)
+	}
+	if add != nil {
+		m.SetAdditionalData(add)
+	}
+	return m
+}
+
+func TestMapper_MapUserRefToMemberID_MatchByUserID(t *testing.T) {
+	ctx := context.Background()
+
+	col := msmodels.NewConversationMemberCollectionResponse()
+	m1 := newAadMember("m-1", "user-1", "Alice", nil)
+	col.SetValue([]msmodels.ConversationMemberable{m1})
+
+	chFake := &fakeChannelAPI{membersResp: col}
+	teamsFake := &fakeTeamsAPI{}
+
+	m := &mapper{
+		teamsAPI:    teamsFake,
+		channelsAPI: chFake,
+	}
+
+	id, err := m.MapUserRefToMemberID(ctx, "team-1", "chan-1", "user-1")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if id != "m-1" {
+		t.Fatalf("expected member id 'm-1', got %q", id)
+	}
+}
+
+func TestMapper_MapUserRefToMemberID_MatchByDisplayName(t *testing.T) {
+	ctx := context.Background()
+
+	col := msmodels.NewConversationMemberCollectionResponse()
+	m1 := newAadMember("m-2", "user-2", "Bob", nil)
+	col.SetValue([]msmodels.ConversationMemberable{m1})
+
+	chFake := &fakeChannelAPI{membersResp: col}
+	teamsFake := &fakeTeamsAPI{}
+
+	m := &mapper{
+		teamsAPI:    teamsFake,
+		channelsAPI: chFake,
+	}
+
+	id, err := m.MapUserRefToMemberID(ctx, "team-1", "chan-1", "Bob")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if id != "m-2" {
+		t.Fatalf("expected member id 'm-2', got %q", id)
+	}
+}
+
+func TestMapper_MapUserRefToMemberID_MatchByUPNOrMail(t *testing.T) {
+	ctx := context.Background()
+
+	col := msmodels.NewConversationMemberCollectionResponse()
+	m1 := newAadMember("m-3", "user-3", "Charlie", map[string]any{
+		"userPrincipalName": "charlie@contoso.com",
+	})
+	m2 := newAadMember("m-4", "user-4", "Dave", map[string]any{
+		"mail": "dave@contoso.com",
+	})
+	col.SetValue([]msmodels.ConversationMemberable{m1, m2})
+
+	chFake := &fakeChannelAPI{membersResp: col}
+	teamsFake := &fakeTeamsAPI{}
+	m := &mapper{
+		teamsAPI:    teamsFake,
+		channelsAPI: chFake,
+	}
+
+	id, err := m.MapUserRefToMemberID(ctx, "team-1", "chan-1", "charlie@contoso.com")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if id != "m-3" {
+		t.Fatalf("expected member id 'm-3', got %q", id)
+	}
+
+	id2, err := m.MapUserRefToMemberID(ctx, "team-1", "chan-1", "dave@contoso.com")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if id2 != "m-4" {
+		t.Fatalf("expected member id 'm-4', got %q", id2)
+	}
+}
+
+func TestMapper_MapUserRefToMemberID_NoMembers(t *testing.T) {
+	ctx := context.Background()
+
+	chFake := &fakeChannelAPI{membersResp: nil}
+	teamsFake := &fakeTeamsAPI{}
+	m := &mapper{
+		teamsAPI:    teamsFake,
+		channelsAPI: chFake,
+	}
+
+	_, err := m.MapUserRefToMemberID(ctx, "team-1", "chan-1", "someone@contoso.com")
+	if err == nil {
+		t.Fatalf("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "no members found in channel") {
+		t.Errorf("unexpected error message: %v", err)
+	}
+}
+
+func TestMapper_MapUserRefToMemberID_NotFound(t *testing.T) {
+	ctx := context.Background()
+
+	col := msmodels.NewConversationMemberCollectionResponse()
+	m1 := newAadMember("m-1", "user-1", "Alice", nil)
+	col.SetValue([]msmodels.ConversationMemberable{m1})
+
+	chFake := &fakeChannelAPI{membersResp: col}
+	teamsFake := &fakeTeamsAPI{}
+	m := &mapper{
+		teamsAPI:    teamsFake,
+		channelsAPI: chFake,
+	}
+
+	_, err := m.MapUserRefToMemberID(ctx, "team-1", "chan-1", "nonexistent@contoso.com")
+	if err == nil {
+		t.Fatalf("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "member \"nonexistent@contoso.com\" not found") {
 		t.Errorf("unexpected error message: %v", err)
 	}
 }

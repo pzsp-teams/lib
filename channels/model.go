@@ -35,3 +35,10 @@ type ListMessagesOptions struct {
 	Top           *int32
 	ExpandReplies bool
 }
+
+type ChannelMember struct {
+	ID          string
+	UserID      string
+	DisplayName string
+	Role        string
+}

@@ -10,12 +10,17 @@ import (
 )
 
 type fakeMapper struct {
-	mapTeamErr error
-	mapChanErr error
+	mapTeamErr      error
+	mapChanErr      error
+	mapUserRefErr   error
+	lastTeamName    string
+	lastChannelName string
 
-	lastTeamName         string
-	lastChannelName      string
 	lastTeamIDForChannel string
+
+	lastUserRef          string
+	lastTeamIDForUser    string
+	lastChannelIDForUser string
 }
 
 func (m *fakeMapper) MapTeamNameToTeamID(ctx context.Context, teamName string) (string, error) {
@@ -23,7 +28,6 @@ func (m *fakeMapper) MapTeamNameToTeamID(ctx context.Context, teamName string) (
 	if m.mapTeamErr != nil {
 		return "", m.mapTeamErr
 	}
-
 	return teamName, nil
 }
 
@@ -34,6 +38,16 @@ func (m *fakeMapper) MapChannelNameToChannelID(ctx context.Context, teamID, chan
 		return "", m.mapChanErr
 	}
 	return channelName, nil
+}
+
+func (m *fakeMapper) MapUserRefToMemberID(ctx context.Context, teamID, channelID, userRef string) (string, error) {
+	m.lastTeamIDForUser = teamID
+	m.lastChannelIDForUser = channelID
+	m.lastUserRef = userRef
+	if m.mapUserRefErr != nil {
+		return "", m.mapUserRefErr
+	}
+	return userRef, nil
 }
 
 type fakeChannelAPI struct {
@@ -60,6 +74,22 @@ type fakeChannelAPI struct {
 	lastMessage     msmodels.ChatMessageable
 	lastMessageID   string
 	lastReplyID     string
+
+	membersResp msmodels.ConversationMemberCollectionResponseable
+	membersErr  *sender.RequestError
+
+	addMemberResp  msmodels.ConversationMemberable
+	addMemberErr   *sender.RequestError
+	lastAddUserRef string
+	lastAddRole    string
+
+	updateMemberResp   msmodels.ConversationMemberable
+	updateMemberErr    *sender.RequestError
+	lastUpdateMemberID string
+	lastUpdateRole     string
+
+	removeMemberErr    *sender.RequestError
+	lastRemoveMemberID string
 }
 
 func (f *fakeChannelAPI) ListChannels(ctx context.Context, teamID string) (msmodels.ChannelCollectionResponseable, *sender.RequestError) {
@@ -125,23 +155,34 @@ func (f *fakeChannelAPI) GetReply(ctx context.Context, teamID, channelID, messag
 	return f.getReplyResp, f.getReplyErr
 }
 
-func (f *fakeChannelAPI) AddMember(ctx context.Context, teamID, channelID, userID, role string) (msmodels.ConversationMemberable, *sender.RequestError) {
-	return nil, nil
-}
-
 func (f *fakeChannelAPI) ListMembers(ctx context.Context, teamID, channelID string) (msmodels.ConversationMemberCollectionResponseable, *sender.RequestError) {
-	return nil, nil
+	f.lastTeamID = teamID
+	f.lastChanID = channelID
+	return f.membersResp, f.membersErr
 }
 
-func (f *fakeChannelAPI) RemoveMember(ctx context.Context, teamID, channelID, userID string) *sender.RequestError {
-	return nil
+func (f *fakeChannelAPI) AddMember(ctx context.Context, teamID, channelID, userID, role string) (msmodels.ConversationMemberable, *sender.RequestError) {
+	f.lastTeamID = teamID
+	f.lastChanID = channelID
+	f.lastAddUserRef = userID
+	f.lastAddRole = role
+	return f.addMemberResp, f.addMemberErr
 }
 
-func (f *fakeChannelAPI) UpdateMemberRole(ctx context.Context, teamID, channelID, userID, role string) (msmodels.ConversationMemberable, *sender.RequestError) {
-	return nil, nil
+func (f *fakeChannelAPI) RemoveMember(ctx context.Context, teamID, channelID, memberID string) *sender.RequestError {
+	f.lastTeamID = teamID
+	f.lastChanID = channelID
+	f.lastRemoveMemberID = memberID
+	return f.removeMemberErr
 }
 
-
+func (f *fakeChannelAPI) UpdateMemberRole(ctx context.Context, teamID, channelID, memberID, role string) (msmodels.ConversationMemberable, *sender.RequestError) {
+	f.lastTeamID = teamID
+	f.lastChanID = channelID
+	f.lastUpdateMemberID = memberID
+	f.lastUpdateRole = role
+	return f.updateMemberResp, f.updateMemberErr
+}
 
 func newGraphChannel(id, name string) msmodels.Channelable {
 	channel := msmodels.NewChannel()
@@ -157,6 +198,23 @@ func newChatMessage(id, content string) msmodels.ChatMessageable {
 	body.SetContent(&content)
 	msg.SetBody(body)
 	return msg
+}
+
+func newAadUserMember(id, userID, displayName string, roles []string) msmodels.ConversationMemberable {
+	m := msmodels.NewAadUserConversationMember()
+	if id != "" {
+		m.SetId(&id)
+	}
+	if userID != "" {
+		m.SetUserId(&userID)
+	}
+	if displayName != "" {
+		m.SetDisplayName(&displayName)
+	}
+	if roles != nil {
+		m.SetRoles(roles)
+	}
+	return m
 }
 
 func TestService_ListChannels_MapsFieldsAndGeneralFlag(t *testing.T) {
@@ -537,5 +595,224 @@ func TestService_CreatePrivateChannel_MapsError(t *testing.T) {
 	}
 	if !errors.Is(err, ErrForbidden) {
 		t.Fatalf("expected ErrForbidden, got %v", err)
+	}
+}
+
+func TestService_ListMembers_MapsMembers(t *testing.T) {
+	ctx := context.Background()
+
+	col := msmodels.NewConversationMemberCollectionResponse()
+	m1 := newAadUserMember("m-1", "u-1", "Alice", []string{"owner"})
+	m2 := newAadUserMember("m-2", "u-2", "Bob", []string{"member"})
+	col.SetValue([]msmodels.ConversationMemberable{m1, m2})
+
+	api := &fakeChannelAPI{membersResp: col}
+	m := &fakeMapper{}
+	svc := NewService(api, m)
+
+	got, err := svc.ListMembers(ctx, "team-1", "chan-1")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if len(got) != 2 {
+		t.Fatalf("expected 2 members, got %d", len(got))
+	}
+
+	if got[0].ID != "m-1" || got[0].UserID != "u-1" || got[0].DisplayName != "Alice" || got[0].Role != "owner" {
+		t.Errorf("unexpected first member: %+v", got[0])
+	}
+	if got[1].ID != "m-2" || got[1].UserID != "u-2" || got[1].DisplayName != "Bob" || got[1].Role != "member" {
+		t.Errorf("unexpected second member: %+v", got[1])
+	}
+
+	if m.lastTeamName != "team-1" || m.lastChannelName != "chan-1" {
+		t.Errorf("expected mapper called with team-1/chan-1, got team=%q, chan=%q", m.lastTeamName, m.lastChannelName)
+	}
+	if api.lastTeamID != "team-1" || api.lastChanID != "chan-1" {
+		t.Errorf("expected api called with team-1/chan-1, got team=%q, chan=%q", api.lastTeamID, api.lastChanID)
+	}
+}
+
+func TestService_ListMembers_MapsError(t *testing.T) {
+	ctx := context.Background()
+	api := &fakeChannelAPI{
+		membersErr: &sender.RequestError{
+			Code:    "AccessDenied",
+			Message: "nope",
+		},
+	}
+	svc := NewService(api, &fakeMapper{})
+
+	_, err := svc.ListMembers(ctx, "team-1", "chan-1")
+	if err == nil {
+		t.Fatalf("expected error, got nil")
+	}
+	if !errors.Is(err, ErrForbidden) {
+		t.Fatalf("expected ErrForbidden, got %v", err)
+	}
+}
+
+func TestService_AddMember_OwnerRole(t *testing.T) {
+	ctx := context.Background()
+
+	member := newAadUserMember("m-10", "u-10", "OwnerUser", []string{"owner"})
+	api := &fakeChannelAPI{addMemberResp: member}
+	m := &fakeMapper{}
+	svc := NewService(api, m)
+
+	got, err := svc.AddMember(ctx, "team-1", "chan-1", "user-ref", true)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if got.ID != "m-10" || got.UserID != "u-10" || got.DisplayName != "OwnerUser" || got.Role != "owner" {
+		t.Errorf("unexpected mapped member: %+v", got)
+	}
+
+	if api.lastAddUserRef != "user-ref" || api.lastAddRole != "owner" {
+		t.Errorf("expected AddMember called with user-ref/owner, got user=%q role=%q", api.lastAddUserRef, api.lastAddRole)
+	}
+	if api.lastTeamID != "team-1" || api.lastChanID != "chan-1" {
+		t.Errorf("expected api called with team-1/chan-1, got team=%q, chan=%q", api.lastTeamID, api.lastChanID)
+	}
+}
+
+func TestService_AddMember_MapsError(t *testing.T) {
+	ctx := context.Background()
+	api := &fakeChannelAPI{
+		addMemberErr: &sender.RequestError{
+			Code:    "AccessDenied",
+			Message: "nope",
+		},
+	}
+	svc := NewService(api, &fakeMapper{})
+
+	_, err := svc.AddMember(ctx, "team-1", "chan-1", "user-ref", false)
+	if err == nil {
+		t.Fatalf("expected error, got nil")
+	}
+	if !errors.Is(err, ErrForbidden) {
+		t.Fatalf("expected ErrForbidden, got %v", err)
+	}
+}
+
+func TestService_UpdateMemberRole_OwnerRole(t *testing.T) {
+	ctx := context.Background()
+
+	member := newAadUserMember("m-20", "u-20", "PromotedUser", []string{"owner"})
+	api := &fakeChannelAPI{updateMemberResp: member}
+	m := &fakeMapper{}
+	svc := NewService(api, m)
+
+	got, err := svc.UpdateMemberRole(ctx, "team-1", "chan-1", "user-ref", true)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if got.ID != "m-20" || got.UserID != "u-20" || got.DisplayName != "PromotedUser" || got.Role != "owner" {
+		t.Errorf("unexpected mapped member: %+v", got)
+	}
+
+	if m.lastUserRef != "user-ref" || m.lastTeamIDForUser != "team-1" || m.lastChannelIDForUser != "chan-1" {
+		t.Errorf("expected mapper called with team-1/chan-1/user-ref, got team=%q chan=%q user=%q",
+			m.lastTeamIDForUser, m.lastChannelIDForUser, m.lastUserRef)
+	}
+
+	if api.lastUpdateMemberID != "user-ref" || api.lastUpdateRole != "owner" {
+		t.Errorf("expected UpdateMemberRole called with memberID=user-ref role=owner, got id=%q role=%q",
+			api.lastUpdateMemberID, api.lastUpdateRole)
+	}
+}
+
+func TestService_UpdateMemberRole_MapperError(t *testing.T) {
+	ctx := context.Background()
+	mapErr := errors.New("map user failed")
+	api := &fakeChannelAPI{}
+	m := &fakeMapper{mapUserRefErr: mapErr}
+	svc := NewService(api, m)
+
+	_, err := svc.UpdateMemberRole(ctx, "team-1", "chan-1", "user-ref", true)
+	if err == nil {
+		t.Fatalf("expected error, got nil")
+	}
+	if !errors.Is(err, mapErr) {
+		t.Fatalf("expected mapper error, got %v", err)
+	}
+}
+
+func TestService_UpdateMemberRole_MapsError(t *testing.T) {
+	ctx := context.Background()
+	api := &fakeChannelAPI{
+		updateMemberErr: &sender.RequestError{
+			Code:    "AccessDenied",
+			Message: "nope",
+		},
+	}
+	svc := NewService(api, &fakeMapper{})
+
+	_, err := svc.UpdateMemberRole(ctx, "team-1", "chan-1", "user-ref", false)
+	if err == nil {
+		t.Fatalf("expected error, got nil")
+	}
+	if !errors.Is(err, ErrForbidden) {
+		t.Fatalf("expected ErrForbidden, got %v", err)
+	}
+}
+
+func TestService_RemoveMember_Success(t *testing.T) {
+	ctx := context.Background()
+
+	api := &fakeChannelAPI{}
+	m := &fakeMapper{}
+	svc := NewService(api, m)
+
+	err := svc.RemoveMember(ctx, "team-1", "chan-1", "user-ref")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if api.lastRemoveMemberID != "user-ref" {
+		t.Errorf("expected RemoveMember called with memberID=user-ref, got %q", api.lastRemoveMemberID)
+	}
+	if api.lastTeamID != "team-1" || api.lastChanID != "chan-1" {
+		t.Errorf("expected api called with team-1/chan-1, got team=%q chan=%q", api.lastTeamID, api.lastChanID)
+	}
+}
+
+func TestService_RemoveMember_MapsError(t *testing.T) {
+	ctx := context.Background()
+	api := &fakeChannelAPI{
+		removeMemberErr: &sender.RequestError{
+			Code:    "AccessDenied",
+			Message: "nope",
+		},
+	}
+	svc := NewService(api, &fakeMapper{})
+
+	err := svc.RemoveMember(ctx, "team-1", "chan-1", "user-ref")
+	if err == nil {
+		t.Fatalf("expected error, got nil")
+	}
+	if !errors.Is(err, ErrForbidden) {
+		t.Fatalf("expected ErrForbidden, got %v", err)
+	}
+}
+
+func TestMapConversationMemberToChannelMember_NilInput(t *testing.T) {
+	got := mapConversationMemberToChannelMember(nil)
+	if got != nil {
+		t.Errorf("expected nil, got %+v", got)
+	}
+}
+
+func TestMapConversationMemberToChannelMember_UserMember(t *testing.T) {
+	member := newAadUserMember("m-99", "u-99", "Some User", []string{"owner"})
+	got := mapConversationMemberToChannelMember(member)
+	if got == nil {
+		t.Fatalf("expected non-nil, got nil")
+	}
+	if got.ID != "m-99" || got.UserID != "u-99" || got.DisplayName != "Some User" || got.Role != "owner" {
+		t.Errorf("unexpected mapped member: %+v", got)
 	}
 }

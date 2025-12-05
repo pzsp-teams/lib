@@ -26,6 +26,10 @@ func (m *fakeMapper) MapChannelNameToChannelID(ctx context.Context, teamID, chan
 	return channelName, nil
 }
 
+func (m *fakeMapper) MapUserRefToMemberID(ctx context.Context, userRef, teamID, channelID string) (string, error) {
+	return userRef, nil
+}
+
 type fakeTeamsAPI struct {
 	getResp    msmodels.Teamable
 	getErr     *sender.RequestError
