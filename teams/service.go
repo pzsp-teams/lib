@@ -20,8 +20,8 @@ func NewService(teamsAPI api.Teams, m mapper.Mapper) *Service {
 }
 
 // Get will be used later
-func (s *Service) Get(ctx context.Context, teamName string) (*Team, error) {
-	teamID, err := s.nameMapper.MapTeamNameToTeamID(ctx, teamName)
+func (s *Service) Get(ctx context.Context, teamRef string) (*Team, error) {
+	teamID, err := s.nameMapper.MapTeamRefToTeamID(ctx, teamRef)
 	if err != nil {
 		return nil, err
 	}
@@ -48,8 +48,8 @@ func (s *Service) ListMyJoined(ctx context.Context) ([]*Team, error) {
 }
 
 // Update will be used later
-func (s *Service) Update(ctx context.Context, teamName string, patch *msmodels.Team) (*Team, error) {
-	teamID, err := s.nameMapper.MapTeamNameToTeamID(ctx, teamName)
+func (s *Service) Update(ctx context.Context, teamRef string, patch *msmodels.Team) (*Team, error) {
+	teamID, err := s.nameMapper.MapTeamRefToTeamID(ctx, teamRef)
 	if err != nil {
 		return nil, err
 	}
@@ -86,8 +86,8 @@ func (s *Service) CreateFromTemplate(ctx context.Context, displayName, descripti
 }
 
 // Archive will be used later
-func (s *Service) Archive(ctx context.Context, teamName string, spoReadOnlyForMembers *bool) error {
-	teamID, err := s.nameMapper.MapTeamNameToTeamID(ctx, teamName)
+func (s *Service) Archive(ctx context.Context, teamRef string, spoReadOnlyForMembers *bool) error {
+	teamID, err := s.nameMapper.MapTeamRefToTeamID(ctx, teamRef)
 	if err != nil {
 		return err
 	}
@@ -98,8 +98,8 @@ func (s *Service) Archive(ctx context.Context, teamName string, spoReadOnlyForMe
 }
 
 // Unarchive will be used later
-func (s *Service) Unarchive(ctx context.Context, teamName string) error {
-	teamID, err := s.nameMapper.MapTeamNameToTeamID(ctx, teamName)
+func (s *Service) Unarchive(ctx context.Context, teamRef string) error {
+	teamID, err := s.nameMapper.MapTeamRefToTeamID(ctx, teamRef)
 	if err != nil {
 		return err
 	}
@@ -110,8 +110,8 @@ func (s *Service) Unarchive(ctx context.Context, teamName string) error {
 }
 
 // Delete will be used later
-func (s *Service) Delete(ctx context.Context, teamName string) error {
-	teamID, err := s.nameMapper.MapTeamNameToTeamID(ctx, teamName)
+func (s *Service) Delete(ctx context.Context, teamRef string) error {
+	teamID, err := s.nameMapper.MapTeamRefToTeamID(ctx, teamRef)
 	if err != nil {
 		return err
 	}
