@@ -43,11 +43,7 @@ func (s *Service) ListChannels(ctx context.Context, teamName string) ([]*Channel
 
 // Get will be used later
 func (s *Service) Get(ctx context.Context, teamName, channelName string) (*Channel, error) {
-	teamID, err := s.mapper.MapTeamNameToTeamID(ctx, teamName)
-	if err != nil {
-		return nil, err
-	}
-	channelID, err := s.mapper.MapChannelNameToChannelID(ctx, teamID, channelName)
+	teamID, channelID, err := s.resolveTeamAndChannelID(ctx, teamName, channelName)
 	if err != nil {
 		return nil, err
 	}
@@ -103,11 +99,7 @@ func (s *Service) CreatePrivateChannel(ctx context.Context, teamName, name strin
 
 // Delete will be used later
 func (s *Service) Delete(ctx context.Context, teamName, channelName string) error {
-	teamID, err := s.mapper.MapTeamNameToTeamID(ctx, teamName)
-	if err != nil {
-		return err
-	}
-	channelID, err := s.mapper.MapChannelNameToChannelID(ctx, teamID, channelName)
+	teamID, channelID, err := s.resolveTeamAndChannelID(ctx, teamName, channelName)
 	if err != nil {
 		return err
 	}
@@ -120,11 +112,7 @@ func (s *Service) Delete(ctx context.Context, teamName, channelName string) erro
 
 // SendMessage will be used later
 func (s *Service) SendMessage(ctx context.Context, teamName, channelName string, body MessageBody) (*Message, error) {
-	teamID, err := s.mapper.MapTeamNameToTeamID(ctx, teamName)
-	if err != nil {
-		return nil, err
-	}
-	channelID, err := s.mapper.MapChannelNameToChannelID(ctx, teamID, channelName)
+	teamID, channelID, err := s.resolveTeamAndChannelID(ctx, teamName, channelName)
 	if err != nil {
 		return nil, err
 	}
@@ -143,11 +131,7 @@ func (s *Service) SendMessage(ctx context.Context, teamName, channelName string,
 
 // ListMessages retrieves messages from a channel
 func (s *Service) ListMessages(ctx context.Context, teamName, channelName string, opts *ListMessagesOptions) ([]*Message, error) {
-	teamID, err := s.mapper.MapTeamNameToTeamID(ctx, teamName)
-	if err != nil {
-		return nil, err
-	}
-	channelID, err := s.mapper.MapChannelNameToChannelID(ctx, teamID, channelName)
+	teamID, channelID, err := s.resolveTeamAndChannelID(ctx, teamName, channelName)
 	if err != nil {
 		return nil, err
 	}
@@ -171,11 +155,7 @@ func (s *Service) ListMessages(ctx context.Context, teamName, channelName string
 
 // GetMessage retrieves a specific message from a channel
 func (s *Service) GetMessage(ctx context.Context, teamName, channelName, messageID string) (*Message, error) {
-	teamID, err := s.mapper.MapTeamNameToTeamID(ctx, teamName)
-	if err != nil {
-		return nil, err
-	}
-	channelID, err := s.mapper.MapChannelNameToChannelID(ctx, teamID, channelName)
+	teamID, channelID, err := s.resolveTeamAndChannelID(ctx, teamName, channelName)
 	if err != nil {
 		return nil, err
 	}
@@ -188,11 +168,7 @@ func (s *Service) GetMessage(ctx context.Context, teamName, channelName, message
 
 // ListReplies retrieves replies to a specific message
 func (s *Service) ListReplies(ctx context.Context, teamName, channelName, messageID string, top *int32) ([]*Message, error) {
-	teamID, err := s.mapper.MapTeamNameToTeamID(ctx, teamName)
-	if err != nil {
-		return nil, err
-	}
-	channelID, err := s.mapper.MapChannelNameToChannelID(ctx, teamID, channelName)
+	teamID, channelID, err := s.resolveTeamAndChannelID(ctx, teamName, channelName)
 	if err != nil {
 		return nil, err
 	}
@@ -210,11 +186,7 @@ func (s *Service) ListReplies(ctx context.Context, teamName, channelName, messag
 
 // GetReply retrieves a specific reply to a message
 func (s *Service) GetReply(ctx context.Context, teamName, channelName, messageID, replyID string) (*Message, error) {
-	teamID, err := s.mapper.MapTeamNameToTeamID(ctx, teamName)
-	if err != nil {
-		return nil, err
-	}
-	channelID, err := s.mapper.MapChannelNameToChannelID(ctx, teamID, channelName)
+	teamID, channelID, err := s.resolveTeamAndChannelID(ctx, teamName, channelName)
 	if err != nil {
 		return nil, err
 	}
@@ -226,11 +198,7 @@ func (s *Service) GetReply(ctx context.Context, teamName, channelName, messageID
 }
 
 func (s *Service) ListMembers(ctx context.Context, teamName, channelName string) ([]*ChannelMember, error) {
-	teamID, err := s.mapper.MapTeamNameToTeamID(ctx, teamName)
-	if err != nil {
-		return nil, err
-	}
-	channelID, err := s.mapper.MapChannelNameToChannelID(ctx, teamID, channelName)
+	teamID, channelID, err := s.resolveTeamAndChannelID(ctx, teamName, channelName)
 	if err != nil {
 		return nil, err
 	}
@@ -246,11 +214,7 @@ func (s *Service) ListMembers(ctx context.Context, teamName, channelName string)
 }
 
 func (s *Service) AddMember(ctx context.Context, teamName, channelName, userRef string, isOwner bool) (*ChannelMember, error) {
-	teamID, err := s.mapper.MapTeamNameToTeamID(ctx, teamName)
-	if err != nil {
-		return nil, err
-	}
-	channelID, err := s.mapper.MapChannelNameToChannelID(ctx, teamID, channelName)
+	teamID, channelID, err := s.resolveTeamAndChannelID(ctx, teamName, channelName)
 	if err != nil {
 		return nil, err
 	}
@@ -266,11 +230,7 @@ func (s *Service) AddMember(ctx context.Context, teamName, channelName, userRef 
 }
 
 func (s *Service) UpdateMemberRole(ctx context.Context, teamName, channelName, userRef string, isOwner bool) (*ChannelMember, error) {
-	teamID, err := s.mapper.MapTeamNameToTeamID(ctx, teamName)
-	if err != nil {
-		return nil, err
-	}
-	channelID, err := s.mapper.MapChannelNameToChannelID(ctx, teamID, channelName)
+	teamID, channelID, err := s.resolveTeamAndChannelID(ctx, teamName, channelName)
 	if err != nil {
 		return nil, err
 	}
@@ -290,11 +250,7 @@ func (s *Service) UpdateMemberRole(ctx context.Context, teamName, channelName, u
 }
 
 func (s *Service) RemoveMember(ctx context.Context, teamName, channelName, userRef string) error {
-	teamID, err := s.mapper.MapTeamNameToTeamID(ctx, teamName)
-	if err != nil {
-		return err
-	}
-	channelID, err := s.mapper.MapChannelNameToChannelID(ctx, teamID, channelName)
+	teamID, channelID, err := s.resolveTeamAndChannelID(ctx, teamName, channelName)
 	if err != nil {
 		return err
 	}
@@ -307,6 +263,18 @@ func (s *Service) RemoveMember(ctx context.Context, teamName, channelName, userR
 		return mapError(senderErr)
 	}
 	return nil
+}
+
+func (s *Service) resolveTeamAndChannelID(ctx context.Context, teamName, channelName string) (string, string, error) {
+	teamID, err := s.mapper.MapTeamNameToTeamID(ctx, teamName)
+	if err != nil {
+		return "", "", err
+	}
+	channelID, err := s.mapper.MapChannelNameToChannelID(ctx, teamID, channelName)
+	if err != nil {
+		return "", "", err
+	}
+	return teamID, channelID, nil
 }
 
 func mapChatMessageToMessage(msg msmodels.ChatMessageable) *Message {
