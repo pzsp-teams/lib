@@ -449,3 +449,75 @@ func TestMapChatMessageToMessage_NilInput(t *testing.T) {
 		t.Errorf("expected nil, got %+v", got)
 	}
 }
+
+func TestService_CreatePrivateChannel_Success(t *testing.T) {
+	ctx := context.Background()
+	created := newGraphChannel("pc-1", "Secret channel")
+
+	api := &fakeChannelAPI{
+		createResp: created,
+	}
+	m := &fakeMapper{}
+	svc := NewService(api, m)
+
+	memberRefs := []string{"user1", "user2"}
+	ownerRefs := []string{"leader1"}
+
+	got, err := svc.CreatePrivateChannel(ctx, "team-priv", "Secret channel", memberRefs, ownerRefs)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if got == nil {
+		t.Fatalf("expected non-nil channel, got nil")
+	}
+
+	if got.ID != "pc-1" || got.Name != "Secret channel" {
+		t.Errorf("unexpected result: %+v", got)
+	}
+	if got.IsGeneral {
+		t.Errorf("expected IsGeneral=false for private channel, got true")
+	}
+	if m.lastTeamName != "team-priv" {
+		t.Errorf("expected mapper to be called with team-priv, got %q", m.lastTeamName)
+	}
+	if api.lastTeamID != "team-priv" {
+		t.Errorf("expected api to be called with team-priv, got %q", api.lastTeamID)
+	}
+}
+
+func TestService_CreatePrivateChannel_MapperError(t *testing.T) {
+	ctx := context.Background()
+	mapErr := errors.New("mapper failed")
+
+	m := &fakeMapper{mapTeamErr: mapErr}
+	api := &fakeChannelAPI{}
+	svc := NewService(api, m)
+
+	_, err := svc.CreatePrivateChannel(ctx, "some-team", "Secret", nil, nil)
+	if err == nil {
+		t.Fatalf("expected error, got nil")
+	}
+	if !errors.Is(err, mapErr) {
+		t.Fatalf("expected mapper error %v, got %v", mapErr, err)
+	}
+}
+
+func TestService_CreatePrivateChannel_MapsError(t *testing.T) {
+	ctx := context.Background()
+	api := &fakeChannelAPI{
+		createErr: &sender.RequestError{
+			Code:    "AccessDenied",
+			Message: "nope",
+		},
+	}
+	svc := NewService(api, &fakeMapper{})
+
+	_, err := svc.CreatePrivateChannel(ctx, "team-1", "Secret", nil, nil)
+	if err == nil {
+		t.Fatalf("expected error, got nil")
+	}
+	if !errors.Is(err, ErrForbidden) {
+		t.Fatalf("expected ErrForbidden, got %v", err)
+	}
+}
