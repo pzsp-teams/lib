@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"fmt"
 
 	graph "github.com/microsoftgraph/msgraph-sdk-go"
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
@@ -15,6 +16,7 @@ type Channels interface {
 	ListChannels(ctx context.Context, teamID string) (msmodels.ChannelCollectionResponseable, *sender.RequestError)
 	GetChannel(ctx context.Context, teamID, channelID string) (msmodels.Channelable, *sender.RequestError)
 	CreateChannel(ctx context.Context, teamID string, channel msmodels.Channelable) (msmodels.Channelable, *sender.RequestError)
+	CreatePrivateChannelWithMembers(ctx context.Context, teamID, displayName string, memberIDs, ownersID[]string) (msmodels.Channelable, *sender.RequestError)
 	DeleteChannel(ctx context.Context, teamID, channelID string) *sender.RequestError
 	SendMessage(ctx context.Context, teamID, channelID string, message msmodels.ChatMessageable) (msmodels.ChatMessageable, *sender.RequestError)
 	ListMessages(ctx context.Context, teamID, channelID string, top *int32) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError)
@@ -103,6 +105,48 @@ func (api *channels) CreateChannel(ctx context.Context, teamID string, channel m
 	return out, nil
 }
 
+// CreatePrivateChannelWithMembers will be used later
+func (api *channels) CreatePrivateChannelWithMembers(ctx context.Context, teamID, displayName string, memberIDs, ownerIDs []string) (msmodels.Channelable, *sender.RequestError) {
+	ch := msmodels.NewChannel()
+	ch.SetDisplayName(&displayName)
+	mt := msmodels.PRIVATE_CHANNELMEMBERSHIPTYPE
+	ch.SetMembershipType(&mt)
+
+	members := make([]msmodels.ConversationMemberable, 0, len(memberIDs)+len(ownerIDs))
+	addToMembers(&members, memberIDs, "member")
+	addToMembers(&members, ownerIDs, "owner")
+	ch.SetMembers(members)
+	call := func(ctx context.Context) (sender.Response, error) {
+		return api.client.
+			Teams().
+			ByTeamId(teamID).
+			Channels().
+			Post(ctx, ch, nil)
+	}
+
+	resp, err := sender.SendRequest(ctx, call, api.techParams)
+	if err != nil {
+		return nil, err
+	}
+
+	out, ok := resp.(msmodels.Channelable)
+	if !ok {
+		return nil, &sender.RequestError{Code: "TypeCastError", Message: "Expected Channelable"}
+	}
+
+	return out, nil
+}
+
+func addToMembers(members *[]msmodels.ConversationMemberable, userIDs []string, role string) {
+	for _, userID := range userIDs {
+		member := msmodels.NewAadUserConversationMember()
+		member.SetRoles([]string{role})
+		member.SetAdditionalData(map[string]any{
+			"user@odata.bind": fmt.Sprintf("https://graph.microsoft.com/v1.0/users('%s')", userID),
+		})
+		*members = append(*members, member)
+	}
+}
 // DeleteChannel will be used later
 func (api *channels) DeleteChannel(ctx context.Context, teamID, channelID string) *sender.RequestError {
 	call := func(ctx context.Context) (sender.Response, error) {
