@@ -83,6 +83,23 @@ func (s *Service) Create(ctx context.Context, teamName, name string) (*Channel, 
 	}, nil
 }
 
+func (s *Service) CreatePrivateChannel(ctx context.Context, teamName, name string, memberRefs, ownerRefs []string) (*Channel, error) {
+	teamID, err := s.mapper.MapTeamNameToTeamID(ctx, teamName)
+	if err != nil {
+		return nil, err
+	}
+
+	created, senderErr := s.api.CreatePrivateChannelWithMembers(ctx, teamID, name, memberRefs, ownerRefs)
+	if senderErr != nil {
+		return nil, mapError(senderErr)
+	}
+	return &Channel{
+		ID:        deref(created.GetId()),
+		Name:      deref(created.GetDisplayName()),
+		IsGeneral: false,
+	}, nil
+}
+
 // Delete will be used later
 func (s *Service) Delete(ctx context.Context, teamName, channelName string) error {
 	teamID, err := s.mapper.MapTeamNameToTeamID(ctx, teamName)
