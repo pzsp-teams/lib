@@ -2,6 +2,7 @@ package teams
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
@@ -126,10 +127,17 @@ func (s *Service) Delete(ctx context.Context, teamRef string) error {
 // RestoreDeleted will be used later
 func (s *Service) RestoreDeleted(ctx context.Context, deletedGroupID string) (string, error) {
 	obj, err := s.teamAPI.RestoreDeleted(ctx, deletedGroupID)
-	if err != nil || obj == nil {
+	if err != nil {
 		return "", snd.MapError(err, snd.WithResource(snd.Team, deletedGroupID))
 	}
-	return *obj.GetId(), nil
+	if obj == nil {
+        return "", fmt.Errorf("restored object is nil")
+    }
+	id := deref(obj.GetId())
+	if id == "" {
+		return "", fmt.Errorf("restored object has empty id")
+	}
+	return id, nil
 }
 
 func mapGraphTeam(t msmodels.Teamable) *Team {

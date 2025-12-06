@@ -10,8 +10,8 @@ import (
 )
 
 type fakeTeamResolver struct {
-	resolveTeamErr   error
-	lastTeamName string
+	resolveTeamErr error
+	lastTeamName   string
 }
 
 func (m *fakeTeamResolver) ResolveTeamRefToID(ctx context.Context, teamName string) (string, error) {
@@ -260,15 +260,16 @@ func TestService_ListChannels_MapsErrors(t *testing.T) {
 	ctx := context.Background()
 	api := &fakeChannelAPI{
 		listErr: &sender.RequestError{
-			Code:    "ResourceNotFound",
+			Code:    404, // ResourceNotFound
 			Message: "team not found",
 		},
 	}
 	svc := NewService(api, &fakeTeamResolver{}, &fakeChannelResolver{})
 
 	_, err := svc.ListChannels(ctx, "non-existing-team")
-	if !errors.Is(err, ErrChannelNotFound) {
-		t.Fatalf("expected ErrChannelNotFound, got %v", err)
+	var notFound sender.ErrResourceNotFound
+	if !errors.As(err, &notFound) {
+		t.Fatalf("expected ErrResourceNotFound, got %v", err)
 	}
 }
 
@@ -325,15 +326,16 @@ func TestService_Delete_MapsError(t *testing.T) {
 	ctx := context.Background()
 	api := &fakeChannelAPI{
 		deleteErr: &sender.RequestError{
-			Code:    "AccessDenied",
+			Code:    403,
 			Message: "nope",
 		},
 	}
 	svc := NewService(api, &fakeTeamResolver{}, &fakeChannelResolver{})
 
 	err := svc.Delete(ctx, "team-1", "chan-1")
-	if !errors.Is(err, ErrForbidden) {
-		t.Fatalf("expected ErrForbidden, got %v", err)
+	var forbidden sender.ErrAccessForbidden
+	if !errors.As(err, &forbidden) {
+		t.Fatalf("expected ErrAccessForbidden, got %v", err)
 	}
 }
 
@@ -376,7 +378,7 @@ func TestService_SendMessage_MapsError(t *testing.T) {
 	ctx := context.Background()
 	api := &fakeChannelAPI{
 		sendMsgErr: &sender.RequestError{
-			Code:    "AccessDenied",
+			Code:    403,
 			Message: "not allowed",
 		},
 	}
@@ -384,8 +386,9 @@ func TestService_SendMessage_MapsError(t *testing.T) {
 
 	body := MessageBody{Content: "test"}
 	_, err := svc.SendMessage(ctx, "team-1", "chan-1", body)
-	if !errors.Is(err, ErrForbidden) {
-		t.Fatalf("expected ErrForbidden, got %v", err)
+	var forbidden sender.ErrAccessForbidden
+	if !errors.As(err, &forbidden) {
+		t.Fatalf("expected ErrAccessForbidden, got %v", err)
 	}
 }
 
@@ -573,7 +576,7 @@ func TestService_CreatePrivateChannel_MapsError(t *testing.T) {
 	ctx := context.Background()
 	api := &fakeChannelAPI{
 		createErr: &sender.RequestError{
-			Code:    "AccessDenied",
+			Code:    403,
 			Message: "nope",
 		},
 	}
@@ -587,8 +590,9 @@ func TestService_CreatePrivateChannel_MapsError(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expected error, got nil")
 	}
-	if !errors.Is(err, ErrForbidden) {
-		t.Fatalf("expected ErrForbidden, got %v", err)
+	var forbidden sender.ErrAccessForbidden
+	if !errors.As(err, &forbidden) {
+		t.Fatalf("expected ErrAccessForbidden, got %v", err)
 	}
 }
 
@@ -635,7 +639,7 @@ func TestService_ListMembers_MapsError(t *testing.T) {
 	ctx := context.Background()
 	api := &fakeChannelAPI{
 		membersErr: &sender.RequestError{
-			Code:    "AccessDenied",
+			Code:    403,
 			Message: "nope",
 		},
 	}
@@ -649,8 +653,9 @@ func TestService_ListMembers_MapsError(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expected error, got nil")
 	}
-	if !errors.Is(err, ErrForbidden) {
-		t.Fatalf("expected ErrForbidden, got %v", err)
+	var forbidden sender.ErrAccessForbidden
+	if !errors.As(err, &forbidden) {
+		t.Fatalf("expected ErrAccessForbidden, got %v", err)
 	}
 }
 
@@ -686,7 +691,7 @@ func TestService_AddMember_MapsError(t *testing.T) {
 	ctx := context.Background()
 	api := &fakeChannelAPI{
 		addMemberErr: &sender.RequestError{
-			Code:    "AccessDenied",
+			Code:    403,
 			Message: "nope",
 		},
 	}
@@ -700,8 +705,9 @@ func TestService_AddMember_MapsError(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expected error, got nil")
 	}
-	if !errors.Is(err, ErrForbidden) {
-		t.Fatalf("expected ErrForbidden, got %v", err)
+	var forbidden sender.ErrAccessForbidden
+	if !errors.As(err, &forbidden) {
+		t.Fatalf("expected ErrAccessForbidden, got %v", err)
 	}
 }
 
@@ -759,7 +765,7 @@ func TestService_UpdateMemberRole_MapsError(t *testing.T) {
 	ctx := context.Background()
 	api := &fakeChannelAPI{
 		updateMemberErr: &sender.RequestError{
-			Code:    "AccessDenied",
+			Code:    403,
 			Message: "nope",
 		},
 	}
@@ -773,8 +779,9 @@ func TestService_UpdateMemberRole_MapsError(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expected error, got nil")
 	}
-	if !errors.Is(err, ErrForbidden) {
-		t.Fatalf("expected ErrForbidden, got %v", err)
+	var forbidden sender.ErrAccessForbidden
+	if !errors.As(err, &forbidden) {
+		t.Fatalf("expected ErrAccessForbidden, got %v", err)
 	}
 }
 
@@ -805,7 +812,7 @@ func TestService_RemoveMember_MapsError(t *testing.T) {
 	ctx := context.Background()
 	api := &fakeChannelAPI{
 		removeMemberErr: &sender.RequestError{
-			Code:    "AccessDenied",
+			Code:    403,
 			Message: "nope",
 		},
 	}
@@ -819,8 +826,9 @@ func TestService_RemoveMember_MapsError(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expected error, got nil")
 	}
-	if !errors.Is(err, ErrForbidden) {
-		t.Fatalf("expected ErrForbidden, got %v", err)
+	var forbidden sender.ErrAccessForbidden
+	if !errors.As(err, &forbidden) {
+		t.Fatalf("expected ErrAccessForbidden, got %v", err)
 	}
 }
 
