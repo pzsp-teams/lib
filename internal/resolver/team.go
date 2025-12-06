@@ -1,4 +1,4 @@
-package mapper
+package resolver
 
 import (
 	"context"
@@ -11,24 +11,24 @@ import (
 	"github.com/pzsp-teams/lib/internal/util"
 )
 
-// TeamMapper will be used later
-type TeamMapper interface {
-	MapTeamRefToTeamID(ctx context.Context, teamRef string) (string, error)
+// TeamResolver will be used later
+type TeamResolver interface {
+	ResolveTeamRefToID(ctx context.Context, teamRef string) (string, error)
 }
 
-type teamMapper struct {
+type teamResolver struct {
 	teamsAPI api.TeamAPI
 }
 
 // New will be used later
-func NewTeamMapper(teamsAPI api.TeamAPI, channelsAPI api.ChannelAPI) TeamMapper {
-	return &teamMapper{
+func NewTeamResolver(teamsAPI api.TeamAPI, channelsAPI api.ChannelAPI) TeamResolver {
+	return &teamResolver{
 		teamsAPI: teamsAPI,
 	}
 }
 
 // MapTeamNameToTeamID will be used later
-func (m *teamMapper) MapTeamRefToTeamID(ctx context.Context, teamRef string) (string, error) {
+func (m *teamResolver) ResolveTeamRefToID(ctx context.Context, teamRef string) (string, error) {
 	ref := strings.TrimSpace(teamRef)
 	if ref == "" {
 		return "", fmt.Errorf("empty team reference")
