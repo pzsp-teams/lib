@@ -1,4 +1,4 @@
-package mapper
+package resolver
 
 import (
 	"context"
@@ -127,7 +127,7 @@ func newGraphChannel(id, name string) msmodels.Channelable {
 	return ch
 }
 
-func TestMapper_MapTeamNameToTeamID_Found(t *testing.T) {
+func TestResolver_MapTeamNameToTeamID_Found(t *testing.T) {
 	ctx := context.Background()
 
 	col := msmodels.NewTeamCollectionResponse()
@@ -137,11 +137,11 @@ func TestMapper_MapTeamNameToTeamID_Found(t *testing.T) {
 
 	teamsFake := &fakeTeamsAPI{listResp: col}
 
-	m := &teamMapper{
+	m := &teamResolver{
 		teamsAPI: teamsFake,
 	}
 
-	id, err := m.MapTeamRefToTeamID(ctx, "Beta")
+	id, err := m.ResolveTeamRefToID(ctx, "Beta")
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -150,7 +150,7 @@ func TestMapper_MapTeamNameToTeamID_Found(t *testing.T) {
 	}
 }
 
-func TestMapper_MapTeamNameToTeamID_NotFound(t *testing.T) {
+func TestResolver_MapTeamNameToTeamID_NotFound(t *testing.T) {
 	ctx := context.Background()
 
 	col := msmodels.NewTeamCollectionResponse()
@@ -160,11 +160,11 @@ func TestMapper_MapTeamNameToTeamID_NotFound(t *testing.T) {
 
 	teamsFake := &fakeTeamsAPI{listResp: col}
 
-	m := &teamMapper{
+	m := &teamResolver{
 		teamsAPI: teamsFake,
 	}
 
-	_, err := m.MapTeamRefToTeamID(ctx, "Beta")
+	_, err := m.ResolveTeamRefToID(ctx, "Beta")
 	if err == nil {
 		t.Fatalf("expected error, got nil")
 	}
@@ -173,7 +173,7 @@ func TestMapper_MapTeamNameToTeamID_NotFound(t *testing.T) {
 	}
 }
 
-func TestMapper_MapChannelNameToChannelID_Found(t *testing.T) {
+func TestResolver_MapChannelNameToChannelID_Found(t *testing.T) {
 	ctx := context.Background()
 
 	col := msmodels.NewChannelCollectionResponse()
@@ -183,11 +183,11 @@ func TestMapper_MapChannelNameToChannelID_Found(t *testing.T) {
 
 	chFake := &fakeChannelAPI{listResp: col}
 
-	m := &channelMapper{
+	m := &channelResolver{
 		channelsAPI: chFake,
 	}
 
-	id, err := m.MapChannelRefToChannelID(ctx, "team-123", "Random")
+	id, err := m.ResolveChannelRefToID(ctx, "team-123", "Random")
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -196,7 +196,7 @@ func TestMapper_MapChannelNameToChannelID_Found(t *testing.T) {
 	}
 }
 
-func TestMapper_MapChannelNameToChannelID_NotFound(t *testing.T) {
+func TestResolver_MapChannelNameToChannelID_NotFound(t *testing.T) {
 	ctx := context.Background()
 
 	col := msmodels.NewChannelCollectionResponse()
@@ -206,11 +206,11 @@ func TestMapper_MapChannelNameToChannelID_NotFound(t *testing.T) {
 
 	chFake := &fakeChannelAPI{listResp: col}
 
-	m := &channelMapper{
+	m := &channelResolver{
 		channelsAPI: chFake,
 	}
 
-	_, err := m.MapChannelRefToChannelID(ctx, "team-123", "Random")
+	_, err := m.ResolveChannelRefToID(ctx, "team-123", "Random")
 	if err == nil {
 		t.Fatalf("expected error, got nil")
 	}
@@ -236,7 +236,7 @@ func newAadMember(memberID, userID, displayName string, add map[string]any) msmo
 	return m
 }
 
-func TestMapper_MapUserRefToMemberID_MatchByUserID(t *testing.T) {
+func TestResolver_MapUserRefToMemberID_MatchByUserID(t *testing.T) {
 	ctx := context.Background()
 
 	col := msmodels.NewConversationMemberCollectionResponse()
@@ -245,11 +245,11 @@ func TestMapper_MapUserRefToMemberID_MatchByUserID(t *testing.T) {
 
 	chFake := &fakeChannelAPI{membersResp: col}
 
-	m := &channelMapper{
+	m := &channelResolver{
 		channelsAPI: chFake,
 	}
 
-	id, err := m.MapUserRefToMemberID(ctx, "team-1", "chan-1", "user-1")
+	id, err := m.ResolveUserRefToMemberID(ctx, "team-1", "chan-1", "user-1")
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -258,7 +258,7 @@ func TestMapper_MapUserRefToMemberID_MatchByUserID(t *testing.T) {
 	}
 }
 
-func TestMapper_MapUserRefToMemberID_MatchByDisplayName(t *testing.T) {
+func TestResolver_MapUserRefToMemberID_MatchByDisplayName(t *testing.T) {
 	ctx := context.Background()
 
 	col := msmodels.NewConversationMemberCollectionResponse()
@@ -267,11 +267,11 @@ func TestMapper_MapUserRefToMemberID_MatchByDisplayName(t *testing.T) {
 
 	chFake := &fakeChannelAPI{membersResp: col}
 
-	m := &channelMapper{
+	m := &channelResolver{
 		channelsAPI: chFake,
 	}
 
-	id, err := m.MapUserRefToMemberID(ctx, "team-1", "chan-1", "Bob")
+	id, err := m.ResolveUserRefToMemberID(ctx, "team-1", "chan-1", "Bob")
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -280,7 +280,7 @@ func TestMapper_MapUserRefToMemberID_MatchByDisplayName(t *testing.T) {
 	}
 }
 
-func TestMapper_MapUserRefToMemberID_MatchByUPNOrMail(t *testing.T) {
+func TestResolver_MapUserRefToMemberID_MatchByUPNOrMail(t *testing.T) {
 	ctx := context.Background()
 
 	col := msmodels.NewConversationMemberCollectionResponse()
@@ -294,11 +294,11 @@ func TestMapper_MapUserRefToMemberID_MatchByUPNOrMail(t *testing.T) {
 
 	chFake := &fakeChannelAPI{membersResp: col}
 
-	m := &channelMapper{
+	m := &channelResolver{
 		channelsAPI: chFake,
 	}
 
-	id, err := m.MapUserRefToMemberID(ctx, "team-1", "chan-1", "charlie@contoso.com")
+	id, err := m.ResolveUserRefToMemberID(ctx, "team-1", "chan-1", "charlie@contoso.com")
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -306,7 +306,7 @@ func TestMapper_MapUserRefToMemberID_MatchByUPNOrMail(t *testing.T) {
 		t.Fatalf("expected member id 'm-3', got %q", id)
 	}
 
-	id2, err := m.MapUserRefToMemberID(ctx, "team-1", "chan-1", "dave@contoso.com")
+	id2, err := m.ResolveUserRefToMemberID(ctx, "team-1", "chan-1", "dave@contoso.com")
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -315,15 +315,15 @@ func TestMapper_MapUserRefToMemberID_MatchByUPNOrMail(t *testing.T) {
 	}
 }
 
-func TestMapper_MapUserRefToMemberID_NoMembers(t *testing.T) {
+func TestResolver_MapUserRefToMemberID_NoMembers(t *testing.T) {
 	ctx := context.Background()
 
 	chFake := &fakeChannelAPI{membersResp: nil}
-	m := &channelMapper{
+	m := &channelResolver{
 		channelsAPI: chFake,
 	}
 
-	_, err := m.MapUserRefToMemberID(ctx, "team-1", "chan-1", "someone@contoso.com")
+	_, err := m.ResolveUserRefToMemberID(ctx, "team-1", "chan-1", "someone@contoso.com")
 	if err == nil {
 		t.Fatalf("expected error, got nil")
 	}
@@ -332,7 +332,7 @@ func TestMapper_MapUserRefToMemberID_NoMembers(t *testing.T) {
 	}
 }
 
-func TestMapper_MapUserRefToMemberID_NotFound(t *testing.T) {
+func TestResolver_MapUserRefToMemberID_NotFound(t *testing.T) {
 	ctx := context.Background()
 
 	col := msmodels.NewConversationMemberCollectionResponse()
@@ -341,11 +341,11 @@ func TestMapper_MapUserRefToMemberID_NotFound(t *testing.T) {
 
 	chFake := &fakeChannelAPI{membersResp: col}
 
-	m := &channelMapper{
+	m := &channelResolver{
 		channelsAPI: chFake,
 	}
 
-	_, err := m.MapUserRefToMemberID(ctx, "team-1", "chan-1", "nonexistent@contoso.com")
+	_, err := m.ResolveUserRefToMemberID(ctx, "team-1", "chan-1", "nonexistent@contoso.com")
 	if err == nil {
 		t.Fatalf("expected error, got nil")
 	}

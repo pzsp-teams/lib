@@ -1,4 +1,4 @@
-package mapper
+package resolver
 
 import (
 	"context"
@@ -10,21 +10,21 @@ import (
 	"github.com/pzsp-teams/lib/internal/util"
 )
 
-type ChannelMapper interface {
-	MapChannelRefToChannelID(ctx context.Context, teamID, channelName string) (string, error)
-	MapUserRefToMemberID(ctx context.Context, teamID, channelID, userRef string) (string, error)
+type ChannelResolver interface {
+	ResolveChannelRefToID(ctx context.Context, teamID, channelName string) (string, error)
+	ResolveUserRefToMemberID(ctx context.Context, teamID, channelID, userRef string) (string, error)
 }
 
-type channelMapper struct {
+type channelResolver struct {
 	channelsAPI api.ChannelAPI
 }
 
-func NewChannelMapper(channelsAPI api.ChannelAPI) ChannelMapper {
-	return &channelMapper{channelsAPI: channelsAPI}
+func NewChannelMapper(channelsAPI api.ChannelAPI) ChannelResolver {
+	return &channelResolver{channelsAPI: channelsAPI}
 }
 
 // MapChannelNameToChannelID will be used later
-func (m *channelMapper) MapChannelRefToChannelID(ctx context.Context, teamID, channelRef string) (string, error) {
+func (m *channelResolver) ResolveChannelRefToID(ctx context.Context, teamID, channelRef string) (string, error) {
 	ref := strings.TrimSpace(channelRef)
 	if ref == "" {
 		return "", fmt.Errorf("empty channel reference")
@@ -74,7 +74,7 @@ func resolveChannelIDByName(teamID, ref string, chans msmodels.ChannelCollection
 	}
 }
 
-func (m *channelMapper) MapUserRefToMemberID(ctx context.Context, teamID, channelID, userRef string) (string, error) {
+func (m *channelResolver) ResolveUserRefToMemberID(ctx context.Context, teamID, channelID, userRef string) (string, error) {
 	resp, err := m.channelsAPI.ListMembers(ctx, teamID, channelID)
 	if err != nil {
 		return "", err
