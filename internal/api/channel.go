@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"fmt"
+	"net/http"
 
 	graph "github.com/microsoftgraph/msgraph-sdk-go"
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
@@ -56,7 +57,7 @@ func (api *channelAPI) ListChannels(ctx context.Context, teamID string) (msmodel
 
 	out, ok := resp.(msmodels.ChannelCollectionResponseable)
 	if !ok {
-		return nil, &sender.RequestError{Code: "TypeCastError", Message: "Expected ChannelCollectionResponseable"}
+		return nil, &sender.RequestError{Code: http.StatusUnprocessableEntity, Message: "Expected ChannelCollectionResponseable"}
 	}
 
 	return out, nil
@@ -80,7 +81,7 @@ func (api *channelAPI) GetChannel(ctx context.Context, teamID, channelID string)
 
 	out, ok := resp.(msmodels.Channelable)
 	if !ok {
-		return nil, &sender.RequestError{Code: "TypeCastError", Message: "Expected Channelable"}
+		return nil, &sender.RequestError{Code: http.StatusUnprocessableEntity, Message: "Expected Channelable"}
 	}
 
 	return out, nil
@@ -103,7 +104,7 @@ func (api *channelAPI) CreateStandardChannel(ctx context.Context, teamID string,
 
 	out, ok := resp.(msmodels.Channelable)
 	if !ok {
-		return nil, &sender.RequestError{Code: "TypeCastError", Message: "Expected Channelable"}
+		return nil, &sender.RequestError{Code: http.StatusUnprocessableEntity, Message: "Expected Channelable"}
 	}
 
 	return out, nil
@@ -135,7 +136,7 @@ func (api *channelAPI) CreatePrivateChannelWithMembers(ctx context.Context, team
 
 	out, ok := resp.(msmodels.Channelable)
 	if !ok {
-		return nil, &sender.RequestError{Code: "TypeCastError", Message: "Expected Channelable"}
+		return nil, &sender.RequestError{Code: http.StatusUnprocessableEntity, Message: "Expected Channelable"}
 	}
 
 	return out, nil
@@ -187,7 +188,7 @@ func (api *channelAPI) SendMessage(ctx context.Context, teamID, channelID string
 
 	out, ok := resp.(msmodels.ChatMessageable)
 	if !ok {
-		return nil, &sender.RequestError{Code: "TypeCastError", Message: "Expected ChatMessageable"}
+		return nil, &sender.RequestError{Code: http.StatusUnprocessableEntity, Message: "Expected ChatMessageable"}
 	}
 
 	return out, nil
@@ -218,7 +219,7 @@ func (api *channelAPI) ListMessages(ctx context.Context, teamID, channelID strin
 
 	out, ok := resp.(msmodels.ChatMessageCollectionResponseable)
 	if !ok {
-		return nil, &sender.RequestError{Code: "TypeCastError", Message: "Expected ChatMessageCollectionResponseable"}
+		return nil, &sender.RequestError{Code: http.StatusUnprocessableEntity, Message: "Expected ChatMessageCollectionResponseable"}
 	}
 
 	return out, nil
@@ -244,7 +245,7 @@ func (api *channelAPI) GetMessage(ctx context.Context, teamID, channelID, messag
 
 	out, ok := resp.(msmodels.ChatMessageable)
 	if !ok {
-		return nil, &sender.RequestError{Code: "TypeCastError", Message: "Expected ChatMessageable"}
+		return nil, &sender.RequestError{Code: http.StatusUnprocessableEntity, Message: "Expected ChatMessageable"}
 	}
 
 	return out, nil
@@ -277,7 +278,7 @@ func (api *channelAPI) ListReplies(ctx context.Context, teamID, channelID, messa
 
 	out, ok := resp.(msmodels.ChatMessageCollectionResponseable)
 	if !ok {
-		return nil, &sender.RequestError{Code: "TypeCastError", Message: "Expected ChatMessageCollectionResponseable"}
+		return nil, &sender.RequestError{Code: http.StatusUnprocessableEntity, Message: "Expected ChatMessageCollectionResponseable"}
 	}
 
 	return out, nil
@@ -305,7 +306,7 @@ func (api *channelAPI) GetReply(ctx context.Context, teamID, channelID, messageI
 
 	out, ok := resp.(msmodels.ChatMessageable)
 	if !ok {
-		return nil, &sender.RequestError{Code: "TypeCastError", Message: "Expected ChatMessageable"}
+		return nil, &sender.RequestError{Code: http.StatusUnprocessableEntity, Message: "Expected ChatMessageable"}
 	}
 
 	return out, nil
@@ -329,7 +330,7 @@ func (api *channelAPI) ListMembers(ctx context.Context, teamID, channelID string
 
 	out, ok := resp.(msmodels.ConversationMemberCollectionResponseable)
 	if !ok {
-		return nil, &sender.RequestError{Code: "TypeCastError", Message: "Expected ConversationMemberCollectionResponseable"}
+		return nil, &sender.RequestError{Code: http.StatusUnprocessableEntity, Message: "Expected ConversationMemberCollectionResponseable"}
 	}
 
 	return out, nil
@@ -358,7 +359,7 @@ func (api *channelAPI) AddMember(ctx context.Context, teamID, channelID, userRef
 
 	out, ok := resp.(msmodels.ConversationMemberable)
 	if !ok {
-		return nil, &sender.RequestError{Code: "TypeCastError", Message: "Expected ConversationMemberable"}
+		return nil, &sender.RequestError{Code: http.StatusUnprocessableEntity, Message: "Expected ConversationMemberable"}
 	}
 
 	return out, nil
@@ -385,7 +386,7 @@ func (api *channelAPI) UpdateMemberRole(ctx context.Context, teamID, channelID, 
 
 	out, ok := resp.(msmodels.ConversationMemberable)
 	if !ok {
-		return nil, &sender.RequestError{Code: "TypeCastError", Message: "Expected ConversationMemberable"}
+		return nil, &sender.RequestError{Code: http.StatusUnprocessableEntity, Message: "Expected ConversationMemberable"}
 	}
 
 	return out, nil

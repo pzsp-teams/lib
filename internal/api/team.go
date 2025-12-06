@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"time"
 
 	graph "github.com/microsoftgraph/msgraph-sdk-go"
@@ -76,7 +77,7 @@ func (t *teamAPI) CreateViaGroup(ctx context.Context, displayName, mailNickname,
 	}
 	group, ok := gresp.(msmodels.Groupable)
 	if !ok || group.GetId() == nil {
-		return "", &sender.RequestError{Code: "TypeCastError", Message: "Expected Groupable"}
+		return "", &sender.RequestError{Code: http.StatusUnprocessableEntity, Message: "Expected Groupable"}
 	}
 	groupID := *group.GetId()
 	body := msmodels.NewTeam()
@@ -102,7 +103,7 @@ func (t *teamAPI) waitTeamReady(ctx context.Context, teamID string, timeout time
 			return nil
 		}
 		if time.Now().After(deadline) {
-			return &sender.RequestError{Code: "Timeout", Message: "Team not ready within timeout"}
+			return &sender.RequestError{Code: http.StatusRequestTimeout, Message: "Team not ready within timeout"}
 		}
 		time.Sleep(2 * time.Second)
 	}
@@ -119,7 +120,7 @@ func (t *teamAPI) Get(ctx context.Context, teamID string) (msmodels.Teamable, *s
 	}
 	out, ok := resp.(msmodels.Teamable)
 	if !ok {
-		return nil, &sender.RequestError{Code: "TypeCastError", Message: "Expected Teamable"}
+		return nil, &sender.RequestError{Code: http.StatusUnprocessableEntity, Message: "Expected Teamable"}
 	}
 	return out, nil
 }
@@ -135,7 +136,7 @@ func (t *teamAPI) ListMyJoined(ctx context.Context) (msmodels.TeamCollectionResp
 	}
 	out, ok := resp.(msmodels.TeamCollectionResponseable)
 	if !ok {
-		return nil, &sender.RequestError{Code: "TypeCastError", Message: "Expected TeamCollectionResponseable"}
+		return nil, &sender.RequestError{Code: http.StatusUnprocessableEntity, Message: "Expected TeamCollectionResponseable"}
 	}
 	return out, nil
 }
@@ -151,7 +152,7 @@ func (t *teamAPI) Update(ctx context.Context, teamID string, patch *msmodels.Tea
 	}
 	out, ok := resp.(msmodels.Teamable)
 	if !ok {
-		return nil, &sender.RequestError{Code: "TypeCastError", Message: "Expected Teamable"}
+		return nil, &sender.RequestError{Code: http.StatusUnprocessableEntity, Message: "Expected Teamable"}
 	}
 	return out, nil
 }
@@ -214,7 +215,7 @@ func (t *teamAPI) RestoreDeleted(ctx context.Context, deletedGroupID string) (ms
 	}
 	out, ok := resp.(msmodels.DirectoryObjectable)
 	if !ok {
-		return nil, &sender.RequestError{Code: "TypeCastError", Message: fmt.Sprintf("Expected DirectoryObjectable, got %T", resp)}
+		return nil, &sender.RequestError{Code: http.StatusUnprocessableEntity, Message: fmt.Sprintf("Expected DirectoryObjectable, got %T", resp)}
 	}
 	return out, nil
 }
