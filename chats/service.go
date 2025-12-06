@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/pzsp-teams/lib/internal/api"
+	snd "github.com/pzsp-teams/lib/internal/sender"
 )
 
 type Service struct {
@@ -15,36 +16,35 @@ func NewService(chatAPI api.ChatsAPI) *Service {
 }
 
 func (s *Service) CreateOneToOne(ctx context.Context, ownerEmail, recipientEmail string) (*Chat, error) {
-	resp, err := s.chatAPI.Create(ctx, []string{ownerEmail, recipientEmail}, "")
-	if err != nil {
-		return nil, mapError(err)
+	allEmails := []string{ownerEmail, recipientEmail}
+	resp, requestErr := s.chatAPI.Create(ctx, allEmails, "")
+	if requestErr != nil {
+		return nil, snd.MapError(requestErr, snd.WithResources(snd.User, allEmails))
 	}
 	return mapGraphChat(resp), nil
 }
 
 func (s *Service) CreateGroup(ctx context.Context, ownerEmail string, recipientEmails []string, topic string) (*Chat, error) {
-	allEmails := make([]string, 0, 1+len(recipientEmails))
-	allEmails = append(allEmails, ownerEmail)
-	allEmails = append(allEmails, recipientEmails...)
-	resp, err := s.chatAPI.Create(ctx, allEmails, topic)
-	if err != nil {
-		return nil, mapError(err)
+	allEmails := append([]string{ownerEmail}, recipientEmails...)
+	resp, requestErr := s.chatAPI.Create(ctx, allEmails, topic)
+	if requestErr != nil {
+		return nil, snd.MapError(requestErr, snd.WithResources(snd.User, allEmails))
 	}
 	return mapGraphChat(resp), nil
 }
 
 func (s *Service) SendMessage(ctx context.Context, chatID, content string) (*ChatMessage, error) {
-	resp, err := s.chatAPI.SendMessage(ctx, chatID, content)
-	if err != nil {
-		return nil, mapError(err)
+	resp, requestErr := s.chatAPI.SendMessage(ctx, chatID, content)
+	if requestErr != nil {
+		return nil, snd.MapError(requestErr, snd.WithResource(snd.Chat, chatID))
 	}
 	return mapGraphChatMessage(resp), nil
 }
 
 func (s *Service) ListMyJoined(ctx context.Context) ([]*Chat, error) {
-	resp, err := s.chatAPI.ListMyJoined(ctx)
-	if err != nil {
-		return nil, mapError(err)
+	resp, requestErr := s.chatAPI.ListMyJoined(ctx)
+	if requestErr != nil {
+		return nil, snd.MapError(requestErr)
 	}
 	chats := make([]*Chat, len(resp.GetValue()))
 	for i, c := range resp.GetValue() {
@@ -54,9 +54,9 @@ func (s *Service) ListMyJoined(ctx context.Context) ([]*Chat, error) {
 }
 
 func (s *Service) ListMembers(ctx context.Context, chatID string) ([]*ChatMember, error) {
-	resp, err := s.chatAPI.ListMembers(ctx, chatID)
-	if err != nil {
-		return nil, mapError(err)
+	resp, requestErr := s.chatAPI.ListMembers(ctx, chatID)
+	if requestErr != nil {
+		return nil, snd.MapError(requestErr, snd.WithResource(snd.Chat, chatID))
 	}
 	members := make([]*ChatMember, len(resp.GetValue()))
 	for i, m := range resp.GetValue() {
@@ -68,9 +68,9 @@ func (s *Service) ListMembers(ctx context.Context, chatID string) ([]*ChatMember
 }
 
 func (s *Service) AddMember(ctx context.Context, chatID, email string) (*ChatMember, error) {
-	resp, err := s.chatAPI.AddMember(ctx, chatID, email)
-	if err != nil {
-		return nil, mapError(err)
+	resp, requestErr := s.chatAPI.AddMember(ctx, chatID, email)
+	if requestErr != nil {
+		return nil, snd.MapError(requestErr, snd.WithResource(snd.Chat, chatID), snd.WithResource(snd.User, email))
 	}
 	return mapGraphChatMember(resp), nil
 }

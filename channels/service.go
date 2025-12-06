@@ -6,6 +6,7 @@ import (
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
 	"github.com/pzsp-teams/lib/internal/api"
 	"github.com/pzsp-teams/lib/internal/mapper"
+	snd "github.com/pzsp-teams/lib/internal/sender"
 	"github.com/pzsp-teams/lib/internal/util"
 )
 
@@ -27,9 +28,9 @@ func (s *Service) ListChannels(ctx context.Context, teamRef string) ([]*Channel,
 	if err != nil {
 		return nil, err
 	}
-	resp, senderErr := s.channelAPI.ListChannels(ctx, teamID)
-	if senderErr != nil {
-		return nil, mapError(senderErr)
+	resp, requestErr := s.channelAPI.ListChannels(ctx, teamID)
+	if requestErr != nil {
+		return nil, snd.MapError(requestErr, snd.WithResource(snd.Team, teamRef))
 	}
 	var chans []*Channel
 	for _, ch := range resp.GetValue() {
@@ -49,9 +50,9 @@ func (s *Service) Get(ctx context.Context, teamRef, channelRef string) (*Channel
 	if err != nil {
 		return nil, err
 	}
-	resp, senderErr := s.channelAPI.GetChannel(ctx, teamID, channelID)
-	if senderErr != nil {
-		return nil, mapError(senderErr)
+	resp, requestErr := s.channelAPI.GetChannel(ctx, teamID, channelID)
+	if requestErr != nil {
+		return nil, snd.MapError(requestErr, snd.WithResource(snd.Team, teamRef), snd.WithResource(snd.Channel, channelRef))
 	}
 	name := util.Deref(resp.GetDisplayName())
 	return &Channel{
@@ -70,9 +71,9 @@ func (s *Service) CreateStandardChannel(ctx context.Context, teamRef, name strin
 	newChannel := msmodels.NewChannel()
 	newChannel.SetDisplayName(&name)
 
-	created, senderErr := s.channelAPI.CreateStandardChannel(ctx, teamID, newChannel)
-	if senderErr != nil {
-		return nil, mapError(senderErr)
+	created, requestErr := s.channelAPI.CreateStandardChannel(ctx, teamID, newChannel)
+	if requestErr != nil {
+		return nil, snd.MapError(requestErr, snd.WithResource(snd.Team, teamRef))
 	}
 	return &Channel{
 		ID:        util.Deref(created.GetId()),
@@ -88,9 +89,9 @@ func (s *Service) CreatePrivateChannel(ctx context.Context, teamRef, name string
 		return nil, err
 	}
 
-	created, senderErr := s.channelAPI.CreatePrivateChannelWithMembers(ctx, teamID, name, memberRefs, ownerRefs)
-	if senderErr != nil {
-		return nil, mapError(senderErr)
+	created, requestErr := s.channelAPI.CreatePrivateChannelWithMembers(ctx, teamID, name, memberRefs, ownerRefs)
+	if requestErr != nil {
+		return nil, snd.MapError(requestErr, snd.WithResource(snd.Team, teamRef), snd.WithResources(snd.User, append(memberRefs, ownerRefs...)))
 	}
 	return &Channel{
 		ID:        util.Deref(created.GetId()),
@@ -105,9 +106,9 @@ func (s *Service) Delete(ctx context.Context, teamRef, channelRef string) error 
 	if err != nil {
 		return err
 	}
-	senderErr := s.channelAPI.DeleteChannel(ctx, teamID, channelID)
-	if senderErr != nil {
-		return mapError(senderErr)
+	requestErr := s.channelAPI.DeleteChannel(ctx, teamID, channelID)
+	if requestErr != nil {
+		return snd.MapError(requestErr, snd.WithResource(snd.Team, teamRef), snd.WithResource(snd.Channel, channelRef))
 	}
 	return nil
 }
@@ -120,9 +121,9 @@ func (s *Service) SendMessage(ctx context.Context, teamRef, channelRef string, b
 	}
 	message := msmodels.NewChatMessage()
 	message.SetBody(body.ToGraphItemBody())
-	resp, senderErr := s.channelAPI.SendMessage(ctx, teamID, channelID, message)
-	if senderErr != nil {
-		return nil, mapError(senderErr)
+	resp, requestErr := s.channelAPI.SendMessage(ctx, teamID, channelID, message)
+	if requestErr != nil {
+		return nil, snd.MapError(requestErr, snd.WithResource(snd.Team, teamRef), snd.WithResource(snd.Channel, channelRef))
 	}
 
 	return mapChatMessageToMessage(resp), nil
@@ -139,9 +140,9 @@ func (s *Service) ListMessages(ctx context.Context, teamRef, channelRef string, 
 		top = opts.Top
 	}
 
-	resp, senderErr := s.channelAPI.ListMessages(ctx, teamID, channelID, top)
-	if senderErr != nil {
-		return nil, mapError(senderErr)
+	resp, requestErr := s.channelAPI.ListMessages(ctx, teamID, channelID, top)
+	if requestErr != nil {
+		return nil, snd.MapError(requestErr, snd.WithResource(snd.Team, teamRef), snd.WithResource(snd.Channel, channelRef))
 	}
 
 	var messages []*Message
@@ -158,9 +159,9 @@ func (s *Service) GetMessage(ctx context.Context, teamRef, channelRef, messageID
 	if err != nil {
 		return nil, err
 	}
-	resp, senderErr := s.channelAPI.GetMessage(ctx, teamID, channelID, messageID)
-	if senderErr != nil {
-		return nil, mapError(senderErr)
+	resp, requestErr := s.channelAPI.GetMessage(ctx, teamID, channelID, messageID)
+	if requestErr != nil {
+		return nil, snd.MapError(requestErr, snd.WithResource(snd.Team, teamRef), snd.WithResource(snd.Channel, channelRef), snd.WithResource(snd.Message, messageID))
 	}
 	return mapChatMessageToMessage(resp), nil
 }
@@ -171,9 +172,9 @@ func (s *Service) ListReplies(ctx context.Context, teamRef, channelRef, messageI
 	if err != nil {
 		return nil, err
 	}
-	resp, senderErr := s.channelAPI.ListReplies(ctx, teamID, channelID, messageID, top)
-	if senderErr != nil {
-		return nil, mapError(senderErr)
+	resp, requestErr := s.channelAPI.ListReplies(ctx, teamID, channelID, messageID, top)
+	if requestErr != nil {
+		return nil, snd.MapError(requestErr, snd.WithResource(snd.Team, teamRef), snd.WithResource(snd.Channel, channelRef), snd.WithResource(snd.Message, messageID))
 	}
 	var replies []*Message
 	for _, reply := range resp.GetValue() {
@@ -189,9 +190,9 @@ func (s *Service) GetReply(ctx context.Context, teamRef, channelRef, messageID, 
 	if err != nil {
 		return nil, err
 	}
-	resp, senderErr := s.channelAPI.GetReply(ctx, teamID, channelID, messageID, replyID)
-	if senderErr != nil {
-		return nil, mapError(senderErr)
+	resp, requestErr := s.channelAPI.GetReply(ctx, teamID, channelID, messageID, replyID)
+	if requestErr != nil {
+		return nil, snd.MapError(requestErr, snd.WithResource(snd.Team, teamRef), snd.WithResource(snd.Channel, channelRef), snd.WithResource(snd.Message, messageID))
 	}
 	return mapChatMessageToMessage(resp), nil
 }
@@ -201,9 +202,9 @@ func (s *Service) ListMembers(ctx context.Context, teamRef, channelRef string) (
 	if err != nil {
 		return nil, err
 	}
-	resp, senderErr := s.channelAPI.ListMembers(ctx, teamID, channelID)
-	if senderErr != nil {
-		return nil, mapError(senderErr)
+	resp, requestErr := s.channelAPI.ListMembers(ctx, teamID, channelID)
+	if requestErr != nil {
+		return nil, snd.MapError(requestErr, snd.WithResource(snd.Team, teamRef), snd.WithResource(snd.Channel, channelRef))
 	}
 	var members []*ChannelMember
 	for _, member := range resp.GetValue() {
@@ -221,9 +222,9 @@ func (s *Service) AddMember(ctx context.Context, teamRef, channelRef, userRef st
 	if isOwner {
 		role = "owner"
 	}
-	created, senderErr := s.channelAPI.AddMember(ctx, teamID, channelID, userRef, role)
-	if senderErr != nil {
-		return nil, mapError(senderErr)
+	created, requestErr := s.channelAPI.AddMember(ctx, teamID, channelID, userRef, role)
+	if requestErr != nil {
+		return nil, snd.MapError(requestErr, snd.WithResource(snd.Team, teamRef), snd.WithResource(snd.Channel, channelRef), snd.WithResource(snd.User, userRef))
 	}
 	return mapConversationMemberToChannelMember(created), nil
 }
@@ -241,9 +242,9 @@ func (s *Service) UpdateMemberRole(ctx context.Context, teamRef, channelRef, use
 	if isOwner {
 		role = "owner"
 	}
-	updated, senderErr := s.channelAPI.UpdateMemberRole(ctx, teamID, channelID, memberID, role)
-	if senderErr != nil {
-		return nil, mapError(senderErr)
+	updated, requestErr := s.channelAPI.UpdateMemberRole(ctx, teamID, channelID, memberID, role)
+	if requestErr != nil {
+		return nil, snd.MapError(requestErr, snd.WithResource(snd.Team, teamRef), snd.WithResource(snd.Channel, channelRef), snd.WithResource(snd.User, userRef))
 	}
 	return mapConversationMemberToChannelMember(updated), nil
 }
@@ -257,9 +258,9 @@ func (s *Service) RemoveMember(ctx context.Context, teamRef, channelRef, userRef
 	if err != nil {
 		return err
 	}
-	senderErr := s.channelAPI.RemoveMember(ctx, teamID, channelID, memberID)
-	if senderErr != nil {
-		return mapError(senderErr)
+	requestErr := s.channelAPI.RemoveMember(ctx, teamID, channelID, memberID)
+	if requestErr != nil {
+		return snd.MapError(requestErr, snd.WithResource(snd.Team, teamRef), snd.WithResource(snd.Channel, channelRef), snd.WithResource(snd.User, userRef))
 	}
 	return nil
 }

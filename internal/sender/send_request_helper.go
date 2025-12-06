@@ -3,9 +3,8 @@ package sender
 import (
 	"context"
 	"errors"
+	"net/http"
 	"time"
-
-	"appliedgo.net/what"
 
 	"github.com/microsoftgraph/msgraph-sdk-go/models/odataerrors"
 )
@@ -31,14 +30,15 @@ func withTimeout(timeout time.Duration, call GraphCall) GraphCall {
 func retry(ctx context.Context, attempts int, delay time.Duration, call GraphCall) (Response, error) {
 	var err error
 	var res Response
-	for i := 0; i < attempts; i++ {
+	for i := range attempts {
 		res, err = call(ctx)
 		if err == nil {
 			return res, nil
 		}
-		if i < attempts-1 {
-			time.Sleep(delay)
+		if !shouldRetry(err) || i < attempts-1 {
+			break
 		}
+		time.Sleep(delay)
 	}
 	return nil, err
 }
@@ -50,11 +50,8 @@ func SendRequest(ctx context.Context, call GraphCall, techParams RequestTechPara
 	call = withTimeout(timeout, call)
 	res, err := retry(ctx, techParams.MaxRetries, delay, call)
 	if err != nil {
-		what.Happens("ERROR", "Request failed")
 		return nil, convertGraphError(err)
 	}
-	what.Happens("INFO", "Request successful")
-	what.Is(res)
 	return res, nil
 }
 
@@ -65,16 +62,26 @@ func convertGraphError(err error) *RequestError {
 	var odataErr *odataerrors.ODataError
 	if errors.As(err, &odataErr) {
 		errElapsed := odataErr.GetErrorEscaped()
-		code := errElapsed.GetCode()
+		code := odataErr.GetStatusCode()
 		message := errElapsed.GetMessage()
 		return &RequestError{
-			Code:    *code,
+			Code:    code,
 			Message: *message,
 		}
 	} else {
 		return &RequestError{
-			Code:    "ParsingError",
+			Code:    http.StatusUnprocessableEntity,
 			Message: err.Error(),
 		}
 	}
+}
+
+func shouldRetry(err error) bool {
+	var odataErr *odataerrors.ODataError
+	if errors.As(err, &odataErr) {
+		if odataErr.GetStatusCode() > 500 {
+			return true
+		}
+	}
+	return false
 }
