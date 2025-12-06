@@ -5,26 +5,26 @@ import (
 
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
 	"github.com/pzsp-teams/lib/internal/api"
-	"github.com/pzsp-teams/lib/internal/mapper"
 	snd "github.com/pzsp-teams/lib/internal/sender"
+	"github.com/pzsp-teams/lib/internal/resolver"
 	"github.com/pzsp-teams/lib/internal/util"
 )
 
 // Service will be used later
 type Service struct {
 	channelAPI    api.ChannelAPI
-	teamMapper    mapper.TeamMapper
-	channelMapper mapper.ChannelMapper
+	teamResolver    resolver.TeamResolver
+	channelResolver resolver.ChannelResolver
 }
 
 // NewService will be used later
-func NewService(channelsAPI api.ChannelAPI, tm mapper.TeamMapper, cm mapper.ChannelMapper) *Service {
-	return &Service{channelAPI: channelsAPI, teamMapper: tm, channelMapper: cm}
+func NewService(channelsAPI api.ChannelAPI, tm resolver.TeamResolver, cm resolver.ChannelResolver) *Service {
+	return &Service{channelAPI: channelsAPI, teamResolver: tm, channelResolver: cm}
 }
 
 // ListChannels will be used later
 func (s *Service) ListChannels(ctx context.Context, teamRef string) ([]*Channel, error) {
-	teamID, err := s.teamMapper.MapTeamRefToTeamID(ctx, teamRef)
+	teamID, err := s.teamResolver.ResolveTeamRefToID(ctx, teamRef)
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +64,7 @@ func (s *Service) Get(ctx context.Context, teamRef, channelRef string) (*Channel
 
 // CreateStandardChannel creates a standard channel in a team. All members of the team will have access to the channel.
 func (s *Service) CreateStandardChannel(ctx context.Context, teamRef, name string) (*Channel, error) {
-	teamID, err := s.teamMapper.MapTeamRefToTeamID(ctx, teamRef)
+	teamID, err := s.teamResolver.ResolveTeamRefToID(ctx, teamRef)
 	if err != nil {
 		return nil, err
 	}
@@ -84,7 +84,7 @@ func (s *Service) CreateStandardChannel(ctx context.Context, teamRef, name strin
 
 // CreatePrivateChannel creates a private channel in a team with specified members and owners.
 func (s *Service) CreatePrivateChannel(ctx context.Context, teamRef, name string, memberRefs, ownerRefs []string) (*Channel, error) {
-	teamID, err := s.teamMapper.MapTeamRefToTeamID(ctx, teamRef)
+	teamID, err := s.teamResolver.ResolveTeamRefToID(ctx, teamRef)
 	if err != nil {
 		return nil, err
 	}
@@ -234,7 +234,7 @@ func (s *Service) UpdateMemberRole(ctx context.Context, teamRef, channelRef, use
 	if err != nil {
 		return nil, err
 	}
-	memberID, err := s.channelMapper.MapUserRefToMemberID(ctx, teamID, channelID, userRef)
+	memberID, err := s.channelResolver.ResolveUserRefToMemberID(ctx, teamID, channelID, userRef)
 	if err != nil {
 		return nil, err
 	}
@@ -254,7 +254,7 @@ func (s *Service) RemoveMember(ctx context.Context, teamRef, channelRef, userRef
 	if err != nil {
 		return err
 	}
-	memberID, err := s.channelMapper.MapUserRefToMemberID(ctx, teamID, channelID, userRef)
+	memberID, err := s.channelResolver.ResolveUserRefToMemberID(ctx, teamID, channelID, userRef)
 	if err != nil {
 		return err
 	}
@@ -266,11 +266,11 @@ func (s *Service) RemoveMember(ctx context.Context, teamRef, channelRef, userRef
 }
 
 func (s *Service) resolveTeamAndChannelID(ctx context.Context, teamRef, channelRef string) (teamID, channelID string, err error) {
-	teamID, err = s.teamMapper.MapTeamRefToTeamID(ctx, teamRef)
+	teamID, err = s.teamResolver.ResolveTeamRefToID(ctx, teamRef)
 	if err != nil {
 		return "", "", err
 	}
-	channelID, err = s.channelMapper.MapChannelRefToChannelID(ctx, teamID, channelRef)
+	channelID, err = s.channelResolver.ResolveChannelRefToID(ctx, teamID, channelRef)
 	if err != nil {
 		return "", "", err
 	}
