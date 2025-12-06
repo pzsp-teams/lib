@@ -9,7 +9,7 @@ import (
 	"github.com/pzsp-teams/lib/chats"
 	"github.com/pzsp-teams/lib/internal/api"
 	"github.com/pzsp-teams/lib/internal/auth"
-	"github.com/pzsp-teams/lib/internal/mapper"
+	"github.com/pzsp-teams/lib/internal/resolver"
 
 	"github.com/pzsp-teams/lib/channels"
 	"github.com/pzsp-teams/lib/teams"
@@ -39,8 +39,8 @@ func NewClient(ctx context.Context, authConfig *AuthConfig, senderConfig *Sender
 	channelsAPI := api.NewChannels(graphClient, techParams)
 	chatAPI := api.NewChat(graphClient, techParams)
 
-	teamMapper := mapper.NewTeamMapper(teamsAPI, channelsAPI)
-	channelMapper := mapper.NewChannelMapper(channelsAPI)
+	teamMapper := resolver.NewTeamResolver(teamsAPI, channelsAPI)
+	channelMapper := resolver.NewChannelResolver(channelsAPI)
 
 	teamSvc := teams.NewService(teamsAPI, teamMapper)
 	channelSvc := channels.NewService(channelsAPI, teamMapper, channelMapper)

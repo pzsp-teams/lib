@@ -6,24 +6,24 @@ import (
 
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
 	"github.com/pzsp-teams/lib/internal/api"
-	"github.com/pzsp-teams/lib/internal/mapper"
+	"github.com/pzsp-teams/lib/internal/resolver"
 	snd "github.com/pzsp-teams/lib/internal/sender"
 )
 
 // Service will be used later
 type Service struct {
 	teamAPI    api.TeamAPI
-	teamMapper mapper.TeamMapper
+	teamResolver resolver.TeamResolver
 }
 
 // NewService will be used later
-func NewService(teamsAPI api.TeamAPI, m mapper.TeamMapper) *Service {
-	return &Service{teamAPI: teamsAPI, teamMapper: m}
+func NewService(teamsAPI api.TeamAPI, m resolver.TeamResolver) *Service {
+	return &Service{teamAPI: teamsAPI, teamResolver: m}
 }
 
 // Get will be used later
 func (s *Service) Get(ctx context.Context, teamRef string) (*Team, error) {
-	teamID, err := s.teamMapper.MapTeamRefToTeamID(ctx, teamRef)
+	teamID, err := s.teamResolver.ResolveTeamRefToID(ctx, teamRef)
 	if err != nil {
 		return nil, err
 	}
@@ -51,7 +51,7 @@ func (s *Service) ListMyJoined(ctx context.Context) ([]*Team, error) {
 
 // Update will be used later
 func (s *Service) Update(ctx context.Context, teamRef string, patch *msmodels.Team) (*Team, error) {
-	teamID, err := s.teamMapper.MapTeamRefToTeamID(ctx, teamRef)
+	teamID, err := s.teamResolver.ResolveTeamRefToID(ctx, teamRef)
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +89,7 @@ func (s *Service) CreateFromTemplate(ctx context.Context, displayName, descripti
 
 // Archive will be used later
 func (s *Service) Archive(ctx context.Context, teamRef string, spoReadOnlyForMembers *bool) error {
-	teamID, err := s.teamMapper.MapTeamRefToTeamID(ctx, teamRef)
+	teamID, err := s.teamResolver.ResolveTeamRefToID(ctx, teamRef)
 	if err != nil {
 		return err
 	}
@@ -101,7 +101,7 @@ func (s *Service) Archive(ctx context.Context, teamRef string, spoReadOnlyForMem
 
 // Unarchive will be used later
 func (s *Service) Unarchive(ctx context.Context, teamRef string) error {
-	teamID, err := s.teamMapper.MapTeamRefToTeamID(ctx, teamRef)
+	teamID, err := s.teamResolver.ResolveTeamRefToID(ctx, teamRef)
 	if err != nil {
 		return err
 	}
@@ -113,7 +113,7 @@ func (s *Service) Unarchive(ctx context.Context, teamRef string) error {
 
 // Delete will be used later
 func (s *Service) Delete(ctx context.Context, teamRef string) error {
-	teamID, err := s.teamMapper.MapTeamRefToTeamID(ctx, teamRef)
+	teamID, err := s.teamResolver.ResolveTeamRefToID(ctx, teamRef)
 	if err != nil {
 		return err
 	}
