@@ -117,10 +117,7 @@ func (s *Service) SendMessage(ctx context.Context, teamRef, channelRef string, b
 		return nil, err
 	}
 	message := msmodels.NewChatMessage()
-	messageBody := msmodels.NewItemBody()
-	messageBody.SetContent(&body.Content)
-	message.SetBody(messageBody)
-
+	message.SetBody(body.ToGraphItemBody())
 	resp, senderErr := s.api.SendMessage(ctx, teamID, channelID, message)
 	if senderErr != nil {
 		return nil, mapError(senderErr)
@@ -281,18 +278,23 @@ func mapChatMessageToMessage(msg msmodels.ChatMessageable) *Message {
 	if msg == nil {
 		return nil
 	}
-
 	message := &Message{
 		ID: deref(msg.GetId()),
 	}
-
 	if body := msg.GetBody(); body != nil {
 		message.Content = deref(body.GetContent())
-		if contentType := body.GetContentType(); contentType != nil {
-			message.ContentType = contentType.String()
+
+		if ct := body.GetContentType(); ct != nil {
+			switch *ct {
+			case msmodels.HTML_BODYTYPE:
+				message.ContentType = MessageContentTypeHTML
+			default:
+				message.ContentType = MessageContentTypeText
+			}
+		} else {
+			message.ContentType = MessageContentTypeText
 		}
 	}
-
 	if created := msg.GetCreatedDateTime(); created != nil {
 		message.CreatedDateTime = *created
 	}
