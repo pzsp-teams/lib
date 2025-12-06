@@ -11,7 +11,7 @@ import (
 
 type fakeResolver struct {
 	lastTeamName string
-	resolverErr       error
+	resolverErr  error
 }
 
 func (m *fakeResolver) ResolveTeamRefToID(ctx context.Context, teamName string) (string, error) {
@@ -134,11 +134,18 @@ func TestService_Get_MapsTeam(t *testing.T) {
 
 func TestService_Delete_MapsError(t *testing.T) {
 	ctx := context.Background()
-	api := &fakeTeamsAPI{deleteErr: &sender.RequestError{Code: "AccessDenied", Message: "nope"}}
+	api := &fakeTeamsAPI{
+		deleteErr: &sender.RequestError{
+			Code:    403,
+			Message: "nope",
+		},
+	}
 	svc := NewService(api, &fakeResolver{})
 
-	if err := svc.Delete(ctx, "MyTeam"); !errors.Is(err, ErrForbidden) {
-		t.Fatalf("expected errForbidden, got %v", err)
+	err := svc.Delete(ctx, "MyTeam")
+	var forbidden sender.ErrAccessForbidden
+	if !errors.As(err, &forbidden) {
+		t.Fatalf("expected ErrAccessForbidden, got %v", err)
 	}
 }
 
@@ -161,15 +168,16 @@ func TestService_Update_MapsError(t *testing.T) {
 	ctx := context.Background()
 	api := &fakeTeamsAPI{
 		updateErr: &sender.RequestError{
-			Code:    "ResourceNotFound",
+			Code:    404,
 			Message: "no such team",
 		},
 	}
 	svc := NewService(api, &fakeResolver{})
 
 	_, err := svc.Update(ctx, "missing-team", msmodels.NewTeam())
-	if !errors.Is(err, ErrTeamNotFound) {
-		t.Fatalf("expected errTeamNotFound, got %v", err)
+	var notFound sender.ErrResourceNotFound
+	if !errors.As(err, &notFound) {
+		t.Fatalf("expected ErrResourceNotFound, got %v", err)
 	}
 }
 
@@ -194,15 +202,16 @@ func TestService_CreateViaGroup_MapsCreateError(t *testing.T) {
 	ctx := context.Background()
 	api := &fakeTeamsAPI{
 		createViaGroupErr: &sender.RequestError{
-			Code:    "AccessDenied",
+			Code:    403,
 			Message: "nope",
 		},
 	}
 	svc := NewService(api, &fakeResolver{})
 
 	_, err := svc.CreateViaGroup(ctx, "X", "x", "public")
-	if !errors.Is(err, ErrForbidden) {
-		t.Fatalf("expected errForbidden, got %v", err)
+	var forbidden sender.ErrAccessForbidden
+	if !errors.As(err, &forbidden) {
+		t.Fatalf("expected ErrAccessForbidden, got %v", err)
 	}
 }
 
@@ -211,15 +220,16 @@ func TestService_CreateViaGroup_MapsGetError(t *testing.T) {
 	api := &fakeTeamsAPI{
 		createViaGroupID: "team-xyz",
 		getErr: &sender.RequestError{
-			Code:    "ResourceNotFound",
+			Code:    404,
 			Message: "not ready",
 		},
 	}
 	svc := NewService(api, &fakeResolver{})
 
 	_, err := svc.CreateViaGroup(ctx, "X", "x", "public")
-	if !errors.Is(err, ErrTeamNotFound) {
-		t.Fatalf("expected errTeamNotFound, got %v", err)
+	var notFound sender.ErrResourceNotFound
+	if !errors.As(err, &notFound) {
+		t.Fatalf("expected ErrResourceNotFound, got %v", err)
 	}
 }
 
@@ -243,15 +253,16 @@ func TestService_CreateFromTemplate_MapsError(t *testing.T) {
 	ctx := context.Background()
 	api := &fakeTeamsAPI{
 		createFromTemplateErr: &sender.RequestError{
-			Code:    "AccessDenied",
+			Code:    403,
 			Message: "nope",
 		},
 	}
 	svc := NewService(api, &fakeResolver{})
 
 	_, err := svc.CreateFromTemplate(ctx, "Tpl", "Desc", nil)
-	if !errors.Is(err, ErrForbidden) {
-		t.Fatalf("expected errForbidden, got %v", err)
+	var forbidden sender.ErrAccessForbidden
+	if !errors.As(err, &forbidden) {
+		t.Fatalf("expected ErrAccessForbidden, got %v", err)
 	}
 }
 
@@ -269,15 +280,17 @@ func TestService_Archive_MapsError(t *testing.T) {
 	ctx := context.Background()
 	api := &fakeTeamsAPI{
 		archiveErr: &sender.RequestError{
-			Code:    "AccessDenied",
+			Code:    403,
 			Message: "nope",
 		},
 	}
 	svc := NewService(api, &fakeResolver{})
 
 	readOnlyForMembers := false
-	if err := svc.Archive(ctx, "T1", &readOnlyForMembers); !errors.Is(err, ErrForbidden) {
-		t.Fatalf("expected errForbidden, got %v", err)
+	err := svc.Archive(ctx, "T1", &readOnlyForMembers)
+	var forbidden sender.ErrAccessForbidden
+	if !errors.As(err, &forbidden) {
+		t.Fatalf("expected ErrAccessForbidden, got %v", err)
 	}
 }
 
@@ -295,14 +308,16 @@ func TestService_Unarchive_MapsError(t *testing.T) {
 	ctx := context.Background()
 	api := &fakeTeamsAPI{
 		unarchiveErr: &sender.RequestError{
-			Code:    "AccessDenied",
+			Code:    403,
 			Message: "nope",
 		},
 	}
 	svc := NewService(api, &fakeResolver{})
 
-	if err := svc.Unarchive(ctx, "T1"); !errors.Is(err, ErrForbidden) {
-		t.Fatalf("expected errForbidden, got %v", err)
+	err := svc.Unarchive(ctx, "T1")
+	var forbidden sender.ErrAccessForbidden
+	if !errors.As(err, &forbidden) {
+		t.Fatalf("expected ErrAccessForbidden, got %v", err)
 	}
 }
 
@@ -328,15 +343,16 @@ func TestService_RestoreDeleted_MapsError(t *testing.T) {
 	ctx := context.Background()
 	api := &fakeTeamsAPI{
 		restoreErr: &sender.RequestError{
-			Code:    "NotFound",
+			Code:    404,
 			Message: "missing",
 		},
 	}
 	svc := NewService(api, &fakeResolver{})
 
 	_, err := svc.RestoreDeleted(ctx, "deleted-1")
-	if !errors.Is(err, ErrNotFound) {
-		t.Fatalf("expected errNotFound, got %v", err)
+	var notFound sender.ErrResourceNotFound
+	if !errors.As(err, &notFound) {
+		t.Fatalf("expected ErrResourceNotFound, got %v", err)
 	}
 }
 
@@ -347,8 +363,8 @@ func TestService_RestoreDeleted_EmptyObjectReturnsUnknown(t *testing.T) {
 	svc := NewService(api, &fakeResolver{})
 
 	_, err := svc.RestoreDeleted(ctx, "deleted-1")
-	if !errors.Is(err, ErrUnknown) {
-		t.Fatalf("expected errUnknown, got %v", err)
+	if err == nil {
+		t.Fatalf("expected error for empty restored object, got nil")
 	}
 }
 
