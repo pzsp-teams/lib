@@ -91,7 +91,7 @@ func main() {
 
 	case "send-message":
 		if len(os.Args) < 5 {
-			fmt.Println("Usage: teams send-message <team-name> <channel-name> <message>")
+			fmt.Println("Usage: teams send-message <team-name> <channel-name> <message> [content-type=text|html default=html]")
 			os.Exit(1)
 		}
 		handleSendMessage(client, os.Args[2:])
@@ -272,9 +272,17 @@ func handleSendMessage(client *lib.Client, args []string) {
 	teamName := args[0]
 	channelName := args[1]
 	messageContent := args[2]
+	contentType := channelsPkg.MessageContentTypeHTML
+	if len(args) > 3 {
+		ct := strings.ToLower(args[3])
+		if ct == "text" {
+			contentType = channelsPkg.MessageContentTypeText
+		}
+	}
 
 	message, err := client.Channels.SendMessage(context.TODO(), teamName, channelName, channelsPkg.MessageBody{
-		Content: messageContent,
+		Content:     messageContent,
+		ContentType: contentType,
 	})
 	if err != nil {
 		fmt.Printf("Error sending message: %v\n", err)
