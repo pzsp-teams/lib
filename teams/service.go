@@ -9,6 +9,7 @@ import (
 	"github.com/pzsp-teams/lib/internal/api"
 	"github.com/pzsp-teams/lib/internal/resolver"
 	snd "github.com/pzsp-teams/lib/internal/sender"
+	"github.com/pzsp-teams/lib/internal/util"
 )
 
 // Service will be used later
@@ -133,7 +134,7 @@ func (s *Service) RestoreDeleted(ctx context.Context, deletedGroupID string) (st
 	if obj == nil {
         return "", fmt.Errorf("restored object is nil")
     }
-	id := deref(obj.GetId())
+	id := util.Deref((obj.GetId()))
 	if id == "" {
 		return "", fmt.Errorf("restored object has empty id")
 	}
@@ -145,9 +146,9 @@ func mapGraphTeam(t msmodels.Teamable) *Team {
 		return nil
 	}
 	out := &Team{
-		ID:          deref(t.GetId()),
-		DisplayName: deref(t.GetDisplayName()),
-		Description: deref(t.GetDescription()),
+		ID:          util.Deref(t.GetId()),
+		DisplayName: util.Deref(t.GetDisplayName()),
+		Description: util.Deref(t.GetDescription()),
 	}
 	if v := t.GetVisibility(); v != nil {
 		out.Visibility = v.String()
@@ -156,11 +157,4 @@ func mapGraphTeam(t msmodels.Teamable) *Team {
 		out.IsArchived = *t.GetIsArchived()
 	}
 	return out
-}
-
-func deref(s *string) string {
-	if s == nil {
-		return ""
-	}
-	return *s
 }
