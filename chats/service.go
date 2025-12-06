@@ -74,11 +74,3 @@ func (s *Service) AddMember(ctx context.Context, chatID, email string) (*ChatMem
 	}
 	return mapGraphChatMember(resp), nil
 }
-
-func deref[T any](t *T) T {
-	var defaultValue T
-	if t == nil {
-		return defaultValue
-	}
-	return *t
-}

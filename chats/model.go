@@ -4,6 +4,7 @@ import (
 	"time"
 
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
+	"github.com/pzsp-teams/lib/internal/util"
 )
 
 type Chat struct {
@@ -28,9 +29,9 @@ type ChatMessage struct {
 
 func mapGraphChat(graphChat msmodels.Chatable) *Chat {
 	return &Chat{
-		ID:       deref(graphChat.GetId()),
-		Type:     deref(graphChat.GetChatType()).String(),
-		IsHidden: deref(graphChat.GetIsHiddenForAllMembers()),
+		ID:       util.Deref(graphChat.GetId()),
+		Type:     util.Deref(graphChat.GetChatType()).String(),
+		IsHidden: util.Deref(graphChat.GetIsHiddenForAllMembers()),
 		Topic:    graphChat.GetTopic(),
 	}
 }
@@ -38,9 +39,9 @@ func mapGraphChat(graphChat msmodels.Chatable) *Chat {
 func mapGraphChatMember(graphChatMember msmodels.ConversationMemberable) *ChatMember {
 	if aadMember, ok := graphChatMember.(msmodels.AadUserConversationMemberable); ok {
 		return &ChatMember{
-			ID:            deref(aadMember.GetId()),
-			Email:         deref(aadMember.GetEmail()),
-			DisplayedName: deref(aadMember.GetDisplayName()),
+			ID:            util.Deref(aadMember.GetId()),
+			Email:         util.Deref(aadMember.GetEmail()),
+			DisplayedName: util.Deref(aadMember.GetDisplayName()),
 			Roles:         aadMember.GetRoles(),
 		}
 	}
@@ -51,13 +52,13 @@ func mapGraphChatMessage(graphMsg msmodels.ChatMessageable) *ChatMessage {
 
 	if fromIdentity := graphMsg.GetFrom(); fromIdentity != nil {
 		if user := fromIdentity.GetUser(); user != nil {
-			from = deref(user.GetDisplayName())
+			from = util.Deref(user.GetDisplayName())
 		}
 	}
 
 	return &ChatMessage{
-		ID:     deref(graphMsg.GetId()),
+		ID:     util.Deref(graphMsg.GetId()),
 		From:   from,
-		SendAt: deref(graphMsg.GetCreatedDateTime()),
+		SendAt: util.Deref(graphMsg.GetCreatedDateTime()),
 	}
 }

@@ -7,6 +7,7 @@ import (
 
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
 	"github.com/pzsp-teams/lib/internal/api"
+	"github.com/pzsp-teams/lib/internal/util"
 )
 
 // TeamMapper will be used later
@@ -50,7 +51,7 @@ func resolveTeamIDByName(ref string, list msmodels.TeamCollectionResponseable) (
 		if t == nil {
 			continue
 		}
-		if deref(t.GetDisplayName()) == ref {
+		if util.Deref(t.GetDisplayName()) == ref {
 			matches = append(matches, t)
 		}
 	}
@@ -58,7 +59,7 @@ func resolveTeamIDByName(ref string, list msmodels.TeamCollectionResponseable) (
 	case 0:
 		return "", fmt.Errorf("team with name %q not found", ref)
 	case 1:
-		id := deref(matches[0].GetId())
+		id := util.Deref(matches[0].GetId())
 		if id == "" {
 			return "", fmt.Errorf("team %q has nil id", ref)
 		}
@@ -67,7 +68,7 @@ func resolveTeamIDByName(ref string, list msmodels.TeamCollectionResponseable) (
 		var options []string
 		for _, t := range matches {
 			options = append(options,
-				fmt.Sprintf("%s (ID: %s)", deref(t.GetDisplayName()), deref(t.GetId())))
+				fmt.Sprintf("%s (ID: %s)", util.Deref(t.GetDisplayName()), util.Deref(t.GetId())))
 		}
 		return "", fmt.Errorf(
 			"multiple teams named %q found: \n%s.\nPlease use one of the IDs instead",

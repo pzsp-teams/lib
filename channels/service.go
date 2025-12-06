@@ -6,6 +6,7 @@ import (
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
 	"github.com/pzsp-teams/lib/internal/api"
 	"github.com/pzsp-teams/lib/internal/mapper"
+	"github.com/pzsp-teams/lib/internal/util"
 )
 
 // Service will be used later
@@ -32,9 +33,9 @@ func (s *Service) ListChannels(ctx context.Context, teamRef string) ([]*Channel,
 	}
 	var chans []*Channel
 	for _, ch := range resp.GetValue() {
-		name := deref(ch.GetDisplayName())
+		name := util.Deref(ch.GetDisplayName())
 		chans = append(chans, &Channel{
-			ID:        deref(ch.GetId()),
+			ID:        util.Deref(ch.GetId()),
 			Name:      name,
 			IsGeneral: name == "General",
 		})
@@ -52,9 +53,9 @@ func (s *Service) Get(ctx context.Context, teamRef, channelRef string) (*Channel
 	if senderErr != nil {
 		return nil, mapError(senderErr)
 	}
-	name := deref(resp.GetDisplayName())
+	name := util.Deref(resp.GetDisplayName())
 	return &Channel{
-		ID:        deref(resp.GetId()),
+		ID:        util.Deref(resp.GetId()),
 		Name:      name,
 		IsGeneral: name == "General",
 	}, nil
@@ -74,8 +75,8 @@ func (s *Service) CreateStandardChannel(ctx context.Context, teamRef, name strin
 		return nil, mapError(senderErr)
 	}
 	return &Channel{
-		ID:        deref(created.GetId()),
-		Name:      deref(created.GetDisplayName()),
+		ID:        util.Deref(created.GetId()),
+		Name:      util.Deref(created.GetDisplayName()),
 		IsGeneral: false,
 	}, nil
 }
@@ -92,8 +93,8 @@ func (s *Service) CreatePrivateChannel(ctx context.Context, teamRef, name string
 		return nil, mapError(senderErr)
 	}
 	return &Channel{
-		ID:        deref(created.GetId()),
-		Name:      deref(created.GetDisplayName()),
+		ID:        util.Deref(created.GetId()),
+		Name:      util.Deref(created.GetDisplayName()),
 		IsGeneral: false,
 	}, nil
 }
@@ -280,10 +281,10 @@ func mapChatMessageToMessage(msg msmodels.ChatMessageable) *Message {
 		return nil
 	}
 	message := &Message{
-		ID: deref(msg.GetId()),
+		ID: util.Deref(msg.GetId()),
 	}
 	if body := msg.GetBody(); body != nil {
-		message.Content = deref(body.GetContent())
+		message.Content = util.Deref(body.GetContent())
 
 		if ct := body.GetContentType(); ct != nil {
 			switch *ct {
@@ -303,8 +304,8 @@ func mapChatMessageToMessage(msg msmodels.ChatMessageable) *Message {
 	if from := msg.GetFrom(); from != nil {
 		if user := from.GetUser(); user != nil {
 			message.From = &MessageFrom{
-				UserID:      deref(user.GetId()),
-				DisplayName: deref(user.GetDisplayName()),
+				UserID:      util.Deref(user.GetId()),
+				DisplayName: util.Deref(user.GetDisplayName()),
 			}
 		}
 	}
@@ -326,21 +327,14 @@ func mapConversationMemberToChannelMember(member msmodels.ConversationMemberable
 		role = roles[0]
 	}
 	channelMember := &ChannelMember{
-		ID:   deref(member.GetId()),
+		ID:   util.Deref(member.GetId()),
 		Role: role,
 	}
 
 	if userMember, ok := member.(*msmodels.AadUserConversationMember); ok {
-		channelMember.UserID = deref(userMember.GetUserId())
-		channelMember.DisplayName = deref(userMember.GetDisplayName())
+		channelMember.UserID = util.Deref(userMember.GetUserId())
+		channelMember.DisplayName = util.Deref(userMember.GetDisplayName())
 	}
 
 	return channelMember
-}
-
-func deref(s *string) string {
-	if s == nil {
-		return ""
-	}
-	return *s
 }

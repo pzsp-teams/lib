@@ -7,6 +7,7 @@ import (
 
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
 	"github.com/pzsp-teams/lib/internal/api"
+	"github.com/pzsp-teams/lib/internal/util"
 )
 
 type ChannelMapper interface {
@@ -47,7 +48,7 @@ func resolveChannelIDByName(teamID, ref string, chans msmodels.ChannelCollection
 		if c == nil {
 			continue
 		}
-		if deref(c.GetDisplayName()) == ref {
+		if util.Deref(c.GetDisplayName()) == ref {
 			matches = append(matches, c)
 		}
 	}
@@ -55,7 +56,7 @@ func resolveChannelIDByName(teamID, ref string, chans msmodels.ChannelCollection
 	case 0:
 		return "", fmt.Errorf("channel with name %q not found in team %q", ref, teamID)
 	case 1:
-		id := deref(matches[0].GetId())
+		id := util.Deref(matches[0].GetId())
 		if id == "" {
 			return "", fmt.Errorf("channel %q has nil id in team %q", ref, teamID)
 		}
@@ -64,7 +65,7 @@ func resolveChannelIDByName(teamID, ref string, chans msmodels.ChannelCollection
 		var options []string
 		for _, c := range matches {
 			options = append(options,
-				fmt.Sprintf("%s (ID: %s)", deref(c.GetDisplayName()), deref(c.GetId())))
+				fmt.Sprintf("%s (ID: %s)", util.Deref(c.GetDisplayName()), util.Deref(c.GetId())))
 		}
 		return "", fmt.Errorf(
 			"multiple channels named %q found in team %q: \n%s.\nPlease use one of the IDs instead",
@@ -91,7 +92,7 @@ func (m *channelMapper) MapUserRefToMemberID(ctx context.Context, teamID, channe
 			continue
 		}
 		if matchesUserRef(um, userRef) {
-			return deref(member.GetId()), nil
+			return util.Deref(member.GetId()), nil
 		}
 	}
 
@@ -107,10 +108,10 @@ func matchesUserRef(um msmodels.AadUserConversationMemberable, userRef string) b
 	if userRef == "" {
 		return false
 	}
-	if deref(um.GetUserId()) == userRef {
+	if util.Deref(um.GetUserId()) == userRef {
 		return true
 	}
-	if deref(um.GetDisplayName()) == userRef {
+	if util.Deref(um.GetDisplayName()) == userRef {
 		return true
 	}
 	ad := um.GetAdditionalData()
