@@ -19,7 +19,7 @@ type channelResolver struct {
 	channelsAPI api.ChannelAPI
 }
 
-func NewChannelMapper(channelsAPI api.ChannelAPI) ChannelResolver {
+func NewChannelResolver(channelsAPI api.ChannelAPI) ChannelResolver {
 	return &channelResolver{channelsAPI: channelsAPI}
 }
 
