@@ -1,17 +1,32 @@
 package cacher
 
+import "fmt"
+
 type KeyType string
 const (
 	TeamName KeyType = "team"
 	ChannelName KeyType = "channel"
 )
 
-type Key struct {
+type KeyBuilder interface{
+	ToString() string
+}
+
+type TeamKeyBuilder struct {
 	Type KeyType
 	Name string
 } 
 
-func (key *Key) ToString() string{
-	t := string(key.Type)
-	return "$" + t + "$:" + key.Name
+type ChannelKeyBuilder struct {
+	Type KeyType
+	TeamID string
+	Name string
+}
+
+func (keyBuilder *TeamKeyBuilder) ToString() string{
+	return fmt.Sprintf("$%v$:%v", keyBuilder.Type, keyBuilder.Name)
+}
+
+func (keyBuilder *ChannelKeyBuilder) ToString() string{
+	return fmt.Sprintf("$%v$:%v:%v", keyBuilder.Type, keyBuilder.TeamID,keyBuilder.Name)
 }
