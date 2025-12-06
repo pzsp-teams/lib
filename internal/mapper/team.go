@@ -3,6 +3,7 @@ package mapper
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strings"
 
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
@@ -78,26 +79,6 @@ func resolveTeamIDByName(ref string, list msmodels.TeamCollectionResponseable) (
 }
 
 func isLikelyGUID(s string) bool {
-	if len(s) != 36 {
-		return false
-	}
-	for i, r := range s {
-		switch i {
-		case 8, 13, 18, 23:
-			if r != '-' {
-				return false
-			}
-		default:
-			if !isHexDigit(r) {
-				return false
-			}
-		}
-	}
-	return true
-}
-
-func isHexDigit(r rune) bool {
-	return (r >= '0' && r <= '9') ||
-		(r >= 'a' && r <= 'f') ||
-		(r >= 'A' && r <= 'F')
+	var guidRegex = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
+	return guidRegex.MatchString(s)
 }
