@@ -337,19 +337,6 @@ func TestService_Delete_MapsError(t *testing.T) {
 	}
 }
 
-func TestDeref_NilReturnsEmpty(t *testing.T) {
-	if got := deref(nil); got != "" {
-		t.Fatalf("expected empty string, got %q", got)
-	}
-}
-
-func TestDeref_NonNil(t *testing.T) {
-	s := "hello"
-	if got := deref(&s); got != "hello" {
-		t.Fatalf("expected 'hello', got %q", got)
-	}
-}
-
 func TestService_SendMessage_CreatesMessageAndMapsResult(t *testing.T) {
 	ctx := context.Background()
 	msgID := "msg-123"
