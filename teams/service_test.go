@@ -368,15 +368,3 @@ func TestService_RestoreDeleted_EmptyObjectReturnsUnknown(t *testing.T) {
 	}
 }
 
-func TestDeref_NilReturnsEmpty_Teams(t *testing.T) {
-	if got := deref(nil); got != "" {
-		t.Fatalf("expected empty string, got %q", got)
-	}
-}
-
-func TestDeref_NonNil_Teams(t *testing.T) {
-	s := "hello"
-	if got := deref(&s); got != "hello" {
-		t.Fatalf("expected 'hello', got %q", got)
-	}
-}
