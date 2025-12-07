@@ -6,7 +6,9 @@ import (
 	"testing"
 
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
+	"github.com/pzsp-teams/lib/adapter"
 	sender "github.com/pzsp-teams/lib/internal/sender"
+	"github.com/pzsp-teams/lib/models"
 )
 
 type fakeTeamResolver struct {
@@ -348,7 +350,7 @@ func TestService_SendMessage_CreatesMessageAndMapsResult(t *testing.T) {
 	api := &fakeChannelAPI{sendMsgResp: respMsg}
 	svc := NewService(api, &fakeTeamResolver{}, &fakeChannelResolver{})
 
-	body := MessageBody{Content: msgContent}
+	body := models.MessageBody{Content: msgContent}
 	got, err := svc.SendMessage(ctx, "team-1", "chan-1", body)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -384,7 +386,7 @@ func TestService_SendMessage_MapsError(t *testing.T) {
 	}
 	svc := NewService(api, &fakeTeamResolver{}, &fakeChannelResolver{})
 
-	body := MessageBody{Content: "test"}
+	body := models.MessageBody{Content: "test"}
 	_, err := svc.SendMessage(ctx, "team-1", "chan-1", body)
 	var forbidden sender.ErrAccessForbidden
 	if !errors.As(err, &forbidden) {
@@ -427,7 +429,7 @@ func TestService_ListMessages_WithTopOption(t *testing.T) {
 	svc := NewService(api, &fakeTeamResolver{}, &fakeChannelResolver{})
 
 	var top int32 = 10
-	opts := &ListMessagesOptions{Top: &top}
+	opts := &models.ListMessagesOptions{Top: &top}
 	_, err := svc.ListMessages(ctx, "team-1", "chan-1", opts)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -509,7 +511,7 @@ func TestService_GetReply_ReturnsReply(t *testing.T) {
 }
 
 func TestMapChatMessageToMessage_NilInput(t *testing.T) {
-	got := mapChatMessageToMessage(nil)
+	got := adapter.MapGraphMessage(nil)
 	if got != nil {
 		t.Errorf("expected nil, got %+v", got)
 	}
@@ -833,7 +835,7 @@ func TestService_RemoveMember_MapsError(t *testing.T) {
 }
 
 func TestMapConversationMemberToChannelMember_NilInput(t *testing.T) {
-	got := mapConversationMemberToChannelMember(nil)
+	got := adapter.MapGraphMember(nil)
 	if got != nil {
 		t.Errorf("expected nil, got %+v", got)
 	}
@@ -841,7 +843,7 @@ func TestMapConversationMemberToChannelMember_NilInput(t *testing.T) {
 
 func TestMapConversationMemberToChannelMember_UserMember(t *testing.T) {
 	member := newAadUserMember("m-99", "u-99", "Some User", []string{"owner"})
-	got := mapConversationMemberToChannelMember(member)
+	got := adapter.MapGraphMember(member)
 	if got == nil {
 		t.Fatalf("expected non-nil, got nil")
 	}
