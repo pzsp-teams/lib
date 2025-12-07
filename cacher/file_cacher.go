@@ -74,9 +74,17 @@ func (cacher *JSONFileCacher) Set(key string, value any) error {
 		return fmt.Errorf("JSONFileCacher.Set: expected string, got %T", value)
 	}
 	var slice []string
-	err := json.Unmarshal(cacher.cache[key], &slice)
-	if err != nil {
-		slice = []string{}
+	if raw, exists := cacher.cache[key]; exists && raw != nil {
+		if err := json.Unmarshal(raw, &slice); err != nil {
+			slice = nil
+		}
+	}
+	seen := make(map[string]struct{}, len(slice))
+	for _, s := range slice {
+		seen[s] = struct{}{}
+	}
+	if _, exists := seen[str]; exists {
+		return nil
 	}
 	slice = append(slice, str)
 	record, err := json.Marshal(slice)
