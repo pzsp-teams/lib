@@ -88,8 +88,6 @@ func (f *fakeTeamsAPI) RestoreDeleted(ctx context.Context, deletedGroupID string
 	return f.restoreObj, f.restoreErr
 }
 
-
-
 func TestService_ListMyJoined_MapsTeams(t *testing.T) {
 	ctx := context.Background()
 	col := msmodels.NewTeamCollectionResponse()

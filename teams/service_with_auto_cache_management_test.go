@@ -10,7 +10,6 @@ import (
 	snd "github.com/pzsp-teams/lib/internal/sender"
 )
 
-
 type fakeCacher struct {
 	setCalls        int
 	invalidateCalls int
@@ -20,7 +19,7 @@ type fakeCacher struct {
 	invalidateKeys []string
 }
 
-func (f *fakeCacher) Get(key string) (any, bool, error) {
+func (f *fakeCacher) Get(key string) (value any, found bool, err error) {
 	return nil, false, nil
 }
 
@@ -55,7 +54,6 @@ func (f *fakeTeamResolver) ResolveTeamRefToID(ctx context.Context, teamRef strin
 	}
 	return "", nil
 }
-
 
 type fakeTeamAPI struct {
 	getFunc              func(ctx context.Context, teamID string) (msmodels.Teamable, *snd.RequestError)
@@ -151,7 +149,6 @@ func newDirectoryObject(id string) msmodels.DirectoryObjectable {
 	return obj
 }
 
-
 func TestServiceWithAutoCacheManagement_Get_AddsTeamToCacheOnSuccess(t *testing.T) {
 	ctx := context.Background()
 
@@ -190,7 +187,7 @@ func TestServiceWithAutoCacheManagement_Get_AddsTeamToCacheOnSuccess(t *testing.
 		t.Fatalf("unexpected mapped team: %#v", team)
 	}
 	if strings.TrimSpace(team.DisplayName) != "My Team" {
-	    t.Fatalf("unexpected mapped team: %#v", team)
+		t.Fatalf("unexpected mapped team: %#v", team)
 	}
 
 	if fc.setCalls != 1 {
@@ -204,7 +201,6 @@ func TestServiceWithAutoCacheManagement_Get_AddsTeamToCacheOnSuccess(t *testing.
 		t.Errorf("expected cached value 'team-id-123', got %#v", fc.setValues[0])
 	}
 }
-
 
 func TestServiceWithAutoCacheManagement_ListMyJoined_WarmsCache(t *testing.T) {
 	ctx := context.Background()
@@ -284,7 +280,6 @@ func TestServiceWithAutoCacheManagement_Update_InvalidatesOldAndCachesNew(t *tes
 	if team == nil || team.ID != "team-id-xyz" || strings.TrimSpace(team.DisplayName) != "New Name" {
 		t.Fatalf("unexpected team returned: %#v", team)
 	}
-
 
 	if fc.invalidateCalls != 1 {
 		t.Fatalf("expected 1 Invalidate call, got %d", fc.invalidateCalls)
