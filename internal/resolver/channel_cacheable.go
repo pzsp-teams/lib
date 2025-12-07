@@ -34,7 +34,7 @@ func (res *ChannelResolverCacheable) ResolveChannelRefToID(ctx context.Context, 
 	if ref == "" {
 		return "", fmt.Errorf("empty channel reference")
 	}
-	if isLikelyChannelID(ref) {
+	if util.IsLikelyChannelID(ref) {
 		return ref, nil
 	}
 	if res.cacheEnabled {
@@ -111,10 +111,6 @@ func findMemberID(members []msmodels.ConversationMemberable, ref string) string 
 	return id
 }
 
-func isLikelyChannelID(s string) bool {
-	s = strings.TrimSpace(s)
-	return strings.HasPrefix(s, "19:") && strings.Contains(s, "@thread.")
-}
 
 func matchesUserRef(um msmodels.AadUserConversationMemberable, userRef string) bool {
 	if userRef == "" {

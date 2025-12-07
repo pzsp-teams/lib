@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/pzsp-teams/lib/cacher"
+	"github.com/pzsp-teams/lib/internal/util"
 )
 
 type ServiceWithAutoCacheManagement struct {
@@ -164,7 +165,7 @@ func (s *ServiceWithAutoCacheManagement) addChannelsToCache(
 			continue
 		}
 		name := strings.TrimSpace(ch.Name)
-		if name == "" || isLikelyChannelID(name) {
+		if name == "" || util.IsLikelyChannelID(name) {
 			continue
 		}
 		key := cacher.NewChannelKeyBuilder(teamID, name).ToString()
@@ -180,7 +181,7 @@ func (s *ServiceWithAutoCacheManagement) removeChannelFromCache(
 		return
 	}
 	ref := strings.TrimSpace(channelRef)
-	if ref == "" || isLikelyChannelID(ref) {
+	if ref == "" || util.IsLikelyChannelID(ref) {
 		return
 	}
 	teamID, err := s.svc.teamResolver.ResolveTeamRefToID(ctx, teamRef)
@@ -242,7 +243,4 @@ func (s *ServiceWithAutoCacheManagement) invalidateMemberCache(
 	_ = s.cache.Invalidate(key)
 }
 
-func isLikelyChannelID(s string) bool {
-	s = strings.TrimSpace(s)
-	return strings.HasPrefix(s, "19:") && strings.Contains(s, "@thread.")
-}
+
