@@ -6,10 +6,12 @@ import (
 	"net/http"
 
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
+	"github.com/pzsp-teams/lib/adapter"
 	"github.com/pzsp-teams/lib/internal/api"
 	"github.com/pzsp-teams/lib/internal/resolver"
 	snd "github.com/pzsp-teams/lib/internal/sender"
 	"github.com/pzsp-teams/lib/internal/util"
+	"github.com/pzsp-teams/lib/models"
 )
 
 // Service will be used later
@@ -19,62 +21,70 @@ type Service struct {
 }
 
 // NewService will be used later
-func NewService(teamsAPI api.TeamAPI, m resolver.TeamResolver) *Service {
-	return &Service{teamAPI: teamsAPI, teamResolver: m}
+func NewService(teamsAPI api.TeamAPI, tr resolver.TeamResolver) *Service {
+	return &Service{teamAPI: teamsAPI, teamResolver: tr}
 }
 
 // Get will be used later
-func (s *Service) Get(ctx context.Context, teamRef string) (*Team, error) {
+func (s *Service) Get(ctx context.Context, teamRef string) (*models.Team, error) {
 	teamID, err := s.teamResolver.ResolveTeamRefToID(ctx, teamRef)
 	if err != nil {
 		return nil, err
 	}
+
 	resp, requestErr := s.teamAPI.Get(ctx, teamID)
 	if requestErr != nil {
 		return nil, snd.MapError(requestErr, snd.WithResource(snd.Team, teamRef))
 	}
-	return mapGraphTeam(resp), nil
+
+	return adapter.MapGraphTeam(resp), nil
 }
 
 // ListMyJoined will be used later
-func (s *Service) ListMyJoined(ctx context.Context) ([]*Team, error) {
+func (s *Service) ListMyJoined(ctx context.Context) ([]*models.Team, error) {
 	resp, requestErr := s.teamAPI.ListMyJoined(ctx)
 	if requestErr != nil {
 		return nil, snd.MapError(requestErr)
 	}
-	var out []*Team
+
+	var out []*models.Team
 	if resp != nil && resp.GetValue() != nil {
 		for _, t := range resp.GetValue() {
-			out = append(out, mapGraphTeam(t))
+			out = append(out, adapter.MapGraphTeam(t))
 		}
 	}
+
 	return out, nil
 }
 
 // Update will be used later
-func (s *Service) Update(ctx context.Context, teamRef string, patch *msmodels.Team) (*Team, error) {
+func (s *Service) Update(ctx context.Context, teamRef string, patch *msmodels.Team) (*models.Team, error) {
 	teamID, err := s.teamResolver.ResolveTeamRefToID(ctx, teamRef)
 	if err != nil {
 		return nil, err
 	}
+
 	resp, requestErr := s.teamAPI.Update(ctx, teamID, patch)
 	if requestErr != nil {
 		return nil, snd.MapError(requestErr, snd.WithResource(snd.Team, teamID))
 	}
-	return mapGraphTeam(resp), nil
+
+	return adapter.MapGraphTeam(resp), nil
 }
 
 // CreateViaGroup will be used later
-func (s *Service) CreateViaGroup(ctx context.Context, displayName, mailNickname, visibility string) (*Team, error) {
+func (s *Service) CreateViaGroup(ctx context.Context, displayName, mailNickname, visibility string) (*models.Team, error) {
 	id, requestErr := s.teamAPI.CreateViaGroup(ctx, displayName, mailNickname, visibility)
 	if requestErr != nil {
 		return nil, snd.MapError(requestErr)
 	}
+
 	t, ge := s.teamAPI.Get(ctx, id)
 	if ge != nil {
 		return nil, snd.MapError(ge)
 	}
-	return mapGraphTeam(t), nil
+
+	return adapter.MapGraphTeam(t), nil
 }
 
 // CreateFromTemplate will be used later
@@ -86,6 +96,7 @@ func (s *Service) CreateFromTemplate(ctx context.Context, displayName, descripti
 		}
 		return "", snd.MapError(requestErr, snd.WithResources(snd.User, owners))
 	}
+
 	return id, nil
 }
 
@@ -95,9 +106,11 @@ func (s *Service) Archive(ctx context.Context, teamRef string, spoReadOnlyForMem
 	if err != nil {
 		return err
 	}
+
 	if e := s.teamAPI.Archive(ctx, teamID, spoReadOnlyForMembers); e != nil {
 		return snd.MapError(e, snd.WithResource(snd.Team, teamRef))
 	}
+
 	return nil
 }
 
@@ -107,9 +120,11 @@ func (s *Service) Unarchive(ctx context.Context, teamRef string) error {
 	if err != nil {
 		return err
 	}
+
 	if requestErr := s.teamAPI.Unarchive(ctx, teamID); requestErr != nil {
 		return snd.MapError(requestErr, snd.WithResource(snd.Team, teamRef))
 	}
+
 	return nil
 }
 
@@ -119,9 +134,11 @@ func (s *Service) Delete(ctx context.Context, teamRef string) error {
 	if err != nil {
 		return err
 	}
+
 	if requestErr := s.teamAPI.Delete(ctx, teamID); requestErr != nil {
 		return snd.MapError(requestErr, snd.WithResource(snd.Team, teamRef))
 	}
+
 	return nil
 }
 
@@ -134,27 +151,11 @@ func (s *Service) RestoreDeleted(ctx context.Context, deletedGroupID string) (st
 	if obj == nil {
 		return "", fmt.Errorf("restored object is nil")
 	}
+
 	id := util.Deref((obj.GetId()))
 	if id == "" {
 		return "", fmt.Errorf("restored object has empty id")
 	}
-	return id, nil
-}
 
-func mapGraphTeam(t msmodels.Teamable) *Team {
-	if t == nil {
-		return nil
-	}
-	out := &Team{
-		ID:          util.Deref(t.GetId()),
-		DisplayName: util.Deref(t.GetDisplayName()),
-		Description: util.Deref(t.GetDescription()),
-	}
-	if v := t.GetVisibility(); v != nil {
-		out.Visibility = v.String()
-	}
-	if t.GetIsArchived() != nil {
-		out.IsArchived = *t.GetIsArchived()
-	}
-	return out
+	return id, nil
 }

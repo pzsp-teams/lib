@@ -1,4 +1,4 @@
-package channels
+package models
 
 import (
 	"time"
@@ -6,21 +6,20 @@ import (
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
 )
 
+/*
+MessageContentType represents the type of content in a Microsoft Teams message.
+It can be either text or HTML.
+*/
 type MessageContentType string
 
 const (
+	// MessageContentTypeText represents plain text content.
 	MessageContentTypeText MessageContentType = "text"
+	// MessageContentTypeHTML represents HTML content.
 	MessageContentTypeHTML MessageContentType = "html"
 )
 
-// Channel represents a Microsoft Teams channel
-type Channel struct {
-	ID        string
-	Name      string
-	IsGeneral bool
-}
-
-// Message represents a chat message in a Teams channel
+// Message represents a Microsoft Teams chat message. It can be used in both chats and channels.
 type Message struct {
 	ID              string
 	Content         string
@@ -30,13 +29,14 @@ type Message struct {
 	ReplyCount      int
 }
 
-// MessageFrom represents the sender of a message
+// MessageFrom represents the sender of a message in Microsoft Teams.
 type MessageFrom struct {
 	UserID      string
+	Email       string
 	DisplayName string
 }
 
-// MessageBody represents the request body for sending a message
+// MessageBody represents the body of a message in Microsoft Teams.
 type MessageBody struct {
 	Content     string
 	ContentType MessageContentType
@@ -53,15 +53,8 @@ func (b MessageBody) ToGraphItemBody() msmodels.ItemBodyable {
 	return body
 }
 
-// ListMessagesOptions contains options for listing messages
+// ListMessagesOptions contains options for listing messages.
 type ListMessagesOptions struct {
 	Top           *int32
 	ExpandReplies bool
-}
-
-type ChannelMember struct {
-	ID          string
-	UserID      string
-	DisplayName string
-	Role        string
 }
