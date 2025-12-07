@@ -47,6 +47,7 @@ func (s *ServiceWithAutoCacheManagement) Update(ctx context.Context, teamRef str
 		return nil, err
 	}
 	s.removeTeamFromCache(teamRef)
+	s.addTeamToCache(team)
 	return team, nil
 }
 
@@ -100,7 +101,7 @@ func (s *ServiceWithAutoCacheManagement) RestoreDeleted(ctx context.Context, del
 }
 
 func (s *ServiceWithAutoCacheManagement) addTeamToCache(team *Team) {
-	keyBuilder := cacher.NewTeamKeyBuilder(team.DisplayName)
+	keyBuilder := cacher.NewTeamKeyBuilder(strings.TrimSpace(team.DisplayName))
 	_ = s.cache.Set(keyBuilder.ToString(), team.ID)
 }
 
