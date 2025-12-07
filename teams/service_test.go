@@ -88,12 +88,7 @@ func (f *fakeTeamsAPI) RestoreDeleted(ctx context.Context, deletedGroupID string
 	return f.restoreObj, f.restoreErr
 }
 
-func newGraphTeam(id, name string) msmodels.Teamable {
-	t := msmodels.NewTeam()
-	t.SetId(&id)
-	t.SetDisplayName(&name)
-	return t
-}
+
 
 func TestService_ListMyJoined_MapsTeams(t *testing.T) {
 	ctx := context.Background()
