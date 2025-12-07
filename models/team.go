@@ -1,6 +1,6 @@
-package teams
+package models
 
-// Team represents a Microsoft Teams team
+// Team represents a Microsoft Teams team.
 type Team struct {
 	ID          string
 	DisplayName string
