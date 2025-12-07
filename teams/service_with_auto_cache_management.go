@@ -3,6 +3,7 @@ package teams
 import (
 	"context"
 	"regexp"
+	"strings"
 
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
 	"github.com/pzsp-teams/lib/cacher"
@@ -46,7 +47,6 @@ func (s *ServiceWithAutoCacheManagement) Update(ctx context.Context, teamRef str
 		return nil, err
 	}
 	s.removeTeamFromCache(teamRef)
-	s.addTeamToCache(team)
 	return team, nil
 }
 
@@ -108,9 +108,10 @@ func (s *ServiceWithAutoCacheManagement) removeTeamFromCache(teamRef string) {
 	if isLikelyGUID(teamRef) {
 		return
 	}
-	keyBuilder := cacher.NewTeamKeyBuilder(teamRef)
+	keyBuilder := cacher.NewTeamKeyBuilder(strings.TrimSpace(teamRef))
 	_ = s.cache.Invalidate(keyBuilder.ToString())
 }
+
 
 func isLikelyGUID(s string) bool {
 	var guidRegex = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
