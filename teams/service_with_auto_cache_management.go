@@ -2,11 +2,11 @@ package teams
 
 import (
 	"context"
-	"regexp"
 	"strings"
 
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
 	"github.com/pzsp-teams/lib/cacher"
+	"github.com/pzsp-teams/lib/internal/util"
 )
 
 type ServiceWithAutoCacheManagement struct {
@@ -115,7 +115,7 @@ func (s *ServiceWithAutoCacheManagement) removeTeamsFromCache(teamRefs []string)
 		return
 	}
 	for _, teamRef := range teamRefs {
-		if isLikelyGUID(teamRef) {
+		if util.IsLikelyGUID(teamRef) {
 			continue
 		}
 		keyBuilder := cacher.NewTeamKeyBuilder(strings.TrimSpace(teamRef))
@@ -123,7 +123,3 @@ func (s *ServiceWithAutoCacheManagement) removeTeamsFromCache(teamRefs []string)
 	}
 }
 
-func isLikelyGUID(s string) bool {
-	var guidRegex = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
-	return guidRegex.MatchString(s)
-}
