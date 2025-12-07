@@ -6,6 +6,7 @@ import (
 
 	graph "github.com/microsoftgraph/msgraph-sdk-go"
 
+	"github.com/pzsp-teams/lib/cacher"
 	"github.com/pzsp-teams/lib/chats"
 	"github.com/pzsp-teams/lib/internal/api"
 	"github.com/pzsp-teams/lib/internal/auth"
@@ -32,15 +33,15 @@ func NewClient(ctx context.Context, authConfig *AuthConfig, senderConfig *Sender
 	if err != nil {
 		return nil, fmt.Errorf("creating graph client: %w", err)
 	}
-
+	cacher := cacher.NewJSONFileCacher("cache.json")
 	techParams := senderConfig.toTechParams()
 
 	teamsAPI := api.NewTeams(graphClient, techParams)
 	channelsAPI := api.NewChannels(graphClient, techParams)
 	chatAPI := api.NewChat(graphClient, techParams)
 
-	teamMapper := resolver.NewTeamResolver(teamsAPI, channelsAPI)
-	channelMapper := resolver.NewChannelResolver(channelsAPI)
+	teamMapper := resolver.NewTeamResolverCacheable(teamsAPI, cacher, true)
+	channelMapper := resolver.NewChannelResolverCacheable(channelsAPI, cacher, true)
 
 	teamSvc := teams.NewService(teamsAPI, teamMapper)
 	channelSvc := channels.NewService(channelsAPI, teamMapper, channelMapper)
