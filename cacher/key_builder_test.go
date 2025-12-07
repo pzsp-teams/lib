@@ -48,7 +48,7 @@ func TestMemberKeyBuilder_ToString(t *testing.T) {
 }
 
 func TestNewTeamKeyBuilder_SetsFieldsAndImplementsInterface(t *testing.T) {
-	var kb KeyBuilder = NewTeamKeyBuilder("team-x")
+	var kb = NewTeamKeyBuilder("team-x")
 	tkb, ok := kb.(*TeamKeyBuilder)
 	if !ok {
 		t.Fatalf("NewTeamKeyBuilder() should return *TeamKeyBuilder, got %T", kb)
@@ -63,7 +63,7 @@ func TestNewTeamKeyBuilder_SetsFieldsAndImplementsInterface(t *testing.T) {
 }
 
 func TestNewChannelKeyBuilder_SetsFieldsAndImplementsInterface(t *testing.T) {
-	var kb KeyBuilder = NewChannelKeyBuilder("team-1", "chan-x")
+	var kb = NewChannelKeyBuilder("team-1", "chan-x")
 	ckb, ok := kb.(*ChannelKeyBuilder)
 	if !ok {
 		t.Fatalf("NewChannelKeyBuilder() should return *ChannelKeyBuilder, got %T", kb)
@@ -81,7 +81,7 @@ func TestNewChannelKeyBuilder_SetsFieldsAndImplementsInterface(t *testing.T) {
 }
 
 func TestNewMemberKeyBuilder_SetsFieldsAndImplementsInterface(t *testing.T) {
-	var kb KeyBuilder = NewMemberKeyBuilder("user-ref", "team-1", "chan-1")
+	var kb = NewMemberKeyBuilder("user-ref", "team-1", "chan-1")
 	mkb, ok := kb.(*MemberKeyBuilder)
 	if !ok {
 		t.Fatalf("NewMemberKeyBuilder() should return *MemberKeyBuilder, got %T", kb)

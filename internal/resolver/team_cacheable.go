@@ -9,14 +9,14 @@ import (
 )
 
 type TeamResolverCacheable struct {
-	cacher cacher.Cacher
+	cacher   cacher.Cacher
 	resolver TeamResolver
 }
 
-func NewTeamResolverCacheable(cacher cacher.Cacher, resolver TeamResolver) TeamResolver {
+func NewTeamResolverCacheable(c cacher.Cacher, r TeamResolver) TeamResolver {
 	return &TeamResolverCacheable{
-		cacher: cacher,
-		resolver: resolver,
+		cacher:   c,
+		resolver: r,
 	}
 }
 

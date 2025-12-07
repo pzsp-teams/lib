@@ -7,7 +7,6 @@ import (
 	"testing"
 )
 
-
 func tempFilePath(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()

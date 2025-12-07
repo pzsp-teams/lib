@@ -14,7 +14,7 @@ import (
 
 // Service will be used later
 type Service struct {
-	teamAPI    api.TeamAPI
+	teamAPI      api.TeamAPI
 	teamResolver resolver.TeamResolver
 }
 
@@ -132,8 +132,8 @@ func (s *Service) RestoreDeleted(ctx context.Context, deletedGroupID string) (st
 		return "", snd.MapError(err, snd.WithResource(snd.Team, deletedGroupID))
 	}
 	if obj == nil {
-        return "", fmt.Errorf("restored object is nil")
-    }
+		return "", fmt.Errorf("restored object is nil")
+	}
 	id := util.Deref((obj.GetId()))
 	if id == "" {
 		return "", fmt.Errorf("restored object has empty id")

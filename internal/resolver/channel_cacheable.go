@@ -9,13 +9,13 @@ import (
 )
 
 type ChannelResolverCacheable struct {
-	cacher cacher.Cacher
+	cacher   cacher.Cacher
 	resolver ChannelResolver
 }
 
 func NewChannelResolverCacheable(c cacher.Cacher, r ChannelResolver) ChannelResolver {
 	return &ChannelResolverCacheable{
-		cacher: c,
+		cacher:   c,
 		resolver: r,
 	}
 }
@@ -39,7 +39,7 @@ func (res *ChannelResolverCacheable) ResolveChannelRefToID(ctx context.Context, 
 	if err != nil {
 		return "", err
 	}
-	_ = res.cacher.Set(key, id) 
+	_ = res.cacher.Set(key, id)
 	return id, nil
 }
 

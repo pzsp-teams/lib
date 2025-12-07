@@ -367,4 +367,3 @@ func TestService_RestoreDeleted_EmptyObjectReturnsUnknown(t *testing.T) {
 		t.Fatalf("expected error for empty restored object, got nil")
 	}
 }
-
