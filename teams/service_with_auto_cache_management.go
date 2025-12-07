@@ -51,7 +51,7 @@ func (s *ServiceWithAutoCacheManagement) Update(ctx context.Context, teamRef str
 }
 
 func (s *ServiceWithAutoCacheManagement) CreateFromTemplate(ctx context.Context, displayName, description string, owners []string) (string, error) {
-	id, err := s.svc.teamAPI.CreateFromTemplate(ctx, displayName, description, owners)
+	id, err := s.svc.CreateFromTemplate(ctx, displayName, description, owners)
 	if err != nil {
 		return id, err
 	}
