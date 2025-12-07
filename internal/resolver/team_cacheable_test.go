@@ -10,14 +10,11 @@ import (
 	sender "github.com/pzsp-teams/lib/internal/sender"
 )
 
-
 type fakeTeamAPI struct {
 	listResp  msmodels.TeamCollectionResponseable
 	listErr   *sender.RequestError
 	listCalls int
 }
-
-
 
 func (f *fakeTeamAPI) CreateFromTemplate(ctx context.Context, displayName, description string, owners []string) (string, *sender.RequestError) {
 	return "", nil
@@ -56,7 +53,6 @@ func (f *fakeTeamAPI) RestoreDeleted(ctx context.Context, deletedGroupID string)
 	return nil, nil
 }
 
-
 func newGraphTeam(id, name string) msmodels.Teamable {
 	t := msmodels.NewTeam()
 	t.SetId(&id)
@@ -69,8 +65,6 @@ func newTeamCollection(teams ...msmodels.Teamable) msmodels.TeamCollectionRespon
 	col.SetValue(teams)
 	return col
 }
-
-
 
 func TestTeamResolverCacheable_ResolveTeamRefToID_EmptyRef(t *testing.T) {
 	ctx := context.Background()
@@ -249,7 +243,6 @@ func TestTeamResolverCacheable_ResolveTeamRefToID_ListMyJoinedErrorPropagated(t 
 	}
 }
 
-
 func TestResolveTeamIDByName_NoTeamsAvailable(t *testing.T) {
 	col := msmodels.NewTeamCollectionResponse()
 	col.SetValue(nil)
@@ -303,8 +296,6 @@ func TestResolveTeamIDByName_MultipleMatches(t *testing.T) {
 		t.Errorf("unexpected error: %v", err)
 	}
 }
-
-
 
 func TestIsLikelyGUID_Positive(t *testing.T) {
 	s := "123e4567-e89b-12d3-a456-426614174000"
