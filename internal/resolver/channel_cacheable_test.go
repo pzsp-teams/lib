@@ -10,7 +10,6 @@ import (
 	sender "github.com/pzsp-teams/lib/internal/sender"
 )
 
-
 type fakeCacher struct {
 	getValue     any
 	getFound     bool
@@ -23,7 +22,7 @@ type fakeCacher struct {
 	lastSetValue any
 }
 
-func (f *fakeCacher) Get(key string) (any, bool, error) {
+func (f *fakeCacher) Get(key string) (valeu any, found bool, err error) {
 	f.getCalls++
 	f.lastGetKey = key
 	return f.getValue, f.getFound, f.getErr
@@ -44,20 +43,18 @@ func (f *fakeCacher) Clear() error {
 	return nil
 }
 
-
 type fakeChannelAPI struct {
-	listResp        msmodels.ChannelCollectionResponseable
-	listErr         *sender.RequestError
-	listCalls       int
-	lastListTeamID  string
+	listResp       msmodels.ChannelCollectionResponseable
+	listErr        *sender.RequestError
+	listCalls      int
+	lastListTeamID string
 
-	membersResp        msmodels.ConversationMemberCollectionResponseable
-	membersErr         *sender.RequestError
-	listMembersCalls   int
-	lastMembersTeamID  string
-	lastMembersChanID  string
+	membersResp       msmodels.ConversationMemberCollectionResponseable
+	membersErr        *sender.RequestError
+	listMembersCalls  int
+	lastMembersTeamID string
+	lastMembersChanID string
 }
-
 
 func (f *fakeChannelAPI) ListChannels(ctx context.Context, teamID string) (msmodels.ChannelCollectionResponseable, *sender.RequestError) {
 	f.listCalls++
@@ -71,8 +68,6 @@ func (f *fakeChannelAPI) ListMembers(ctx context.Context, teamID, channelID stri
 	f.lastMembersChanID = channelID
 	return f.membersResp, f.membersErr
 }
-
-
 
 func (f *fakeChannelAPI) GetChannel(ctx context.Context, teamID, channelID string) (msmodels.Channelable, *sender.RequestError) {
 	return nil, nil
@@ -122,8 +117,6 @@ func (f *fakeChannelAPI) UpdateMemberRole(ctx context.Context, teamID, channelID
 	return nil, nil
 }
 
-
-
 func newGraphChannel(id, name string) msmodels.Channelable {
 	ch := msmodels.NewChannel()
 	ch.SetId(&id)
@@ -150,8 +143,6 @@ func newMemberCollection(members ...msmodels.ConversationMemberable) msmodels.Co
 	col.SetValue(members)
 	return col
 }
-
-
 
 func TestChannelResolverCacheable_ResolveChannelRefToID_EmptyRef(t *testing.T) {
 	ctx := context.Background()
@@ -193,7 +184,7 @@ func TestChannelResolverCacheable_ResolveChannelRefToID_DirectID_ShortCircuit(t 
 func TestChannelResolverCacheable_ResolveChannelRefToID_CacheHitSingleID(t *testing.T) {
 	ctx := context.Background()
 	fc := &fakeCacher{
-		getValue: []any{"chan-id-123"}, 
+		getValue: []any{"chan-id-123"},
 		getFound: true,
 	}
 	fc.getValue = []string{"chan-id-123"}
@@ -226,7 +217,7 @@ func TestChannelResolverCacheable_ResolveChannelRefToID_CacheHitSingleID(t *test
 func TestChannelResolverCacheable_ResolveChannelRefToID_CacheMiss_UsesAPIAndCaches(t *testing.T) {
 	ctx := context.Background()
 	fc := &fakeCacher{
-		getFound: false, 
+		getFound: false,
 	}
 	ch := newGraphChannel("chan-id-xyz", "General")
 	apiFake := &fakeChannelAPI{
@@ -314,7 +305,6 @@ func TestChannelResolverCacheable_ResolveChannelRefToID_ResolverErrorPropagated(
 		t.Fatalf("expected error, got nil")
 	}
 }
-
 
 func TestChannelResolverCacheable_ResolveUserRefToMemberID_EmptyRef(t *testing.T) {
 	ctx := context.Background()
