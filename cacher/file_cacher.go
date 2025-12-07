@@ -2,6 +2,7 @@ package cacher
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 )
 
@@ -21,8 +22,7 @@ func (cacher *JSONFileCacher) Get(key string) (value any, found bool, err error)
 	if cacher.loaded {
 		return cacher.getFromCache(key)
 	}
-	err = cacher.loadCache()
-	if err != nil {
+	if err := cacher.loadCache(); err != nil {
 		return nil, false, err
 	}
 	return cacher.getFromCache(key)
@@ -30,12 +30,11 @@ func (cacher *JSONFileCacher) Get(key string) (value any, found bool, err error)
 
 func (cacher *JSONFileCacher) getFromCache(key string) (value any, found bool, err error) {
 	data, ok := cacher.cache[key]
-	var result string
 	if !ok {
 		return nil, false, nil
 	}
-	err = json.Unmarshal(data, &result)
-	if err != nil {
+	var result []string
+	if err := json.Unmarshal(data, &result); err != nil {
 		return nil, false, err
 	}
 	return result, true, nil
@@ -56,9 +55,8 @@ func (cacher *JSONFileCacher) loadCache() error {
 		cacher.loaded = true
 		cacher.cache = make(map[string]json.RawMessage)
 	} else {
-		err = json.Unmarshal(data, &cacher.cache)
-		if err != nil {
-			return err
+		if err := json.Unmarshal(data, &cacher.cache); err != nil {
+		return err
 		}
 		cacher.loaded = true
 	}
@@ -67,12 +65,21 @@ func (cacher *JSONFileCacher) loadCache() error {
 
 func (cacher *JSONFileCacher) Set(key string, value any) error {
 	if !cacher.loaded {
-		err := cacher.loadCache()
-		if err != nil {
+		if err := cacher.loadCache(); err != nil {
 			return err
 		}
 	}
-	record, err := json.Marshal(value)
+	str, ok := value.(string)
+	if !ok {
+		return fmt.Errorf("JSONFileCacher.Set: expected string, got %T", value)
+	}
+	var slice []string
+	err := json.Unmarshal(cacher.cache[key], &slice)
+	if err != nil {
+		slice = []string{}
+	}
+	slice = append(slice, str)
+	record, err := json.Marshal(slice)
 	if err != nil {
 		return err
 	}
@@ -83,6 +90,7 @@ func (cacher *JSONFileCacher) Set(key string, value any) error {
 	}
 	return os.WriteFile(cacher.file, data, 0o644)
 }
+
 
 func (cacher *JSONFileCacher) Invalidate(key string) error {
 	if !cacher.loaded {
