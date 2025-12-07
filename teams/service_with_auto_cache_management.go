@@ -95,6 +95,10 @@ func (s *ServiceWithAutoCacheManagement) Delete(ctx context.Context, teamRef str
 	return nil
 }
 
+func (s *ServiceWithAutoCacheManagement) RestoreDeleted(ctx context.Context, deletedGroupID string) (string, error) {
+	return s.svc.RestoreDeleted(ctx, deletedGroupID)
+}
+
 func (s *ServiceWithAutoCacheManagement) addTeamToCache(team *Team) {
 	keyBuilder := cacher.NewTeamKeyBuilder(team.DisplayName)
 	_ = s.cache.Set(keyBuilder.ToString(), team.ID)
