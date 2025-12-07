@@ -12,7 +12,6 @@ import (
 	"github.com/pzsp-teams/lib/internal/util"
 )
 
-
 type TeamResolver interface {
 	ResolveTeamRefToID(ctx context.Context, teamRef string) (string, error)
 }
