@@ -18,14 +18,13 @@ func MapGraphTeam(graphTeam msmodels.Teamable) *models.Team {
 		visibility = v.String()
 	}
 
-	out := &models.Team{
+	return &models.Team{
 		ID:          util.Deref(graphTeam.GetId()),
 		DisplayName: util.Deref(graphTeam.GetDisplayName()),
 		Description: util.Deref(graphTeam.GetDescription()),
 		IsArchived:  util.Deref(graphTeam.GetIsArchived()),
 		Visibility:  visibility,
 	}
-	return out
 }
 
 // MapGraphChannel maps a Microsoft Graph Channelable to simplified Channel model.
