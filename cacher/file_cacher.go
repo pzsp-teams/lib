@@ -4,9 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"sync"
 )
 
 type JSONFileCacher struct {
+	mu sync.Mutex
 	file   string
 	cache  map[string]json.RawMessage
 	loaded bool
@@ -19,6 +21,8 @@ func NewJSONFileCacher(path string) Cacher {
 }
 
 func (cacher *JSONFileCacher) Get(key string) (value any, found bool, err error) {
+	cacher.mu.Lock()
+	defer cacher.mu.Unlock()
 	if cacher.loaded {
 		return cacher.getFromCache(key)
 	}
@@ -29,6 +33,8 @@ func (cacher *JSONFileCacher) Get(key string) (value any, found bool, err error)
 }
 
 func (cacher *JSONFileCacher) getFromCache(key string) (value any, found bool, err error) {
+	cacher.mu.Lock()
+	defer cacher.mu.Unlock()
 	data, ok := cacher.cache[key]
 	if !ok {
 		return nil, false, nil
@@ -41,6 +47,8 @@ func (cacher *JSONFileCacher) getFromCache(key string) (value any, found bool, e
 }
 
 func (cacher *JSONFileCacher) loadCache() error {
+	cacher.mu.Lock()
+	defer cacher.mu.Unlock()
 	data, err := os.ReadFile(cacher.file)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -64,6 +72,8 @@ func (cacher *JSONFileCacher) loadCache() error {
 }
 
 func (cacher *JSONFileCacher) Set(key string, value any) error {
+	cacher.mu.Lock()
+	defer cacher.mu.Unlock()
 	if !cacher.loaded {
 		if err := cacher.loadCache(); err != nil {
 			return err
@@ -100,6 +110,8 @@ func (cacher *JSONFileCacher) Set(key string, value any) error {
 }
 
 func (cacher *JSONFileCacher) Invalidate(key string) error {
+	cacher.mu.Lock()
+	defer cacher.mu.Unlock()
 	if !cacher.loaded {
 		err := cacher.loadCache()
 		if err != nil {
@@ -115,6 +127,8 @@ func (cacher *JSONFileCacher) Invalidate(key string) error {
 }
 
 func (cacher *JSONFileCacher) Clear() error {
+	cacher.mu.Lock()
+	defer cacher.mu.Unlock()
 	cacher.cache = make(map[string]json.RawMessage)
 	cacher.loaded = true
 	data, err := json.MarshalIndent(cacher.cache, "", "  ")
