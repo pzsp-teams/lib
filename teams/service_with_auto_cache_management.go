@@ -26,7 +26,7 @@ func (s *ServiceWithAutoCacheManagement) Get(ctx context.Context, teamRef string
 	if err != nil {
 		return nil, err
 	}
-	s.addTeamToCache(team)
+	s.addTeamsToCache(&[]Team{*team})
 	return team, nil
 }
 
@@ -36,7 +36,7 @@ func (s *ServiceWithAutoCacheManagement) ListMyJoined(ctx context.Context) ([]*T
 		return nil, err
 	}
 	for _, team := range teams {
-		s.addTeamToCache(team)
+		s.addTeamsToCache(&[]Team{*team})
 	}
 	return teams, nil
 }
@@ -46,8 +46,8 @@ func (s *ServiceWithAutoCacheManagement) Update(ctx context.Context, teamRef str
 	if err != nil {
 		return nil, err
 	}
-	s.removeTeamFromCache(teamRef)
-	s.addTeamToCache(team)
+	s.removeTeamsFromCache([]string{teamRef})
+	s.addTeamsToCache(&[]Team{*team})
 	return team, nil
 }
 
@@ -56,7 +56,7 @@ func (s *ServiceWithAutoCacheManagement) CreateFromTemplate(ctx context.Context,
 	if err != nil {
 		return id, err
 	}
-	s.removeTeamFromCache(displayName)
+	s.removeTeamsFromCache([]string{displayName})
 	return id, err
 }
 
@@ -65,7 +65,7 @@ func (s *ServiceWithAutoCacheManagement) CreateViaGroup(ctx context.Context, dis
 	if err != nil {
 		return nil, err
 	}
-	s.removeTeamFromCache(displayName)
+	s.removeTeamsFromCache([]string{displayName})
 	return team, nil
 }
 
@@ -74,7 +74,7 @@ func (s *ServiceWithAutoCacheManagement) Archive(ctx context.Context, teamRef st
 	if err != nil {
 		return err
 	}
-	s.removeTeamFromCache(teamRef)
+	s.removeTeamsFromCache([]string{teamRef})
 	return nil
 }
 
@@ -83,7 +83,7 @@ func (s *ServiceWithAutoCacheManagement) Unarchive(ctx context.Context, teamRef 
 	if err != nil {
 		return err
 	}
-	s.removeTeamFromCache(teamRef)
+	s.removeTeamsFromCache([]string{teamRef})
 	return nil
 }
 
@@ -92,7 +92,7 @@ func (s *ServiceWithAutoCacheManagement) Delete(ctx context.Context, teamRef str
 	if err != nil {
 		return err
 	}
-	s.removeTeamFromCache(teamRef)
+	s.removeTeamsFromCache([]string{teamRef})
 	return nil
 }
 
@@ -100,17 +100,21 @@ func (s *ServiceWithAutoCacheManagement) RestoreDeleted(ctx context.Context, del
 	return s.svc.RestoreDeleted(ctx, deletedGroupID)
 }
 
-func (s *ServiceWithAutoCacheManagement) addTeamToCache(team *Team) {
-	keyBuilder := cacher.NewTeamKeyBuilder(strings.TrimSpace(team.DisplayName))
-	_ = s.cache.Set(keyBuilder.ToString(), team.ID)
+func (s *ServiceWithAutoCacheManagement) addTeamsToCache(teams *[]Team) {
+	for _, team := range *teams {
+		keyBuilder := cacher.NewTeamKeyBuilder(strings.TrimSpace(team.DisplayName))
+		_ = s.cache.Set(keyBuilder.ToString(), team.ID)
+	}
 }
 
-func (s *ServiceWithAutoCacheManagement) removeTeamFromCache(teamRef string) {
-	if isLikelyGUID(teamRef) {
-		return
+func (s *ServiceWithAutoCacheManagement) removeTeamsFromCache(teamRefs []string) {
+	for _, teamRef := range teamRefs {
+		if isLikelyGUID(teamRef) {
+			return
+		}
+		keyBuilder := cacher.NewTeamKeyBuilder(strings.TrimSpace(teamRef))
+		_ = s.cache.Invalidate(keyBuilder.ToString())
 	}
-	keyBuilder := cacher.NewTeamKeyBuilder(strings.TrimSpace(teamRef))
-	_ = s.cache.Invalidate(keyBuilder.ToString())
 }
 
 func isLikelyGUID(s string) bool {
