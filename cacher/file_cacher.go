@@ -56,7 +56,7 @@ func (cacher *JSONFileCacher) loadCache() error {
 		cacher.cache = make(map[string]json.RawMessage)
 	} else {
 		if err := json.Unmarshal(data, &cacher.cache); err != nil {
-		return err
+			return err
 		}
 		cacher.loaded = true
 	}
@@ -90,7 +90,6 @@ func (cacher *JSONFileCacher) Set(key string, value any) error {
 	}
 	return os.WriteFile(cacher.file, data, 0o644)
 }
-
 
 func (cacher *JSONFileCacher) Invalidate(key string) error {
 	if !cacher.loaded {
