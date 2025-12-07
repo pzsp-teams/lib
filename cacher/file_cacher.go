@@ -34,7 +34,7 @@ func (cacher *JSONFileCacher) Get(key string) (any, bool, error) {
 
 func (cacher *JSONFileCacher) getFromCache(key string) (any, bool, error) {
 	data, ok := cacher.cache[key]
-	var result []string
+	var result string
 	if !ok {
 		return nil, false, nil
 	}
