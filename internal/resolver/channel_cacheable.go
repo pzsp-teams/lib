@@ -16,15 +16,15 @@ type ChannelResolver interface {
 	ResolveUserRefToMemberID(ctx context.Context, teamID, channelID, userRef string) (string, error)
 }
 type ChannelResolverCacheable struct {
-	cacher      cacher.Cacher
-	channelsAPI api.ChannelAPI
+	cacher       cacher.Cacher
+	channelsAPI  api.ChannelAPI
 	cacheEnabled bool
 }
 
 func NewChannelResolverCacheable(a api.ChannelAPI, c cacher.Cacher, cacheEnabled bool) ChannelResolver {
 	return &ChannelResolverCacheable{
-		cacher:      c,
-		channelsAPI: a,
+		cacher:       c,
+		channelsAPI:  a,
 		cacheEnabled: cacheEnabled,
 	}
 }
@@ -82,8 +82,20 @@ func (res *ChannelResolverCacheable) ResolveUserRefToMemberID(ctx context.Contex
 	if resp == nil || resp.GetValue() == nil || len(resp.GetValue()) == 0 {
 		return "", fmt.Errorf("no members found in channel %q", channelID)
 	}
+	id := findMemberID(resp.GetValue(), ref)
+	if id == "" {
+		return "", fmt.Errorf("user %q not found in channel %q", ref, channelID)
+	}
+	if res.cacheEnabled {
+		key := cacher.NewMemberKeyBuilder(ref, teamID, channelID).ToString()
+		_ = res.cacher.Set(key, id)
+	}
+	return id, nil
+}
+
+func findMemberID(members []msmodels.ConversationMemberable, ref string) string {
 	id := ""
-	for _, member := range resp.GetValue() {
+	for _, member := range members {
 		if member == nil {
 			continue
 		}
@@ -96,14 +108,7 @@ func (res *ChannelResolverCacheable) ResolveUserRefToMemberID(ctx context.Contex
 			break
 		}
 	}
-	if id == "" {
-		return "", fmt.Errorf("user %q not found in channel %q", ref, channelID)
-	}
-	if res.cacheEnabled {
-		key := cacher.NewMemberKeyBuilder(ref, teamID, channelID).ToString()
-		_ = res.cacher.Set(key, id)
-	}
-	return id, nil
+	return id
 }
 
 func isLikelyChannelID(s string) bool {
