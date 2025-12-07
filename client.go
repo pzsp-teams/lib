@@ -33,15 +33,15 @@ func NewClient(ctx context.Context, authConfig *AuthConfig, senderConfig *Sender
 	if err != nil {
 		return nil, fmt.Errorf("creating graph client: %w", err)
 	}
-	cacher := cacher.NewJSONFileCacher("cache.json")
+	cache := cacher.NewJSONFileCacher("cache.json")
 	techParams := senderConfig.toTechParams()
 
 	teamsAPI := api.NewTeams(graphClient, techParams)
 	channelsAPI := api.NewChannels(graphClient, techParams)
 	chatAPI := api.NewChat(graphClient, techParams)
 
-	teamMapper := resolver.NewTeamResolverCacheable(teamsAPI, cacher, true)
-	channelMapper := resolver.NewChannelResolverCacheable(channelsAPI, cacher, true)
+	teamMapper := resolver.NewTeamResolverCacheable(teamsAPI, cache, true)
+	channelMapper := resolver.NewChannelResolverCacheable(channelsAPI, cache, true)
 
 	teamSvc := teams.NewService(teamsAPI, teamMapper)
 	channelSvc := channels.NewService(channelsAPI, teamMapper, channelMapper)
