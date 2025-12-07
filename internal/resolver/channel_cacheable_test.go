@@ -2,8 +2,13 @@ package resolver
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"os"
+	"path/filepath"
 	"testing"
+
+	"github.com/pzsp-teams/lib/cacher"
 )
 
 type fakeChannelResolver struct {
@@ -357,5 +362,247 @@ func TestChannelResolverCacheable_ResolveUserRefToMemberID_WrongTypeInCacheFalls
 	}
 	if fc.lastSetKey != "$member$:team-1:chan-1:user-ref" {
 		t.Errorf("expected cache Set key $member$:team-1:chan-1:user-ref, got %q", fc.lastSetKey)
+	}
+}
+
+
+func TestChannelResolverCacheable_JSONFileCacher_ResolveChannelRefToID_MissThenHitSameInstance(t *testing.T) {
+	ctx := context.Background()
+	tmpDir := t.TempDir()
+	cacheFile := filepath.Join(tmpDir, "channels-cache.json")
+
+	base := &fakeChannelResolver{
+		channelIDResult: "chan-id-1",
+	}
+	cache := cacher.NewJSONFileCacher(cacheFile)
+
+	res := NewChannelResolverCacheable(cache, base)
+
+	id1, err := res.ResolveChannelRefToID(ctx, "team-1", "General")
+	if err != nil {
+		t.Fatalf("unexpected error on first call: %v", err)
+	}
+	if id1 != "chan-id-1" {
+		t.Fatalf("expected id 'chan-id-1', got %q", id1)
+	}
+	if base.channelCalls != 1 {
+		t.Fatalf("expected resolver to be called once, got %d", base.channelCalls)
+	}
+
+	data, err := os.ReadFile(cacheFile)
+	if err != nil {
+		t.Fatalf("failed to read cache file: %v", err)
+	}
+	if len(data) == 0 {
+		t.Fatalf("expected non-empty cache file")
+	}
+
+	var stored map[string]json.RawMessage
+	if err := json.Unmarshal(data, &stored); err != nil {
+		t.Fatalf("failed to unmarshal cache JSON: %v", err)
+	}
+
+	key := cacher.NewChannelKeyBuilder("team-1", "General").ToString()
+	raw, ok := stored[key]
+	if !ok {
+		t.Fatalf("expected key %q in cache file, got keys: %#v", key, stored)
+	}
+
+	var storedID string
+	if err := json.Unmarshal(raw, &storedID); err != nil {
+		t.Fatalf("failed to unmarshal cached channel ID: %v", err)
+	}
+	if storedID != "chan-id-1" {
+		t.Fatalf("expected cached ID 'chan-id-1', got %q", storedID)
+	}
+
+	base.channelIDResult = "chan-id-2"
+
+	id2, err := res.ResolveChannelRefToID(ctx, "team-1", "General")
+	if err != nil {
+		t.Fatalf("unexpected error on second call: %v", err)
+	}
+	if id2 != "chan-id-1" {
+		t.Fatalf("expected id from cache 'chan-id-1', got %q", id2)
+	}
+	if base.channelCalls != 1 {
+		t.Fatalf("expected resolver to still be called only once, got %d", base.channelCalls)
+	}
+}
+
+func TestChannelResolverCacheable_JSONFileCacher_ResolveChannelRefToID_LoadsExistingFile(t *testing.T) {
+	ctx := context.Background()
+	tmpDir := t.TempDir()
+	cacheFile := filepath.Join(tmpDir, "channels-cache.json")
+
+	popCache := cacher.NewJSONFileCacher(cacheFile)
+	key := cacher.NewChannelKeyBuilder("team-1", "General").ToString()
+	if err := popCache.Set(key, "chan-id-from-file"); err != nil {
+		t.Fatalf("failed to pre-populate cache file: %v", err)
+	}
+
+	base := &fakeChannelResolver{
+		channelIDResult: "should-not-be-called",
+	}
+	cache := cacher.NewJSONFileCacher(cacheFile)
+	res := NewChannelResolverCacheable(cache, base)
+
+	id, err := res.ResolveChannelRefToID(ctx, "team-1", "General")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if id != "chan-id-from-file" {
+		t.Fatalf("expected id 'chan-id-from-file' loaded from cache file, got %q", id)
+	}
+	if base.channelCalls != 0 {
+		t.Fatalf("expected resolver not to be called, got %d calls", base.channelCalls)
+	}
+}
+
+func TestChannelResolverCacheable_JSONFileCacher_ResolveChannelRefToID_CorruptedFileFallsBackToResolver(t *testing.T) {
+	ctx := context.Background()
+	tmpDir := t.TempDir()
+	cacheFile := filepath.Join(tmpDir, "channels-cache.json")
+
+	if err := os.WriteFile(cacheFile, []byte("{ this is not valid json"), 0o644); err != nil {
+		t.Fatalf("failed to write corrupted cache file: %v", err)
+	}
+
+	base := &fakeChannelResolver{
+		channelIDResult: "chan-id-from-resolver",
+	}
+	cache := cacher.NewJSONFileCacher(cacheFile)
+	res := NewChannelResolverCacheable(cache, base)
+
+	id, err := res.ResolveChannelRefToID(ctx, "team-1", "General")
+	if err != nil {
+		t.Fatalf("unexpected error (should fallback to resolver): %v", err)
+	}
+	if id != "chan-id-from-resolver" {
+		t.Fatalf("expected id 'chan-id-from-resolver' from resolver fallback, got %q", id)
+	}
+	if base.channelCalls != 1 {
+		t.Fatalf("expected resolver called once on corrupted cache, got %d", base.channelCalls)
+	}
+}
+
+
+func TestChannelResolverCacheable_JSONFileCacher_ResolveUserRefToMemberID_MissThenHitSameInstance(t *testing.T) {
+	ctx := context.Background()
+	tmpDir := t.TempDir()
+	cacheFile := filepath.Join(tmpDir, "members-cache.json")
+
+	base := &fakeChannelResolver{
+		memberIDResult: "member-id-1",
+	}
+	cache := cacher.NewJSONFileCacher(cacheFile)
+
+	res := NewChannelResolverCacheable(cache, base)
+
+	id1, err := res.ResolveUserRefToMemberID(ctx, "team-1", "chan-1", "user-ref")
+	if err != nil {
+		t.Fatalf("unexpected error on first call: %v", err)
+	}
+	if id1 != "member-id-1" {
+		t.Fatalf("expected id 'member-id-1', got %q", id1)
+	}
+	if base.memberCalls != 1 {
+		t.Fatalf("expected resolver to be called once, got %d", base.memberCalls)
+	}
+
+	data, err := os.ReadFile(cacheFile)
+	if err != nil {
+		t.Fatalf("failed to read cache file: %v", err)
+	}
+	if len(data) == 0 {
+		t.Fatalf("expected non-empty cache file")
+	}
+
+	var stored map[string]json.RawMessage
+	if err := json.Unmarshal(data, &stored); err != nil {
+		t.Fatalf("failed to unmarshal cache JSON: %v", err)
+	}
+
+	key := cacher.NewMemberKeyBuilder("user-ref", "team-1", "chan-1").ToString()
+	raw, ok := stored[key]
+	if !ok {
+		t.Fatalf("expected key %q in cache file, got keys: %#v", key, stored)
+	}
+
+	var storedID string
+	if err := json.Unmarshal(raw, &storedID); err != nil {
+		t.Fatalf("failed to unmarshal cached member ID: %v", err)
+	}
+	if storedID != "member-id-1" {
+		t.Fatalf("expected cached ID 'member-id-1', got %q", storedID)
+	}
+
+	base.memberIDResult = "member-id-2"
+
+	id2, err := res.ResolveUserRefToMemberID(ctx, "team-1", "chan-1", "user-ref")
+	if err != nil {
+		t.Fatalf("unexpected error on second call: %v", err)
+	}
+	if id2 != "member-id-1" {
+		t.Fatalf("expected id from cache 'member-id-1', got %q", id2)
+	}
+	if base.memberCalls != 1 {
+		t.Fatalf("expected resolver to still be called only once, got %d", base.memberCalls)
+	}
+}
+
+func TestChannelResolverCacheable_JSONFileCacher_ResolveUserRefToMemberID_LoadsExistingFile(t *testing.T) {
+	ctx := context.Background()
+	tmpDir := t.TempDir()
+	cacheFile := filepath.Join(tmpDir, "members-cache.json")
+
+	popCache := cacher.NewJSONFileCacher(cacheFile)
+	key := cacher.NewMemberKeyBuilder("user-ref", "team-1", "chan-1").ToString()
+	if err := popCache.Set(key, "member-id-from-file"); err != nil {
+		t.Fatalf("failed to pre-populate cache file: %v", err)
+	}
+
+	base := &fakeChannelResolver{
+		memberIDResult: "should-not-be-called",
+	}
+	cache := cacher.NewJSONFileCacher(cacheFile)
+	res := NewChannelResolverCacheable(cache, base)
+
+	id, err := res.ResolveUserRefToMemberID(ctx, "team-1", "chan-1", "user-ref")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if id != "member-id-from-file" {
+		t.Fatalf("expected id 'member-id-from-file' loaded from cache file, got %q", id)
+	}
+	if base.memberCalls != 0 {
+		t.Fatalf("expected resolver not to be called, got %d calls", base.memberCalls)
+	}
+}
+
+func TestChannelResolverCacheable_JSONFileCacher_ResolveUserRefToMemberID_CorruptedFileFallsBackToResolver(t *testing.T) {
+	ctx := context.Background()
+	tmpDir := t.TempDir()
+	cacheFile := filepath.Join(tmpDir, "members-cache.json")
+
+	if err := os.WriteFile(cacheFile, []byte("{ not valid json"), 0o644); err != nil {
+		t.Fatalf("failed to write corrupted cache file: %v", err)
+	}
+
+	base := &fakeChannelResolver{
+		memberIDResult: "member-id-from-resolver",
+	}
+	cache := cacher.NewJSONFileCacher(cacheFile)
+	res := NewChannelResolverCacheable(cache, base)
+
+	id, err := res.ResolveUserRefToMemberID(ctx, "team-1", "chan-1", "user-ref")
+	if err != nil {
+		t.Fatalf("unexpected error (should fallback to resolver): %v", err)
+	}
+	if id != "member-id-from-resolver" {
+		t.Fatalf("expected id 'member-id-from-resolver' from resolver fallback, got %q", id)
+	}
+	if base.memberCalls != 1 {
+		t.Fatalf("expected resolver called once on corrupted cache, got %d", base.memberCalls)
 	}
 }
