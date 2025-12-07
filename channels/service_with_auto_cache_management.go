@@ -11,12 +11,14 @@ import (
 type ServiceWithAutoCacheManagement struct {
 	svc   *Service
 	cache cacher.Cacher
+	run   func(func())
 }
 
 func NewServiceWithAutoCacheManagement(svc *Service, cache cacher.Cacher) *ServiceWithAutoCacheManagement {
 	return &ServiceWithAutoCacheManagement{
 		svc:   svc,
 		cache: cache,
+		run:   func(fn func()) { go fn() },
 	}
 }
 
@@ -25,7 +27,15 @@ func (s *ServiceWithAutoCacheManagement) ListChannels(ctx context.Context, teamR
 	if err != nil {
 		return nil, err
 	}
-	s.addChannelsToCache(ctx, teamRef, chans)
+	local := make([]Channel, 0, len(chans))
+	for _, ch := range chans {
+		if ch != nil {
+			local = append(local, *ch)
+		}
+	}
+	s.run(func() {
+		s.addChannelsToCache(teamRef, local...)
+	})
 	return chans, nil
 }
 
@@ -34,7 +44,12 @@ func (s *ServiceWithAutoCacheManagement) Get(ctx context.Context, teamRef, chann
 	if err != nil {
 		return nil, err
 	}
-	s.addChannelsToCache(ctx, teamRef, []*Channel{ch})
+	if ch != nil {
+		local := *ch
+		s.run(func() {
+			s.addChannelsToCache(teamRef, local)
+		})
+	}
 	return ch, nil
 }
 
@@ -43,8 +58,17 @@ func (s *ServiceWithAutoCacheManagement) CreateStandardChannel(ctx context.Conte
 	if err != nil {
 		return nil, err
 	}
-	s.removeChannelFromCache(ctx, teamRef, name)
-	s.addChannelsToCache(ctx, teamRef, []*Channel{ch})
+	if ch != nil {
+		local := *ch
+		s.run(func() {
+			s.removeChannelFromCache(teamRef, name)
+			s.addChannelsToCache(teamRef, local)
+		})
+	} else {
+		s.run(func() {
+			s.removeChannelFromCache(teamRef, name)
+		})
+	}
 	return ch, nil
 }
 
@@ -57,8 +81,17 @@ func (s *ServiceWithAutoCacheManagement) CreatePrivateChannel(
 	if err != nil {
 		return nil, err
 	}
-	s.removeChannelFromCache(ctx, teamRef, name)
-	s.addChannelsToCache(ctx, teamRef, []*Channel{ch})
+	if ch != nil {
+		local := *ch
+		s.run(func() {
+			s.removeChannelFromCache(teamRef, name)
+			s.addChannelsToCache(teamRef, local)
+		})
+	} else {
+		s.run(func() {
+			s.removeChannelFromCache(teamRef, name)
+		})
+	}
 	return ch, nil
 }
 
@@ -66,7 +99,9 @@ func (s *ServiceWithAutoCacheManagement) Delete(ctx context.Context, teamRef, ch
 	if err := s.svc.Delete(ctx, teamRef, channelRef); err != nil {
 		return err
 	}
-	s.removeChannelFromCache(ctx, teamRef, channelRef)
+	s.run(func() {
+		s.removeChannelFromCache(teamRef, channelRef)
+	})
 	return nil
 }
 
@@ -124,7 +159,12 @@ func (s *ServiceWithAutoCacheManagement) AddMember(
 	if err != nil {
 		return nil, err
 	}
-	s.addMemberToCache(ctx, teamRef, channelRef, userRef, member)
+	if member != nil {
+		local := *member
+		s.run(func() {
+			s.addMemberToCache(teamRef, channelRef, userRef, local)
+		})
+	}
 	return member, nil
 }
 
@@ -143,27 +183,26 @@ func (s *ServiceWithAutoCacheManagement) RemoveMember(
 	if err := s.svc.RemoveMember(ctx, teamRef, channelRef, userRef); err != nil {
 		return err
 	}
-	s.invalidateMemberCache(ctx, teamRef, channelRef, userRef)
+	s.run(func() {
+		s.invalidateMemberCache(teamRef, channelRef, userRef)
+	})
 	return nil
 }
 
+
 func (s *ServiceWithAutoCacheManagement) addChannelsToCache(
-	ctx context.Context,
 	teamRef string,
-	chans []*Channel,
+	chans ...Channel,
 ) {
 	if s.cache == nil || len(chans) == 0 {
 		return
 	}
+	ctx := context.Background()
 	teamID, err := s.svc.teamResolver.ResolveTeamRefToID(ctx, teamRef)
 	if err != nil {
 		return
 	}
-
 	for _, ch := range chans {
-		if ch == nil {
-			continue
-		}
 		name := strings.TrimSpace(ch.Name)
 		if name == "" || util.IsLikelyChannelID(name) {
 			continue
@@ -174,7 +213,6 @@ func (s *ServiceWithAutoCacheManagement) addChannelsToCache(
 }
 
 func (s *ServiceWithAutoCacheManagement) removeChannelFromCache(
-	ctx context.Context,
 	teamRef, channelRef string,
 ) {
 	if s.cache == nil {
@@ -184,6 +222,7 @@ func (s *ServiceWithAutoCacheManagement) removeChannelFromCache(
 	if ref == "" || util.IsLikelyChannelID(ref) {
 		return
 	}
+	ctx := context.Background()
 	teamID, err := s.svc.teamResolver.ResolveTeamRefToID(ctx, teamRef)
 	if err != nil {
 		return
@@ -193,11 +232,10 @@ func (s *ServiceWithAutoCacheManagement) removeChannelFromCache(
 }
 
 func (s *ServiceWithAutoCacheManagement) addMemberToCache(
-	ctx context.Context,
 	teamRef, channelRef, userRef string,
-	member *ChannelMember,
+	member ChannelMember,
 ) {
-	if s.cache == nil || member == nil {
+	if s.cache == nil {
 		return
 	}
 	ref := strings.TrimSpace(userRef)
@@ -205,6 +243,7 @@ func (s *ServiceWithAutoCacheManagement) addMemberToCache(
 		return
 	}
 
+	ctx := context.Background()
 	teamID, err := s.svc.teamResolver.ResolveTeamRefToID(ctx, teamRef)
 	if err != nil {
 		return
@@ -219,7 +258,6 @@ func (s *ServiceWithAutoCacheManagement) addMemberToCache(
 }
 
 func (s *ServiceWithAutoCacheManagement) invalidateMemberCache(
-	ctx context.Context,
 	teamRef, channelRef, userRef string,
 ) {
 	if s.cache == nil {
@@ -230,6 +268,7 @@ func (s *ServiceWithAutoCacheManagement) invalidateMemberCache(
 		return
 	}
 
+	ctx := context.Background()
 	teamID, err := s.svc.teamResolver.ResolveTeamRefToID(ctx, teamRef)
 	if err != nil {
 		return
@@ -242,5 +281,3 @@ func (s *ServiceWithAutoCacheManagement) invalidateMemberCache(
 	key := cacher.NewMemberKeyBuilder(ref, teamID, channelID).ToString()
 	_ = s.cache.Invalidate(key)
 }
-
-

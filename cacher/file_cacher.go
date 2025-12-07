@@ -33,8 +33,6 @@ func (cacher *JSONFileCacher) Get(key string) (value any, found bool, err error)
 }
 
 func (cacher *JSONFileCacher) getFromCache(key string) (value any, found bool, err error) {
-	cacher.mu.Lock()
-	defer cacher.mu.Unlock()
 	data, ok := cacher.cache[key]
 	if !ok {
 		return nil, false, nil
@@ -47,8 +45,6 @@ func (cacher *JSONFileCacher) getFromCache(key string) (value any, found bool, e
 }
 
 func (cacher *JSONFileCacher) loadCache() error {
-	cacher.mu.Lock()
-	defer cacher.mu.Unlock()
 	data, err := os.ReadFile(cacher.file)
 	if err != nil {
 		if os.IsNotExist(err) {
