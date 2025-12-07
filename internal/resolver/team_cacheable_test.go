@@ -2,8 +2,13 @@ package resolver
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"os"
+	"path/filepath"
 	"testing"
+
+	"github.com/pzsp-teams/lib/cacher"
 )
 
 type fakeCacher struct {
@@ -220,5 +225,132 @@ func TestTeamResolverCacheable_WrongTypeInCacheFallsBack(t *testing.T) {
 	}
 	if fc.lastSetKey != "$team$:team-z" {
 		t.Errorf("expected cache Set key $team$:team-z, got %q", fc.lastSetKey)
+	}
+}
+
+
+func TestTeamResolverCacheable_JSONFileCacher_MissThenHitSameInstance(t *testing.T) {
+	t.Helper()
+	ctx := context.Background()
+
+	tmpDir := t.TempDir()
+	cacheFile := filepath.Join(tmpDir, "teams-cache.json")
+
+	base := &fakeTeamResolver{
+		result: "team-id-1",
+	}
+	cache := cacher.NewJSONFileCacher(cacheFile)
+
+	res := NewTeamResolverCacheable(cache, base)
+
+	id1, err := res.ResolveTeamRefToID(ctx, "MyTeam")
+	if err != nil {
+		t.Fatalf("unexpected error on first call: %v", err)
+	}
+	if id1 != "team-id-1" {
+		t.Fatalf("expected id 'team-id-1', got %q", id1)
+	}
+	if base.calls != 1 {
+		t.Fatalf("expected resolver to be called once, got %d", base.calls)
+	}
+
+	data, err := os.ReadFile(cacheFile)
+	if err != nil {
+		t.Fatalf("failed to read cache file: %v", err)
+	}
+	if len(data) == 0 {
+		t.Fatalf("expected non-empty cache file")
+	}
+
+	var stored map[string]json.RawMessage
+	if err := json.Unmarshal(data, &stored); err != nil {
+		t.Fatalf("failed to unmarshal cache JSON: %v", err)
+	}
+
+	key := cacher.NewTeamKeyBuilder("MyTeam").ToString()
+	raw, ok := stored[key]
+	if !ok {
+		t.Fatalf("expected key %q in cache file, got keys: %#v", key, stored)
+	}
+
+	var storedID string
+	if err := json.Unmarshal(raw, &storedID); err != nil {
+		t.Fatalf("failed to unmarshal cached ID: %v", err)
+	}
+	if storedID != "team-id-1" {
+		t.Fatalf("expected cached ID 'team-id-1', got %q", storedID)
+	}
+
+	base.result = "team-id-2"
+
+	id2, err := res.ResolveTeamRefToID(ctx, "MyTeam")
+	if err != nil {
+		t.Fatalf("unexpected error on second call: %v", err)
+	}
+	if id2 != "team-id-1" {
+		t.Fatalf("expected id from cache 'team-id-1', got %q", id2)
+	}
+	if base.calls != 1 {
+		t.Fatalf("expected resolver to still be called only once, got %d", base.calls)
+	}
+}
+
+func TestTeamResolverCacheable_JSONFileCacher_LoadsExistingFile(t *testing.T) {
+	t.Helper()
+	ctx := context.Background()
+
+	tmpDir := t.TempDir()
+	cacheFile := filepath.Join(tmpDir, "teams-cache.json")
+
+	popCache := cacher.NewJSONFileCacher(cacheFile)
+	key := cacher.NewTeamKeyBuilder("MyTeam").ToString()
+	if err := popCache.Set(key, "team-id-from-file"); err != nil {
+		t.Fatalf("failed to pre-populate cache file: %v", err)
+	}
+
+	base := &fakeTeamResolver{
+		result: "should-not-be-called",
+	}
+	cache := cacher.NewJSONFileCacher(cacheFile)
+	res := NewTeamResolverCacheable(cache, base)
+
+	id, err := res.ResolveTeamRefToID(ctx, "MyTeam")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if id != "team-id-from-file" {
+		t.Fatalf("expected id 'team-id-from-file' loaded from cache file, got %q", id)
+	}
+	if base.calls != 0 {
+		t.Fatalf("expected resolver not to be called, got %d calls", base.calls)
+	}
+}
+
+func TestTeamResolverCacheable_JSONFileCacher_CorruptedFileFallsBackToResolver(t *testing.T) {
+	t.Helper()
+	ctx := context.Background()
+
+	tmpDir := t.TempDir()
+	cacheFile := filepath.Join(tmpDir, "teams-cache.json")
+
+	if err := os.WriteFile(cacheFile, []byte("{ this is not valid json"), 0o644); err != nil {
+		t.Fatalf("failed to write corrupted cache file: %v", err)
+	}
+
+	base := &fakeTeamResolver{
+		result: "team-id-from-resolver",
+	}
+	cache := cacher.NewJSONFileCacher(cacheFile)
+	res := NewTeamResolverCacheable(cache, base)
+
+	id, err := res.ResolveTeamRefToID(ctx, "MyTeam")
+	if err != nil {
+		t.Fatalf("unexpected error (should fallback to resolver): %v", err)
+	}
+	if id != "team-id-from-resolver" {
+		t.Fatalf("expected id 'team-id-from-resolver' from resolver fallback, got %q", id)
+	}
+	if base.calls != 1 {
+		t.Fatalf("expected resolver called once on corrupted cache, got %d", base.calls)
 	}
 }
