@@ -12,10 +12,10 @@ func MapGraphTeam(graphTeam msmodels.Teamable) *models.Team {
 		return nil
 	}
 
-	var visibility string
-
+	var visibility *string = nil
 	if v := graphTeam.GetVisibility(); v != nil {
-		visibility = v.String()
+		str := v.String()
+		visibility = &str
 	}
 
 	return &models.Team{

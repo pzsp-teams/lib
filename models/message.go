@@ -32,7 +32,6 @@ type Message struct {
 // MessageFrom represents the sender of a message in Microsoft Teams.
 type MessageFrom struct {
 	UserID      string
-	Email       string
 	DisplayName string
 }
 
