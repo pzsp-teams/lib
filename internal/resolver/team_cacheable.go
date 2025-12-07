@@ -3,7 +3,6 @@ package resolver
 import (
 	"context"
 	"fmt"
-	"regexp"
 	"strings"
 
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
@@ -35,7 +34,7 @@ func (m *TeamResolverCacheable) ResolveTeamRefToID(ctx context.Context, teamRef 
 	if ref == "" {
 		return "", fmt.Errorf("empty team reference")
 	}
-	if isLikelyGUID(ref) {
+	if util.IsLikelyGUID(ref) {
 		return ref, nil
 	}
 	if m.cacheEnabled && m.cacher != nil {
@@ -98,7 +97,3 @@ func resolveTeamIDByName(ref string, list msmodels.TeamCollectionResponseable) (
 	}
 }
 
-func isLikelyGUID(s string) bool {
-	var guidRegex = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
-	return guidRegex.MatchString(s)
-}

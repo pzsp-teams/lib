@@ -297,19 +297,4 @@ func TestResolveTeamIDByName_MultipleMatches(t *testing.T) {
 	}
 }
 
-func TestIsLikelyGUID_Positive(t *testing.T) {
-	s := "123e4567-e89b-12d3-a456-426614174000"
-	if !isLikelyGUID(s) {
-		t.Fatalf("expected isLikelyGUID(%q)=true, got false", s)
-	}
-}
 
-func TestIsLikelyGUID_Negative(t *testing.T) {
-	for _, s := range []string{
-		"", "not-a-guid", "123e4567-e89b-12d3-a456-42661417400", "zzze4567-e89b-12d3-a456-426614174000",
-	} {
-		if isLikelyGUID(s) {
-			t.Fatalf("expected isLikelyGUID(%q)=false, got true", s)
-		}
-	}
-}
