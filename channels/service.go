@@ -4,7 +4,7 @@ import (
 	"context"
 
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
-	"github.com/pzsp-teams/lib/adapter"
+	"github.com/pzsp-teams/lib/internal/adapter"
 	"github.com/pzsp-teams/lib/internal/api"
 	"github.com/pzsp-teams/lib/internal/resolver"
 	snd "github.com/pzsp-teams/lib/internal/sender"
