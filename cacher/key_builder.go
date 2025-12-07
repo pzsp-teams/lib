@@ -6,6 +6,7 @@ type KeyType string
 const (
 	Team KeyType = "team"
 	Channel KeyType = "channel"
+	Member KeyType = "member"
 )
 
 type KeyBuilder interface{
@@ -38,8 +39,24 @@ func NewChannelKeyBuilder(teamID, name string) (KeyBuilder) {
 	}
 }
 
+type MemberKeyBuilder struct {
+	Type KeyType
+	Ref string
+}
+
+func NewMemberKeyBuilder(ref string) (KeyBuilder) {
+	return &MemberKeyBuilder{
+		Type: Member,
+		Ref: ref,
+	}
+}
+
 func (keyBuilder *TeamKeyBuilder) ToString() string{
 	return fmt.Sprintf("$%v$:%v", keyBuilder.Type, keyBuilder.Name)
+}
+
+func (keyBuilder *MemberKeyBuilder) ToString() string{
+	return fmt.Sprintf("$%v$:%v", keyBuilder.Type, keyBuilder.Ref)
 }
 
 func (keyBuilder *ChannelKeyBuilder) ToString() string{
