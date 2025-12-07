@@ -10,7 +10,6 @@ import (
 	snd "github.com/pzsp-teams/lib/internal/sender"
 )
 
-// --- FAKES / HELPERKI -------------------------------------------------------
 
 type fakeCacher struct {
 	setCalls        int
@@ -22,7 +21,6 @@ type fakeCacher struct {
 }
 
 func (f *fakeCacher) Get(key string) (any, bool, error) {
-	// Dekorator tego nie używa – cache jest tylko Set/Invalidate.
 	return nil, false, nil
 }
 
@@ -43,7 +41,6 @@ func (f *fakeCacher) Clear() error {
 	return nil
 }
 
-// fakeTeamResolver implementuje resolver.TeamResolver (pole Service.teamResolver)
 type fakeTeamResolver struct {
 	resolveFunc func(ctx context.Context, teamRef string) (string, error)
 	lastRef     string
@@ -59,8 +56,7 @@ func (f *fakeTeamResolver) ResolveTeamRefToID(ctx context.Context, teamRef strin
 	return "", nil
 }
 
-// fakeTeamAPI implementuje api.TeamAPI (pole Service.teamAPI)
-// Podpinamy funkcje, które wykorzystują metody Service.
+
 type fakeTeamAPI struct {
 	getFunc              func(ctx context.Context, teamID string) (msmodels.Teamable, *snd.RequestError)
 	listMyJoinedFunc     func(ctx context.Context) (msmodels.TeamCollectionResponseable, *snd.RequestError)
@@ -136,7 +132,6 @@ func (f *fakeTeamAPI) RestoreDeleted(ctx context.Context, deletedGroupID string)
 	return nil, nil
 }
 
-// helper: tworzenie grafowego Team
 func newGraphTeam(id, name string) msmodels.Teamable {
 	t := msmodels.NewTeam()
 	t.SetId(&id)
@@ -144,23 +139,19 @@ func newGraphTeam(id, name string) msmodels.Teamable {
 	return t
 }
 
-// helper: kolekcja teamów
 func newTeamCollection(teams ...msmodels.Teamable) msmodels.TeamCollectionResponseable {
 	resp := msmodels.NewTeamCollectionResponse()
 	resp.SetValue(teams)
 	return resp
 }
 
-// helper: DirectoryObject z ID
 func newDirectoryObject(id string) msmodels.DirectoryObjectable {
 	obj := msmodels.NewDirectoryObject()
 	obj.SetId(&id)
 	return obj
 }
 
-// --- TESTY ------------------------------------------------------------------
 
-// Get: po udanym wywołaniu powinniśmy dodać team do cache (displayName -> ID)
 func TestServiceWithAutoCacheManagement_Get_AddsTeamToCacheOnSuccess(t *testing.T) {
 	ctx := context.Background()
 
@@ -195,14 +186,12 @@ func TestServiceWithAutoCacheManagement_Get_AddsTeamToCacheOnSuccess(t *testing.
 	if team == nil {
 		t.Fatalf("expected non-nil team")
 	}
-	// tu wystarczy sprawdzić ID (albo trymowaną nazwę, jeśli chcesz)
 	if team.ID != "team-id-123" {
 		t.Fatalf("unexpected mapped team: %#v", team)
 	}
-	// opcjonalnie:
-	// if strings.TrimSpace(team.DisplayName) != "My Team" {
-	//     t.Fatalf("unexpected mapped team: %#v", team)
-	// }
+	if strings.TrimSpace(team.DisplayName) != "My Team" {
+	    t.Fatalf("unexpected mapped team: %#v", team)
+	}
 
 	if fc.setCalls != 1 {
 		t.Fatalf("expected 1 Set call, got %d", fc.setCalls)
@@ -217,7 +206,6 @@ func TestServiceWithAutoCacheManagement_Get_AddsTeamToCacheOnSuccess(t *testing.
 }
 
 
-// ListMyJoined: każdy zwrócony team powinien być dogrzany do cache.
 func TestServiceWithAutoCacheManagement_ListMyJoined_WarmsCache(t *testing.T) {
 	ctx := context.Background()
 
@@ -262,7 +250,6 @@ func TestServiceWithAutoCacheManagement_ListMyJoined_WarmsCache(t *testing.T) {
 	}
 }
 
-// Update: dla nazwy (nie GUID) – invaliduje stary ref + dodaje nową nazwę do cache.
 func TestServiceWithAutoCacheManagement_Update_InvalidatesOldAndCachesNew(t *testing.T) {
 	ctx := context.Background()
 
@@ -319,7 +306,6 @@ func TestServiceWithAutoCacheManagement_Update_InvalidatesOldAndCachesNew(t *tes
 	}
 }
 
-// Update: gdy teamRef jest GUID–em, nie powinno być invalidacji, tylko Set.
 func TestServiceWithAutoCacheManagement_Update_DoesNotInvalidateForGUID(t *testing.T) {
 	ctx := context.Background()
 
@@ -356,7 +342,6 @@ func TestServiceWithAutoCacheManagement_Update_DoesNotInvalidateForGUID(t *testi
 	}
 }
 
-// CreateFromTemplate: po sukcesie tylko Invalidate(displayName), bez Set.
 func TestServiceWithAutoCacheManagement_CreateFromTemplate_InvalidatesByName(t *testing.T) {
 	ctx := context.Background()
 
@@ -395,7 +380,6 @@ func TestServiceWithAutoCacheManagement_CreateFromTemplate_InvalidatesByName(t *
 	}
 }
 
-// CreateViaGroup: po sukcesie tylko Invalidate(displayName), bez Set.
 func TestServiceWithAutoCacheManagement_CreateViaGroup_InvalidatesByName(t *testing.T) {
 	ctx := context.Background()
 
@@ -440,7 +424,6 @@ func TestServiceWithAutoCacheManagement_CreateViaGroup_InvalidatesByName(t *test
 	}
 }
 
-// Archive: dla nazwy (nie GUID) – po sukcesie invalidacja nazwy.
 func TestServiceWithAutoCacheManagement_Archive_InvalidatesByName(t *testing.T) {
 	ctx := context.Background()
 
@@ -481,7 +464,6 @@ func TestServiceWithAutoCacheManagement_Archive_InvalidatesByName(t *testing.T) 
 	}
 }
 
-// Delete: gdy ref to GUID, nie powinno być invalidacji.
 func TestServiceWithAutoCacheManagement_Delete_DoesNotInvalidateForGUID(t *testing.T) {
 	ctx := context.Background()
 
@@ -520,7 +502,6 @@ func TestServiceWithAutoCacheManagement_Delete_DoesNotInvalidateForGUID(t *testi
 	}
 }
 
-// RestoreDeleted: dekorator tylko deleguje – nie powinien dotykać cache.
 func TestServiceWithAutoCacheManagement_RestoreDeleted_DoesNotTouchCache(t *testing.T) {
 	ctx := context.Background()
 
