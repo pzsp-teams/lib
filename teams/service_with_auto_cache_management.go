@@ -110,7 +110,7 @@ func (s *ServiceWithAutoCacheManagement) addTeamsToCache(teams *[]Team) {
 func (s *ServiceWithAutoCacheManagement) removeTeamsFromCache(teamRefs []string) {
 	for _, teamRef := range teamRefs {
 		if isLikelyGUID(teamRef) {
-			return
+			continue
 		}
 		keyBuilder := cacher.NewTeamKeyBuilder(strings.TrimSpace(teamRef))
 		_ = s.cache.Invalidate(keyBuilder.ToString())
