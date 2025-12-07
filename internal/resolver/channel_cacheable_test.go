@@ -187,7 +187,7 @@ func TestChannelResolverCacheable_ResolveChannelRefToID_WrongTypeInCacheFallsBac
 	ctx := context.Background()
 
 	fc := &fakeCacher{
-		getValue: 123, 
+		getValue: 123,
 		getFound: true,
 		getErr:   nil,
 	}
@@ -337,7 +337,7 @@ func TestChannelResolverCacheable_ResolveUserRefToMemberID_WrongTypeInCacheFalls
 	ctx := context.Background()
 
 	fc := &fakeCacher{
-		getValue: 123, 
+		getValue: 123,
 		getFound: true,
 		getErr:   nil,
 	}
@@ -364,7 +364,6 @@ func TestChannelResolverCacheable_ResolveUserRefToMemberID_WrongTypeInCacheFalls
 		t.Errorf("expected cache Set key $member$:team-1:chan-1:user-ref, got %q", fc.lastSetKey)
 	}
 }
-
 
 func TestChannelResolverCacheable_JSONFileCacher_ResolveChannelRefToID_MissThenHitSameInstance(t *testing.T) {
 	ctx := context.Background()
@@ -485,7 +484,6 @@ func TestChannelResolverCacheable_JSONFileCacher_ResolveChannelRefToID_Corrupted
 		t.Fatalf("expected resolver called once on corrupted cache, got %d", base.channelCalls)
 	}
 }
-
 
 func TestChannelResolverCacheable_JSONFileCacher_ResolveUserRefToMemberID_MissThenHitSameInstance(t *testing.T) {
 	ctx := context.Background()

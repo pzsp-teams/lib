@@ -24,7 +24,7 @@ type fakeCacher struct {
 	setCalls     int
 }
 
-func (f *fakeCacher) Get(key string) (any, bool, error) {
+func (f *fakeCacher) Get(key string) (value any, found bool, err error) {
 	f.getCalls++
 	f.lastGetKey = key
 	return f.getValue, f.getFound, f.getErr
@@ -38,8 +38,7 @@ func (f *fakeCacher) Set(key string, value any) error {
 }
 
 func (f *fakeCacher) Invalidate(key string) error { return nil }
-func (f *fakeCacher) Clear() error               { return nil }
-
+func (f *fakeCacher) Clear() error                { return nil }
 
 type fakeTeamResolver struct {
 	result  string
@@ -127,7 +126,7 @@ func TestTeamResolverCacheable_ResolverCalledOnMissAndCaches(t *testing.T) {
 	ctx := context.Background()
 
 	fc := &fakeCacher{
-		getFound: false, 
+		getFound: false,
 		getErr:   nil,
 	}
 	fr := &fakeTeamResolver{
@@ -227,7 +226,6 @@ func TestTeamResolverCacheable_WrongTypeInCacheFallsBack(t *testing.T) {
 		t.Errorf("expected cache Set key $team$:team-z, got %q", fc.lastSetKey)
 	}
 }
-
 
 func TestTeamResolverCacheable_JSONFileCacher_MissThenHitSameInstance(t *testing.T) {
 	t.Helper()

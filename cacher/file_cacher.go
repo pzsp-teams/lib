@@ -5,50 +5,46 @@ import (
 	"os"
 )
 
-
-
 type JSONFileCacher struct {
-	file string
-	cache map[string]json.RawMessage
+	file   string
+	cache  map[string]json.RawMessage
 	loaded bool
 }
 
-
-
 func NewJSONFileCacher(path string) Cacher {
 	return &JSONFileCacher{
-		file: path, 
+		file: path,
 	}
 }
 
-func (cacher *JSONFileCacher) Get(key string) (any, bool, error) {
+func (cacher *JSONFileCacher) Get(key string) (value any, found bool, err error) {
 	if cacher.loaded {
 		return cacher.getFromCache(key)
 	}
-	err := cacher.loadCache()
+	err = cacher.loadCache()
 	if err != nil {
 		return nil, false, err
 	}
 	return cacher.getFromCache(key)
 }
 
-func (cacher *JSONFileCacher) getFromCache(key string) (any, bool, error) {
+func (cacher *JSONFileCacher) getFromCache(key string) (value any, found bool, err error) {
 	data, ok := cacher.cache[key]
 	var result string
 	if !ok {
 		return nil, false, nil
 	}
-	err := json.Unmarshal(data, &result)
+	err = json.Unmarshal(data, &result)
 	if err != nil {
 		return nil, false, err
 	}
-	return result, true, nil	
+	return result, true, nil
 }
 
 func (cacher *JSONFileCacher) loadCache() error {
 	data, err := os.ReadFile(cacher.file)
 	if err != nil {
-		if os.IsNotExist(err){
+		if os.IsNotExist(err) {
 			cacher.loaded = true
 			cacher.cache = make(map[string]json.RawMessage)
 			return nil
