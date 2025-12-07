@@ -10,13 +10,13 @@ import (
 )
 
 type ServiceWithAutoCacheManagement struct {
-	svc *Service
+	svc   *Service
 	cache cacher.Cacher
 }
 
 func NewServiceWithAutoCacheManagement(svc *Service, cache cacher.Cacher) *ServiceWithAutoCacheManagement {
 	return &ServiceWithAutoCacheManagement{
-		svc: svc,
+		svc:   svc,
 		cache: cache,
 	}
 }
@@ -27,7 +27,7 @@ func (s *ServiceWithAutoCacheManagement) Get(ctx context.Context, teamRef string
 		return nil, err
 	}
 	s.addTeamToCache(team)
- 	return team, nil
+	return team, nil
 }
 
 func (s *ServiceWithAutoCacheManagement) ListMyJoined(ctx context.Context) ([]*Team, error) {
@@ -69,7 +69,7 @@ func (s *ServiceWithAutoCacheManagement) CreateViaGroup(ctx context.Context, dis
 	return team, nil
 }
 
-func (s *ServiceWithAutoCacheManagement) Archive(ctx context.Context, teamRef string, spoReadOnlyForMembers *bool) error  {
+func (s *ServiceWithAutoCacheManagement) Archive(ctx context.Context, teamRef string, spoReadOnlyForMembers *bool) error {
 	err := s.svc.Archive(ctx, teamRef, spoReadOnlyForMembers)
 	if err != nil {
 		return err
@@ -112,7 +112,6 @@ func (s *ServiceWithAutoCacheManagement) removeTeamFromCache(teamRef string) {
 	keyBuilder := cacher.NewTeamKeyBuilder(strings.TrimSpace(teamRef))
 	_ = s.cache.Invalidate(keyBuilder.ToString())
 }
-
 
 func isLikelyGUID(s string) bool {
 	var guidRegex = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
