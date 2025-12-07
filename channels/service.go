@@ -35,7 +35,7 @@ func (s *Service) ListChannels(ctx context.Context, teamRef string) ([]*models.C
 		return nil, snd.MapError(requestErr, snd.WithResource(snd.Team, teamRef))
 	}
 
-	var chans []*models.Channel
+	chans := make([]*models.Channel, 0, len(resp.GetValue()))
 	for _, ch := range resp.GetValue() {
 		chans = append(chans, adapter.MapGraphChannel(ch))
 	}
@@ -141,7 +141,7 @@ func (s *Service) ListMessages(ctx context.Context, teamRef, channelRef string, 
 		return nil, snd.MapError(requestErr, snd.WithResource(snd.Team, teamRef), snd.WithResource(snd.Channel, channelRef))
 	}
 
-	var messages []*models.Message
+	messages := make([]*models.Message, 0, len(resp.GetValue()))
 	for _, msg := range resp.GetValue() {
 		messages = append(messages, adapter.MapGraphMessage(msg))
 	}
@@ -176,7 +176,7 @@ func (s *Service) ListReplies(ctx context.Context, teamRef, channelRef, messageI
 		return nil, snd.MapError(requestErr, snd.WithResource(snd.Team, teamRef), snd.WithResource(snd.Channel, channelRef), snd.WithResource(snd.Message, messageID))
 	}
 
-	var replies []*models.Message
+	replies := make([]*models.Message, 0, len(resp.GetValue()))
 	for _, reply := range resp.GetValue() {
 		replies = append(replies, adapter.MapGraphMessage(reply))
 	}
@@ -210,7 +210,7 @@ func (s *Service) ListMembers(ctx context.Context, teamRef, channelRef string) (
 		return nil, snd.MapError(requestErr, snd.WithResource(snd.Team, teamRef), snd.WithResource(snd.Channel, channelRef))
 	}
 
-	var members []*models.Member
+	members := make([]*models.Member, 0, len(resp.GetValue()))
 	for _, member := range resp.GetValue() {
 		members = append(members, adapter.MapGraphMember(member))
 	}
