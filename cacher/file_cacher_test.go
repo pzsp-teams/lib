@@ -64,9 +64,9 @@ func TestGet_AfterSet_RoundTrip(t *testing.T) {
 	c := NewJSONFileCacher(path)
 
 	key := "$team$:z1"
-	expectedIDs := []string{"id1", "id2"}
+	expectedID := "id1"
 
-	if err := c.Set(key, expectedIDs); err != nil {
+	if err := c.Set(key, expectedID); err != nil {
 		t.Fatalf("Set returned error: %v", err)
 	}
 
@@ -75,7 +75,7 @@ func TestGet_AfterSet_RoundTrip(t *testing.T) {
 		t.Fatalf("failed to read cache file: %v", err)
 	}
 
-	var fileData map[string][]string
+	var fileData map[string]string
 	if err := json.Unmarshal(raw, &fileData); err != nil {
 		t.Fatalf("failed to unmarshal cache file: %v", err)
 	}
@@ -84,8 +84,8 @@ func TestGet_AfterSet_RoundTrip(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected key %q in file, not found", key)
 	}
-	if len(gotFromFile) != len(expectedIDs) || gotFromFile[0] != "id1" || gotFromFile[1] != "id2" {
-		t.Errorf("file content mismatch, got %#v, want %#v", gotFromFile, expectedIDs)
+	if gotFromFile != "id1" {
+		t.Errorf("file content mismatch, got %#v, want %#v", gotFromFile, expectedID)
 	}
 
 	val, hit, err := c.Get(key)
@@ -96,12 +96,12 @@ func TestGet_AfterSet_RoundTrip(t *testing.T) {
 		t.Fatalf("expected hit=true after Set, got false")
 	}
 
-	ids, ok := val.([]string)
+	id, ok := val.(string)
 	if !ok {
-		t.Fatalf("expected []string from Get, got %T (%#v)", val, val)
+		t.Fatalf("expected string from Get, got %T (%#v)", val, val)
 	}
-	if len(ids) != len(expectedIDs) || ids[0] != "id1" || ids[1] != "id2" {
-		t.Errorf("Get returned %#v, want %#v", ids, expectedIDs)
+	if id != "id1" {
+		t.Errorf("Get returned %#v, want %#v", id, expectedID)
 	}
 }
 
@@ -110,7 +110,7 @@ func TestGet_WithLoadedCache_DoesNotReloadFile(t *testing.T) {
 	c := NewJSONFileCacher(path).(*JSONFileCacher)
 
 	c.cache = map[string]json.RawMessage{
-		"$team$:z1": mustRawMessage(t, []string{"id1"}),
+		"$team$:z1": mustRawMessage(t, "id1"),
 	}
 	c.loaded = true
 
@@ -121,9 +121,9 @@ func TestGet_WithLoadedCache_DoesNotReloadFile(t *testing.T) {
 	if !hit {
 		t.Fatalf("expected hit=true, got false")
 	}
-	ids, ok := val.([]string)
-	if !ok || len(ids) != 1 || ids[0] != "id1" {
-		t.Fatalf("expected []string{\"id1\"}, got %T %#v", val, val)
+	id := val.(string)
+	if id != "id1" {
+		t.Fatalf("expected string{\"id1\"}, got %T %#v", val, val)
 	}
 }
 
@@ -227,10 +227,10 @@ func TestInvalidate_RemovesKeyAndUpdatesFile(t *testing.T) {
 	key1 := "$team$:z1"
 	key2 := "$team$:z2"
 
-	if err := c.Set(key1, []string{"id1"}); err != nil {
+	if err := c.Set(key1, "id1"); err != nil {
 		t.Fatalf("Set key1 error: %v", err)
 	}
-	if err := c.Set(key2, []string{"id2"}); err != nil {
+	if err := c.Set(key2, "id2"); err != nil {
 		t.Fatalf("Set key2 error: %v", err)
 	}
 
@@ -253,8 +253,8 @@ func TestInvalidate_RemovesKeyAndUpdatesFile(t *testing.T) {
 	if !hit2 {
 		t.Fatalf("expected hit=true for key2, got false")
 	}
-	ids2, ok := val2.([]string)
-	if !ok || len(ids2) != 1 || ids2[0] != "id2" {
+	id, ok := val2.(string)
+	if !ok || id != "id2" {
 		t.Fatalf("expected []string{\"id2\"}, got %T %#v", val2, val2)
 	}
 
@@ -262,7 +262,7 @@ func TestInvalidate_RemovesKeyAndUpdatesFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to read cache file: %v", err)
 	}
-	var fileData map[string][]string
+	var fileData map[string]string
 	if err := json.Unmarshal(raw, &fileData); err != nil {
 		t.Fatalf("failed to unmarshal file data: %v", err)
 	}
