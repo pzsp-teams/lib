@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
-	"github.com/pzsp-teams/lib/adapter"
+	"github.com/pzsp-teams/lib/internal/adapter"
 	sender "github.com/pzsp-teams/lib/internal/sender"
 	"github.com/pzsp-teams/lib/models"
 )

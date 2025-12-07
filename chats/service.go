@@ -3,7 +3,7 @@ package chats
 import (
 	"context"
 
-	"github.com/pzsp-teams/lib/adapter"
+	"github.com/pzsp-teams/lib/internal/adapter"
 	"github.com/pzsp-teams/lib/internal/api"
 	snd "github.com/pzsp-teams/lib/internal/sender"
 	"github.com/pzsp-teams/lib/models"
