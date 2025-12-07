@@ -12,12 +12,14 @@ import (
 type ServiceWithAutoCacheManagement struct {
 	svc   *Service
 	cache cacher.Cacher
+	run func(func())
 }
 
 func NewServiceWithAutoCacheManagement(svc *Service, cache cacher.Cacher) *ServiceWithAutoCacheManagement {
 	return &ServiceWithAutoCacheManagement{
 		svc:   svc,
 		cache: cache,
+		run: func(fn func()) { go fn() },
 	}
 }
 
@@ -26,7 +28,9 @@ func (s *ServiceWithAutoCacheManagement) Get(ctx context.Context, teamRef string
 	if err != nil {
 		return nil, err
 	}
-	s.addTeamsToCache([]Team{*team})
+	s.run(func() {
+		s.addTeamsToCache(*team)
+	})
 	return team, nil
 }
 
@@ -35,9 +39,15 @@ func (s *ServiceWithAutoCacheManagement) ListMyJoined(ctx context.Context) ([]*T
 	if err != nil {
 		return nil, err
 	}
-	for _, team := range teams {
-		s.addTeamsToCache([]Team{*team})
+	vals := make([]Team, 0, len(teams))
+	for _, t := range teams {
+		if t != nil {
+			vals = append(vals, *t)
+		}
 	}
+	s.run(func() {
+		s.addTeamsToCache(vals...)
+	})
 	return teams, nil
 }
 
@@ -46,8 +56,10 @@ func (s *ServiceWithAutoCacheManagement) Update(ctx context.Context, teamRef str
 	if err != nil {
 		return nil, err
 	}
-	s.removeTeamsFromCache([]string{teamRef})
-	s.addTeamsToCache([]Team{*team})
+	s.run(func() {
+		s.removeTeamsFromCache(teamRef)
+		s.addTeamsToCache(*team)
+	})
 	return team, nil
 }
 
@@ -56,7 +68,9 @@ func (s *ServiceWithAutoCacheManagement) CreateFromTemplate(ctx context.Context,
 	if err != nil {
 		return id, err
 	}
-	s.removeTeamsFromCache([]string{displayName})
+	s.run(func() {
+		s.removeTeamsFromCache(displayName)
+	})
 	return id, err
 }
 
@@ -65,7 +79,9 @@ func (s *ServiceWithAutoCacheManagement) CreateViaGroup(ctx context.Context, dis
 	if err != nil {
 		return nil, err
 	}
-	s.removeTeamsFromCache([]string{displayName})
+	s.run(func() {
+		s.removeTeamsFromCache(displayName)
+	})
 	return team, nil
 }
 
@@ -74,7 +90,9 @@ func (s *ServiceWithAutoCacheManagement) Archive(ctx context.Context, teamRef st
 	if err != nil {
 		return err
 	}
-	s.removeTeamsFromCache([]string{teamRef})
+	s.run(func() {
+		s.removeTeamsFromCache(teamRef)
+	})
 	return nil
 }
 
@@ -83,7 +101,9 @@ func (s *ServiceWithAutoCacheManagement) Unarchive(ctx context.Context, teamRef 
 	if err != nil {
 		return err
 	}
-	s.removeTeamsFromCache([]string{teamRef})
+	s.run(func() {
+		s.removeTeamsFromCache(teamRef)
+	})
 	return nil
 }
 
@@ -92,7 +112,9 @@ func (s *ServiceWithAutoCacheManagement) Delete(ctx context.Context, teamRef str
 	if err != nil {
 		return err
 	}
-	s.removeTeamsFromCache([]string{teamRef})
+	s.run(func() {
+		s.removeTeamsFromCache(teamRef)
+	})
 	return nil
 }
 
@@ -100,7 +122,7 @@ func (s *ServiceWithAutoCacheManagement) RestoreDeleted(ctx context.Context, del
 	return s.svc.RestoreDeleted(ctx, deletedGroupID)
 }
 
-func (s *ServiceWithAutoCacheManagement) addTeamsToCache(teams []Team) {
+func (s *ServiceWithAutoCacheManagement) addTeamsToCache(teams ...Team) {
 	if s.cache == nil || teams == nil {
 		return
 	}
@@ -110,7 +132,7 @@ func (s *ServiceWithAutoCacheManagement) addTeamsToCache(teams []Team) {
 	}
 }
 
-func (s *ServiceWithAutoCacheManagement) removeTeamsFromCache(teamRefs []string) {
+func (s *ServiceWithAutoCacheManagement) removeTeamsFromCache(teamRefs ...string) {
 	if s.cache == nil {
 		return
 	}

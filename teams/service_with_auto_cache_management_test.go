@@ -175,6 +175,7 @@ func TestServiceWithAutoCacheManagement_Get_AddsTeamToCacheOnSuccess(t *testing.
 		teamResolver: fr,
 	}
 	decor := NewServiceWithAutoCacheManagement(svc, fc)
+	decor.run = func(f func()) { f() }
 
 	team, err := decor.Get(ctx, "my-ref")
 	if err != nil {
@@ -219,7 +220,7 @@ func TestServiceWithAutoCacheManagement_ListMyJoined_WarmsCache(t *testing.T) {
 		teamAPI: fapi,
 	}
 	decor := NewServiceWithAutoCacheManagement(svc, fc)
-
+	decor.run = func(f func()) { f() }
 	teams, err := decor.ListMyJoined(ctx)
 	if err != nil {
 		t.Fatalf("unexpected error from ListMyJoined: %v", err)
@@ -272,7 +273,7 @@ func TestServiceWithAutoCacheManagement_Update_InvalidatesOldAndCachesNew(t *tes
 		teamResolver: fr,
 	}
 	decor := NewServiceWithAutoCacheManagement(svc, fc)
-
+	decor.run = func(f func()) { f() }
 	team, err := decor.Update(ctx, "  Old Name  ", nil)
 	if err != nil {
 		t.Fatalf("unexpected error from Update: %v", err)
@@ -323,7 +324,7 @@ func TestServiceWithAutoCacheManagement_Update_DoesNotInvalidateForGUID(t *testi
 		teamResolver: fr,
 	}
 	decor := NewServiceWithAutoCacheManagement(svc, fc)
-
+	decor.run = func(f func()) { f() }
 	_, err := decor.Update(ctx, guidRef, nil)
 	if err != nil {
 		t.Fatalf("unexpected error from Update: %v", err)
@@ -354,7 +355,7 @@ func TestServiceWithAutoCacheManagement_CreateFromTemplate_InvalidatesByName(t *
 		teamAPI: fapi,
 	}
 	decor := NewServiceWithAutoCacheManagement(svc, fc)
-
+	decor.run = func(f func()) { f() }
 	id, err := decor.CreateFromTemplate(ctx, "  My Team  ", "desc", []string{"owner"})
 	if err != nil {
 		t.Fatalf("unexpected error from CreateFromTemplate: %v", err)
@@ -398,7 +399,7 @@ func TestServiceWithAutoCacheManagement_CreateViaGroup_InvalidatesByName(t *test
 		teamAPI: fapi,
 	}
 	decor := NewServiceWithAutoCacheManagement(svc, fc)
-
+	decor.run = func(f func()) { f() }
 	team, err := decor.CreateViaGroup(ctx, "  My Team  ", "nick", "Public")
 	if err != nil {
 		t.Fatalf("unexpected error from CreateViaGroup: %v", err)
@@ -442,7 +443,7 @@ func TestServiceWithAutoCacheManagement_Archive_InvalidatesByName(t *testing.T) 
 		teamResolver: fr,
 	}
 	decor := NewServiceWithAutoCacheManagement(svc, fc)
-
+	decor.run = func(f func()) { f() }
 	if err := decor.Archive(ctx, "  My Team  ", nil); err != nil {
 		t.Fatalf("unexpected error from Archive: %v", err)
 	}
@@ -484,7 +485,7 @@ func TestServiceWithAutoCacheManagement_Delete_DoesNotInvalidateForGUID(t *testi
 		teamResolver: fr,
 	}
 	decor := NewServiceWithAutoCacheManagement(svc, fc)
-
+	decor.run = func(f func()) { f() }
 	if err := decor.Delete(ctx, guidRef); err != nil {
 		t.Fatalf("unexpected error from Delete: %v", err)
 	}
@@ -511,7 +512,7 @@ func TestServiceWithAutoCacheManagement_RestoreDeleted_DoesNotTouchCache(t *test
 		teamAPI: fapi,
 	}
 	decor := NewServiceWithAutoCacheManagement(svc, fc)
-
+	decor.run = func(f func()) { f() }
 	id, err := decor.RestoreDeleted(ctx, "deleted-123")
 	if err != nil {
 		t.Fatalf("unexpected error from RestoreDeleted: %v", err)
