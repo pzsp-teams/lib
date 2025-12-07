@@ -1,6 +1,9 @@
 package cacher
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 type KeyType string
 
@@ -22,7 +25,7 @@ type TeamKeyBuilder struct {
 func NewTeamKeyBuilder(name string) KeyBuilder {
 	return &TeamKeyBuilder{
 		Type: Team,
-		Name: name,
+		Name: strings.TrimSpace(name),
 	}
 }
 
@@ -35,8 +38,8 @@ type ChannelKeyBuilder struct {
 func NewChannelKeyBuilder(teamID, name string) KeyBuilder {
 	return &ChannelKeyBuilder{
 		Type:   Channel,
-		TeamID: teamID,
-		Name:   name,
+		TeamID: strings.TrimSpace(teamID),
+		Name:   strings.TrimSpace(name),
 	}
 }
 
@@ -50,9 +53,9 @@ type MemberKeyBuilder struct {
 func NewMemberKeyBuilder(ref, teamID, channelID string) KeyBuilder {
 	return &MemberKeyBuilder{
 		Type:      Member,
-		Ref:       ref,
-		TeamID:    teamID,
-		ChannelID: channelID,
+		Ref:       strings.TrimSpace(ref),
+		TeamID:    strings.TrimSpace(teamID),
+		ChannelID: strings.TrimSpace(channelID),
 	}
 }
 
