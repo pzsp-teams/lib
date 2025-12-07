@@ -116,6 +116,7 @@ func (cacher *JSONFileCacher) Invalidate(key string) error {
 
 func (cacher *JSONFileCacher) Clear() error {
 	cacher.cache = make(map[string]json.RawMessage)
+	cacher.loaded = true
 	data, err := json.MarshalIndent(cacher.cache, "", "  ")
 	if err != nil {
 		return err
