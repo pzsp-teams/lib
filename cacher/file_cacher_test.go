@@ -74,7 +74,7 @@ func TestGet_AfterSet_RoundTrip(t *testing.T) {
 		t.Fatalf("failed to read cache file: %v", err)
 	}
 
-	var fileData map[string]string
+	var fileData map[string][]string
 	if err := json.Unmarshal(raw, &fileData); err != nil {
 		t.Fatalf("failed to unmarshal cache file: %v", err)
 	}
@@ -83,8 +83,8 @@ func TestGet_AfterSet_RoundTrip(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected key %q in file, not found", key)
 	}
-	if gotFromFile != "id1" {
-		t.Errorf("file content mismatch, got %#v, want %#v", gotFromFile, expectedID)
+	if len(gotFromFile) != 1 || gotFromFile[0] != expectedID {
+		t.Errorf("file content mismatch, got %#v, want %#v", gotFromFile, []string{expectedID})
 	}
 
 	val, hit, err := c.Get(key)
@@ -95,12 +95,12 @@ func TestGet_AfterSet_RoundTrip(t *testing.T) {
 		t.Fatalf("expected hit=true after Set, got false")
 	}
 
-	id, ok := val.(string)
+	ids, ok := val.([]string)
 	if !ok {
-		t.Fatalf("expected string from Get, got %T (%#v)", val, val)
+		t.Fatalf("expected []string from Get, got %T (%#v)", val, val)
 	}
-	if id != "id1" {
-		t.Errorf("Get returned %#v, want %#v", id, expectedID)
+	if len(ids) != 1 || ids[0] != expectedID {
+		t.Errorf("Get returned %#v, want %#v", ids, []string{expectedID})
 	}
 }
 
@@ -109,7 +109,7 @@ func TestGet_WithLoadedCache_DoesNotReloadFile(t *testing.T) {
 	c := NewJSONFileCacher(path).(*JSONFileCacher)
 
 	c.cache = map[string]json.RawMessage{
-		"$team$:z1": mustRawMessage(t, "id1"),
+		"$team$:z1": mustRawMessage(t, []string{"id1"}),
 	}
 	c.loaded = true
 
@@ -120,9 +120,13 @@ func TestGet_WithLoadedCache_DoesNotReloadFile(t *testing.T) {
 	if !hit {
 		t.Fatalf("expected hit=true, got false")
 	}
-	id := val.(string)
-	if id != "id1" {
-		t.Fatalf("expected string{\"id1\"}, got %T %#v", val, val)
+
+	ids, ok := val.([]string)
+	if !ok {
+		t.Fatalf("expected []string from Get, got %T (%#v)", val, val)
+	}
+	if len(ids) != 1 || ids[0] != "id1" {
+		t.Fatalf("expected []string{\"id1\"}, got %#v", ids)
 	}
 }
 
@@ -196,26 +200,22 @@ func TestLoadCache_OtherReadError_Propagates(t *testing.T) {
 
 func TestSet_WhenLoadCacheFails_ReturnsError(t *testing.T) {
 	dir := t.TempDir()
-	c := NewJSONFileCacher(dir)
+	c := NewJSONFileCacher(dir) 
 
-	err := c.Set("$team$:z1", []string{"id1"})
+	err := c.Set("$team$:z1", "id1")
 	if err == nil {
 		t.Fatalf("expected error from Set when loadCache fails, got nil")
 	}
 }
 
-func TestSet_MarshalError_ReturnsError(t *testing.T) {
+func TestSet_NonStringValue_ReturnsError(t *testing.T) {
 	path := tempFilePath(t)
-	c := NewJSONFileCacher(path).(*JSONFileCacher)
+	c := NewJSONFileCacher(path)
 
-	c.cache = make(map[string]json.RawMessage)
-	c.loaded = true
-
-	ch := make(chan int)
-
-	err := c.Set("$team$:z1", ch)
+	
+	err := c.Set("$team$:z1", []string{"id1"})
 	if err == nil {
-		t.Fatalf("expected error from Set when json.Marshal fails, got nil")
+		t.Fatalf("expected error for non-string value in Set, got nil")
 	}
 }
 
@@ -252,8 +252,8 @@ func TestInvalidate_RemovesKeyAndUpdatesFile(t *testing.T) {
 	if !hit2 {
 		t.Fatalf("expected hit=true for key2, got false")
 	}
-	id, ok := val2.(string)
-	if !ok || id != "id2" {
+	ids, ok := val2.([]string)
+	if !ok || len(ids) != 1 || ids[0] != "id2" {
 		t.Fatalf("expected []string{\"id2\"}, got %T %#v", val2, val2)
 	}
 
@@ -261,15 +261,19 @@ func TestInvalidate_RemovesKeyAndUpdatesFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to read cache file: %v", err)
 	}
-	var fileData map[string]string
+	var fileData map[string][]string
 	if err := json.Unmarshal(raw, &fileData); err != nil {
 		t.Fatalf("failed to unmarshal file data: %v", err)
 	}
 	if _, ok := fileData[key1]; ok {
 		t.Fatalf("expected key1 to be removed from file")
 	}
-	if _, ok := fileData[key2]; !ok {
+	v2, ok := fileData[key2]
+	if !ok {
 		t.Fatalf("expected key2 to stay in file")
+	}
+	if len(v2) != 1 || v2[0] != "id2" {
+		t.Fatalf("expected fileData[%q]=[\"id2\"], got %#v", key2, v2)
 	}
 }
 
@@ -287,10 +291,10 @@ func TestClear_RemovesAllKeysAndUpdatesFile(t *testing.T) {
 	path := tempFilePath(t)
 	c := NewJSONFileCacher(path)
 
-	if err := c.Set("$team$:z1", []string{"id1"}); err != nil {
+	if err := c.Set("$team$:z1", "id1"); err != nil {
 		t.Fatalf("Set error: %v", err)
 	}
-	if err := c.Set("$team$:z2", []string{"id2"}); err != nil {
+	if err := c.Set("$team$:z2", "id2"); err != nil {
 		t.Fatalf("Set error: %v", err)
 	}
 
@@ -330,7 +334,7 @@ func TestClear_RemovesAllKeysAndUpdatesFile(t *testing.T) {
 func TestClear_WriteFileError_ReturnsError(t *testing.T) {
 	dir := t.TempDir()
 	c := &JSONFileCacher{
-		file:  dir,
+		file:  dir, 
 		cache: make(map[string]json.RawMessage),
 	}
 
