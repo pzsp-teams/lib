@@ -42,12 +42,16 @@ func NewChannelKeyBuilder(teamID, name string) (KeyBuilder) {
 type MemberKeyBuilder struct {
 	Type KeyType
 	Ref string
+	TeamID string
+	ChannelID string
 }
 
-func NewMemberKeyBuilder(ref string) (KeyBuilder) {
+func NewMemberKeyBuilder(ref, teamID, channelID string) (KeyBuilder) {
 	return &MemberKeyBuilder{
 		Type: Member,
 		Ref: ref,
+		TeamID: teamID,
+		ChannelID: channelID,
 	}
 }
 
@@ -56,7 +60,7 @@ func (keyBuilder *TeamKeyBuilder) ToString() string{
 }
 
 func (keyBuilder *MemberKeyBuilder) ToString() string{
-	return fmt.Sprintf("$%v$:%v", keyBuilder.Type, keyBuilder.Ref)
+	return fmt.Sprintf("$%v$:%v:%v:%v", keyBuilder.Type, keyBuilder.TeamID, keyBuilder.ChannelID, keyBuilder.Ref)
 }
 
 func (keyBuilder *ChannelKeyBuilder) ToString() string{
