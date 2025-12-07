@@ -218,6 +218,102 @@ func TestSet_NonStringValue_ReturnsError(t *testing.T) {
 	}
 }
 
+func TestSet_DoesNotCreateDuplicatesForSameValue(t *testing.T) {
+	path := tempFilePath(t)
+	c := NewJSONFileCacher(path)
+
+	key := "$team$:z1"
+
+	mustSet(t, c, key, "id1")
+	mustSet(t, c, key, "id1")
+	mustSet(t, c, key, "id1")
+
+	val, hit, err := c.Get(key)
+	if err != nil {
+		t.Fatalf("Get returned error: %v", err)
+	}
+	if !hit {
+		t.Fatalf("expected hit=true after multiple Set calls, got false")
+	}
+	ids, ok := val.([]string)
+	if !ok {
+		t.Fatalf("expected []string from Get, got %T (%#v)", val, val)
+	}
+	if len(ids) != 1 || ids[0] != "id1" {
+		t.Fatalf("expected []string{\"id1\"}, got %#v", ids)
+	}
+
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("failed to read cache file: %v", err)
+	}
+	var fileData map[string][]string
+	if err := json.Unmarshal(raw, &fileData); err != nil {
+		t.Fatalf("failed to unmarshal cache file: %v", err)
+	}
+	gotFromFile, ok := fileData[key]
+	if !ok {
+		t.Fatalf("expected key %q in file, not found", key)
+	}
+	if len(gotFromFile) != 1 || gotFromFile[0] != "id1" {
+		t.Fatalf("expected fileData[%q]=[\"id1\"], got %#v", key, gotFromFile)
+	}
+}
+
+func TestSet_AppendsOnlyNewUniqueValues(t *testing.T) {
+	path := tempFilePath(t)
+	c := NewJSONFileCacher(path)
+
+	key := "$team$:z1"
+
+	mustSet(t, c, key, "id1")
+	mustSet(t, c, key, "id2")
+	mustSet(t, c, key, "id1")
+	mustSet(t, c, key, "id3")
+
+	val, hit, err := c.Get(key)
+	if err != nil {
+		t.Fatalf("Get returned error: %v", err)
+	}
+	if !hit {
+		t.Fatalf("expected hit=true, got false")
+	}
+	ids, ok := val.([]string)
+	if !ok {
+		t.Fatalf("expected []string from Get, got %T (%#v)", val, val)
+	}
+	want := []string{"id1", "id2", "id3"}
+	if len(ids) != len(want) {
+		t.Fatalf("expected %d ids, got %d (%#v)", len(want), len(ids), ids)
+	}
+	for i, v := range want {
+		if ids[i] != v {
+			t.Fatalf("expected ids[%d]=%q, got %q (full: %#v)", i, v, ids[i], ids)
+		}
+	}
+
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("failed to read cache file: %v", err)
+	}
+	var fileData map[string][]string
+	if err := json.Unmarshal(raw, &fileData); err != nil {
+		t.Fatalf("failed to unmarshal cache file: %v", err)
+	}
+	gotFromFile, ok := fileData[key]
+	if !ok {
+		t.Fatalf("expected key %q in file, not found", key)
+	}
+	if len(gotFromFile) != len(want) {
+		t.Fatalf("expected %d ids in file, got %d (%#v)", len(want), len(gotFromFile), gotFromFile)
+	}
+	for i, v := range want {
+		if gotFromFile[i] != v {
+			t.Fatalf("expected fileData[%q][%d]=%q, got %q (full: %#v)", key, i, v, gotFromFile[i], gotFromFile)
+		}
+	}
+}
+
 func TestInvalidate_RemovesKeyAndUpdatesFile(t *testing.T) {
 	path := tempFilePath(t)
 	c := NewJSONFileCacher(path)
