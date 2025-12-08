@@ -111,7 +111,6 @@ func findMemberID(members []msmodels.ConversationMemberable, ref string) string 
 	return id
 }
 
-
 func matchesUserRef(um msmodels.AadUserConversationMemberable, userRef string) bool {
 	if userRef == "" {
 		return false

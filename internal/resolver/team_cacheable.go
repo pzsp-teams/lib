@@ -96,4 +96,3 @@ func resolveTeamIDByName(ref string, list msmodels.TeamCollectionResponseable) (
 		)
 	}
 }
-
