@@ -190,7 +190,6 @@ func (s *ServiceWithAutoCacheManagement) RemoveMember(
 	return nil
 }
 
-
 func (s *ServiceWithAutoCacheManagement) addChannelsToCache(
 	teamRef string,
 	chans ...models.Channel,

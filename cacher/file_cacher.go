@@ -8,7 +8,7 @@ import (
 )
 
 type JSONFileCacher struct {
-	mu sync.Mutex
+	mu     sync.Mutex
 	file   string
 	cache  map[string]json.RawMessage
 	loaded bool

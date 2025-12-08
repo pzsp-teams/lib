@@ -15,7 +15,7 @@ func TestIsLikelyGUID_Negative(t *testing.T) {
 	} {
 		if IsLikelyGUID(s) {
 			t.Fatalf("expected IsLikelyGUID(%q)=false, got true", s)
-		}	
+		}
 	}
 }
 
@@ -32,6 +32,6 @@ func TestIsLikelyChannelID_Negative(t *testing.T) {
 	} {
 		if IsLikelyChannelID(s) {
 			t.Fatalf("expected IsLikelyChannelID(%q)=false, got true", s)
-		}	
+		}
 	}
 }
