@@ -33,9 +33,9 @@ class TeamsClient:
         osname = platform.system()
 
         if osname == "Windows":
-            return base / "APIbridge_windows.exe"
+            return base / "teamsClientLib_windows.exe"
         elif osname == "Linux":
-            return base / "APIbridge_linux"
+            return base / "teamsClientLib_linux"
         else:
             raise RuntimeError("Unsupported OS")
 
