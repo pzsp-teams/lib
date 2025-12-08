@@ -53,7 +53,7 @@ class TeamsClient:
                             "timeout": sender_config.timeout,
                         },
                         "authConfig": {
-                            "clientId": auth_config.client_id,
+                            "clientID": auth_config.client_id,
                             "tenant": auth_config.tenant,
                             "email": auth_config.email,
                             "scopes": auth_config.scopes,
