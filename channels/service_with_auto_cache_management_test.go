@@ -173,13 +173,6 @@ func (f *fakeChannelAPI) RemoveMember(ctx context.Context, teamID, channelID, me
 }
 
 
-func newGraphChannel(id, name string) msmodels.Channelable {
-	ch := msmodels.NewChannel()
-	ch.SetId(&id)
-	ch.SetDisplayName(&name)
-	return ch
-}
-
 func newChannelCollection(chans ...msmodels.Channelable) msmodels.ChannelCollectionResponseable {
 	resp := msmodels.NewChannelCollectionResponse()
 	resp.SetValue(chans)
