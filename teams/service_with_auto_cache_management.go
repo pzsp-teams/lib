@@ -7,6 +7,7 @@ import (
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
 	"github.com/pzsp-teams/lib/cacher"
 	"github.com/pzsp-teams/lib/internal/util"
+	"github.com/pzsp-teams/lib/models"
 )
 
 type ServiceWithAutoCacheManagement struct {
@@ -23,7 +24,7 @@ func NewServiceWithAutoCacheManagement(svc *Service, cache cacher.Cacher) *Servi
 	}
 }
 
-func (s *ServiceWithAutoCacheManagement) Get(ctx context.Context, teamRef string) (*Team, error) {
+func (s *ServiceWithAutoCacheManagement) Get(ctx context.Context, teamRef string) (*models.Team, error) {
 	team, err := s.svc.Get(ctx, teamRef)
 	if err != nil {
 		return nil, err
@@ -34,12 +35,12 @@ func (s *ServiceWithAutoCacheManagement) Get(ctx context.Context, teamRef string
 	return team, nil
 }
 
-func (s *ServiceWithAutoCacheManagement) ListMyJoined(ctx context.Context) ([]*Team, error) {
+func (s *ServiceWithAutoCacheManagement) ListMyJoined(ctx context.Context) ([]*models.Team, error) {
 	teams, err := s.svc.ListMyJoined(ctx)
 	if err != nil {
 		return nil, err
 	}
-	vals := make([]Team, 0, len(teams))
+	vals := make([]models.Team, 0, len(teams))
 	for _, t := range teams {
 		if t != nil {
 			vals = append(vals, *t)
@@ -51,7 +52,7 @@ func (s *ServiceWithAutoCacheManagement) ListMyJoined(ctx context.Context) ([]*T
 	return teams, nil
 }
 
-func (s *ServiceWithAutoCacheManagement) Update(ctx context.Context, teamRef string, patch *msmodels.Team) (*Team, error) {
+func (s *ServiceWithAutoCacheManagement) Update(ctx context.Context, teamRef string, patch *msmodels.Team) (*models.Team, error) {
 	team, err := s.svc.Update(ctx, teamRef, patch)
 	if err != nil {
 		return nil, err
@@ -74,7 +75,7 @@ func (s *ServiceWithAutoCacheManagement) CreateFromTemplate(ctx context.Context,
 	return id, err
 }
 
-func (s *ServiceWithAutoCacheManagement) CreateViaGroup(ctx context.Context, displayName, mailNickname, visibility string) (*Team, error) {
+func (s *ServiceWithAutoCacheManagement) CreateViaGroup(ctx context.Context, displayName, mailNickname, visibility string) (*models.Team, error) {
 	team, err := s.svc.CreateViaGroup(ctx, displayName, mailNickname, visibility)
 	if err != nil {
 		return nil, err
@@ -122,7 +123,7 @@ func (s *ServiceWithAutoCacheManagement) RestoreDeleted(ctx context.Context, del
 	return s.svc.RestoreDeleted(ctx, deletedGroupID)
 }
 
-func (s *ServiceWithAutoCacheManagement) addTeamsToCache(teams ...Team) {
+func (s *ServiceWithAutoCacheManagement) addTeamsToCache(teams ...models.Team) {
 	if s.cache == nil || teams == nil {
 		return
 	}
