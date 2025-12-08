@@ -296,5 +296,3 @@ func TestResolveTeamIDByName_MultipleMatches(t *testing.T) {
 		t.Errorf("unexpected error: %v", err)
 	}
 }
-
-

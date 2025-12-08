@@ -129,7 +129,6 @@ func (f *fakeChannelAPI) DeleteChannel(ctx context.Context, teamID, channelID st
 	return nil
 }
 
-
 func (f *fakeChannelAPI) SendMessage(ctx context.Context, teamID, channelID string, msg msmodels.ChatMessageable) (msmodels.ChatMessageable, *snd.RequestError) {
 	return nil, nil
 }
@@ -171,7 +170,6 @@ func (f *fakeChannelAPI) RemoveMember(ctx context.Context, teamID, channelID, me
 	}
 	return nil
 }
-
 
 func newChannelCollection(chans ...msmodels.Channelable) msmodels.ChannelCollectionResponseable {
 	resp := msmodels.NewChannelCollectionResponse()

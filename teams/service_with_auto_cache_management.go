@@ -13,14 +13,14 @@ import (
 type ServiceWithAutoCacheManagement struct {
 	svc   *Service
 	cache cacher.Cacher
-	run func(func())
+	run   func(func())
 }
 
 func NewServiceWithAutoCacheManagement(svc *Service, cache cacher.Cacher) *ServiceWithAutoCacheManagement {
 	return &ServiceWithAutoCacheManagement{
 		svc:   svc,
 		cache: cache,
-		run: func(fn func()) { go fn() },
+		run:   func(fn func()) { go fn() },
 	}
 }
 
@@ -145,4 +145,3 @@ func (s *ServiceWithAutoCacheManagement) removeTeamsFromCache(teamRefs ...string
 		_ = s.cache.Invalidate(keyBuilder.ToString())
 	}
 }
-
