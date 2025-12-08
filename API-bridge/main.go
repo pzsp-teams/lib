@@ -13,8 +13,13 @@ import (
 type Request struct {
 	Type   string                 `json:"type"`
 	Method string                 `json:"method,omitempty"`
-	Config map[string]interface{} `json:"config,omitempty"`
+	Config Config                 `json:"config,omitempty"`
 	Params map[string]interface{} `json:"params,omitempty"`
+}
+
+type Config struct {
+	SenderConfigMap map[string]interface{} `json:"senderConfig"`
+	AuthConfigMap   map[string]interface{} `json:"authConfig"`
 }
 
 var client *lib.Client
@@ -41,30 +46,31 @@ func main() {
 				continue
 			}
 
-			configMap := req.Config
+			senderConfigMap := req.Config.SenderConfigMap
+			authConfigMap := req.Config.AuthConfigMap
 
-			scopes, err := safeScopes(configMap)
+			scopes, err := safeScopes(authConfigMap)
 			if err != nil {
 				respondError(writer, err)
 				continue
 			}
-			authMethod, err := validateAuthMethod(safeString(configMap, "authMethod"))
+			authMethod, err := validateAuthMethod(safeString(authConfigMap, "authMethod"))
 			if err != nil {
 				respondError(writer, err)
 				continue
 			}
 			authConfig := lib.AuthConfig{
-				ClientID:     safeString(configMap, "clientID"),
-				Tenant:     safeString(configMap, "tenant"),
-				Email:		safeString(configMap, "email"),
+				ClientID:     safeString(authConfigMap, "clientID"),
+				Tenant:     safeString(authConfigMap, "tenant"),
+				Email:		safeString(authConfigMap, "email"),
 				Scopes:     scopes,
 				AuthMethod: authMethod,
 			}
 
 			senderConfig := lib.SenderConfig{
-				MaxRetries: safeInt(configMap, "maxRetries"),
-				NextRetryDelay: safeInt(configMap, "nextRetryDelay"),
-				Timeout: safeInt(configMap, "timeout"),
+				MaxRetries: safeInt(senderConfigMap, "maxRetries"),
+				NextRetryDelay: safeInt(senderConfigMap, "nextRetryDelay"),
+				Timeout: safeInt(senderConfigMap, "timeout"),
 			}
 
 			c, err := lib.NewClient(context.TODO(), &authConfig, &senderConfig)
