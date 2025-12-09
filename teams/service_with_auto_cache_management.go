@@ -172,16 +172,14 @@ func (s *serviceWithAutoCacheManagement) onError() {
 	})
 }
 
-
-
 func withErrorClear[T any](
-    fn func() (T, error), s *serviceWithAutoCacheManagement,
+	fn func() (T, error), s *serviceWithAutoCacheManagement,
 ) (T, error) {
-    res, err := fn()
-    if err != nil {
-        s.onError()
-        var zero T
-        return zero, err
-    }
-    return res, nil
+	res, err := fn()
+	if err != nil {
+		s.onError()
+		var zero T
+		return zero, err
+	}
+	return res, nil
 }

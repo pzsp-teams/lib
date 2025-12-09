@@ -19,17 +19,17 @@ type serviceWithAutoCacheManagement struct {
 }
 
 func newServiceWithAutoCacheManagement(
-    svc Service,
-    cache cacher.Cacher,
-    teamResolver resolver.TeamResolver,
-    channelResolver resolver.ChannelResolver,
+	svc Service,
+	cache cacher.Cacher,
+	teamResolver resolver.TeamResolver,
+	channelResolver resolver.ChannelResolver,
 ) *serviceWithAutoCacheManagement {
-    return &serviceWithAutoCacheManagement{
-        svc:             svc,
-        cache:           cache,
-        teamResolver:    teamResolver,
-        channelResolver: channelResolver,
-    }
+	return &serviceWithAutoCacheManagement{
+		svc:             svc,
+		cache:           cache,
+		teamResolver:    teamResolver,
+		channelResolver: channelResolver,
+	}
 }
 
 func NewSyncServiceWithAutoCacheManagement(svc Service, cache cacher.Cacher, teamResolver resolver.TeamResolver, channelResolver resolver.ChannelResolver) Service {
@@ -323,15 +323,14 @@ func (s *serviceWithAutoCacheManagement) onError() {
 	})
 }
 
-
 func withErrorClear[T any](
-    fn func() (T, error), s *serviceWithAutoCacheManagement,
+	fn func() (T, error), s *serviceWithAutoCacheManagement,
 ) (T, error) {
-    res, err := fn()
-    if err != nil {
-        s.onError()
-        var zero T
-        return zero, err
-    }
-    return res, nil
+	res, err := fn()
+	if err != nil {
+		s.onError()
+		var zero T
+		return zero, err
+	}
+	return res, nil
 }
