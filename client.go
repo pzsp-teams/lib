@@ -20,6 +20,7 @@ type Client struct {
 	Channels channels.Service
 	Teams    teams.Service
 	Chats    *chats.Service
+	waitFns  []func()
 }
 
 // NewClient will be used later
@@ -51,13 +52,27 @@ func NewClient(ctx context.Context, authConfig *AuthConfig, senderConfig *Sender
 	teamSvc := teams.NewService(teamsAPI, teamResolver)
 	channelSvc := channels.NewService(channelsAPI, teamResolver, channelResolver)
 	chatSvc := chats.NewService(chatAPI)
+	waitFns := make([]func(), 0, 2)
 	if cacheEnabled {
-		teamSvc = teams.NewServiceWithAutoCacheManagement(teamSvc, cache)
-		channelSvc = channels.NewSyncServiceWithAutoCacheManagement(channelSvc, cache, teamResolver, channelResolver)
+		teamSvc = teams.NewAsyncServiceWithAutoCacheManagement(teamSvc, cache)
+		channelSvc = channels.NewAsyncServiceWithAutoCacheManagement(channelSvc, cache, teamResolver, channelResolver)
+		if w, ok := channelSvc.(interface{ Wait() }); ok {
+			waitFns = append(waitFns, w.Wait)
+		}
+		if w, ok := teamSvc.(interface{ Wait() }); ok {
+			waitFns = append(waitFns, w.Wait)
+		}
 	}
 	return &Client{
 		Channels: channelSvc,
 		Teams:    teamSvc,
 		Chats:    chatSvc,
+		waitFns: waitFns,
 	}, nil
+}
+
+func (c *Client) Close() {
+	for _, fn := range c.waitFns {
+		fn()
+	}
 }

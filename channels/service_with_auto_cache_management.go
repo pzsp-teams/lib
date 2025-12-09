@@ -15,7 +15,7 @@ type serviceWithAutoCacheManagement struct {
 	cache cacher.Cacher
 	teamResolver   resolver.TeamResolver
 	channelResolver resolver.ChannelResolver
-	run   func(func())
+	runner   util.TaskRunner
 }
 
 func NewSyncServiceWithAutoCacheManagement(svc Service, cache cacher.Cacher, teamResolver resolver.TeamResolver, channelResolver resolver.ChannelResolver) Service {
@@ -24,7 +24,7 @@ func NewSyncServiceWithAutoCacheManagement(svc Service, cache cacher.Cacher, tea
 		cache: cache,
 		teamResolver: teamResolver,
 		channelResolver: channelResolver,
-		run:   func(fn func()) { fn() },
+		runner:   &util.SyncRunner{},
 	}
 }
 
@@ -34,8 +34,12 @@ func NewAsyncServiceWithAutoCacheManagement(svc Service, cache cacher.Cacher, te
 		cache: cache,
 		teamResolver: teamResolver,
 		channelResolver: channelResolver,
-		run:   func(fn func()) { go fn() },
+		runner:   &util.AsyncRunner{},
 	}
+}
+
+func (s *serviceWithAutoCacheManagement) Wait() {
+	s.runner.Wait()
 }
 
 func (s *serviceWithAutoCacheManagement) ListChannels(ctx context.Context, teamRef string) ([]*models.Channel, error) {
@@ -50,7 +54,7 @@ func (s *serviceWithAutoCacheManagement) ListChannels(ctx context.Context, teamR
 			local = append(local, *ch)
 		}
 	}
-	s.run(func() {
+	s.runner.Run(func() {
 		s.addChannelsToCache(teamRef, local...)
 	})
 	return chans, nil
@@ -64,7 +68,7 @@ func (s *serviceWithAutoCacheManagement) Get(ctx context.Context, teamRef, chann
 	}
 	if ch != nil {
 		local := *ch
-		s.run(func() {
+		s.runner.Run(func() {
 			s.addChannelsToCache(teamRef, local)
 		})
 	}
@@ -96,7 +100,7 @@ func (s *serviceWithAutoCacheManagement) CreatePrivateChannel(
 }
 
 func (s *serviceWithAutoCacheManagement) updateCacheAfterCreate(teamRef, name string, ch *models.Channel) {
-	s.run(func() {
+	s.runner.Run(func() {
 		s.removeChannelFromCache(teamRef, name)
 		if ch == nil {
 			return
@@ -112,7 +116,7 @@ func (s *serviceWithAutoCacheManagement) Delete(ctx context.Context, teamRef, ch
 		s.onError()
 		return err
 	}
-	s.run(func() {
+	s.runner.Run(func() {
 		s.removeChannelFromCache(teamRef, channelRef)
 	})
 	return nil
@@ -205,7 +209,7 @@ func (s *serviceWithAutoCacheManagement) AddMember(
 	}
 	if member != nil {
 		local := *member
-		s.run(func() {
+		s.runner.Run(func() {
 			s.addMemberToCache(teamRef, channelRef, userRef, local)
 		})
 	}
@@ -233,7 +237,7 @@ func (s *serviceWithAutoCacheManagement) RemoveMember(
 		s.onError()
 		return err
 	}
-	s.run(func() {
+	s.runner.Run(func() {
 		s.invalidateMemberCache(teamRef, channelRef, userRef)
 	})
 	return nil
@@ -335,7 +339,7 @@ func (s *serviceWithAutoCacheManagement) onError() {
 	if s.cache == nil {
 		return
 	}
-	s.run(func() {
+	s.runner.Run(func() {
 		_ = s.cache.Clear()
 	})
 }
