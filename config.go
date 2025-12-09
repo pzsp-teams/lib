@@ -41,15 +41,15 @@ func (cfg *AuthConfig) toMSALCredentials() *auth.MSALCredentials {
 }
 
 func defaultCachePath() string {
-    dir, err := os.UserCacheDir()
-    if err != nil {
-        home, herr := os.UserHomeDir()
-        if herr != nil {
-            return "pzsp-teams-cache.json"
-        }
-        return filepath.Join(home, ".pzsp-teams-cache.json")
-    }
-    p := filepath.Join(dir, "pzsp-teams", "cache.json")
-    _ = os.MkdirAll(filepath.Dir(p), 0o755)
-    return p
+	dir, err := os.UserCacheDir()
+	if err != nil {
+		home, herr := os.UserHomeDir()
+		if herr != nil {
+			return "pzsp-teams-cache.json"
+		}
+		return filepath.Join(home, ".pzsp-teams-cache.json")
+	}
+	p := filepath.Join(dir, "pzsp-teams", "cache.json")
+	_ = os.MkdirAll(filepath.Dir(p), 0o755)
+	return p
 }

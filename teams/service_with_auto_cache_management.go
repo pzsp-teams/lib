@@ -28,7 +28,7 @@ func (s *ServiceWithAutoCacheManagement) Get(ctx context.Context, teamRef string
 	team, err := s.svc.Get(ctx, teamRef)
 	if err != nil {
 		s.run(func() {
-			s.cache.Clear()
+			_ = s.cache.Clear()
 		})
 		return nil, err
 	}
@@ -42,7 +42,7 @@ func (s *ServiceWithAutoCacheManagement) ListMyJoined(ctx context.Context) ([]*m
 	teams, err := s.svc.ListMyJoined(ctx)
 	if err != nil {
 		s.run(func() {
-			s.cache.Clear()
+			_ = s.cache.Clear()
 		})
 		return nil, err
 	}
@@ -62,7 +62,7 @@ func (s *ServiceWithAutoCacheManagement) Update(ctx context.Context, teamRef str
 	team, err := s.svc.Update(ctx, teamRef, patch)
 	if err != nil {
 		s.run(func() {
-			s.cache.Clear()
+			_ = s.cache.Clear()
 		})
 		return nil, err
 	}
@@ -77,7 +77,7 @@ func (s *ServiceWithAutoCacheManagement) CreateFromTemplate(ctx context.Context,
 	id, err := s.svc.CreateFromTemplate(ctx, displayName, description, owners)
 	if err != nil {
 		s.run(func() {
-			s.cache.Clear()
+			_ = s.cache.Clear()
 		})
 		return id, err
 	}
@@ -91,7 +91,7 @@ func (s *ServiceWithAutoCacheManagement) CreateViaGroup(ctx context.Context, dis
 	team, err := s.svc.CreateViaGroup(ctx, displayName, mailNickname, visibility)
 	if err != nil {
 		s.run(func() {
-			s.cache.Clear()
+			_ = s.cache.Clear()
 		})
 		return nil, err
 	}
@@ -105,7 +105,7 @@ func (s *ServiceWithAutoCacheManagement) Archive(ctx context.Context, teamRef st
 	err := s.svc.Archive(ctx, teamRef, spoReadOnlyForMembers)
 	if err != nil {
 		s.run(func() {
-			s.cache.Clear()
+			_ = s.cache.Clear()
 		})
 		return err
 	}
@@ -119,7 +119,7 @@ func (s *ServiceWithAutoCacheManagement) Unarchive(ctx context.Context, teamRef 
 	err := s.svc.Unarchive(ctx, teamRef)
 	if err != nil {
 		s.run(func() {
-			s.cache.Clear()
+			_ = s.cache.Clear()
 		})
 		return err
 	}
@@ -133,7 +133,7 @@ func (s *ServiceWithAutoCacheManagement) Delete(ctx context.Context, teamRef str
 	err := s.svc.Delete(ctx, teamRef)
 	if err != nil {
 		s.run(func() {
-			s.cache.Clear()
+			_ = s.cache.Clear()
 		})
 		return err
 	}
@@ -147,7 +147,7 @@ func (s *ServiceWithAutoCacheManagement) RestoreDeleted(ctx context.Context, del
 	id, err := s.svc.RestoreDeleted(ctx, deletedGroupID)
 	if err != nil {
 		s.run(func() {
-			s.cache.Clear()
+			_ = s.cache.Clear()
 		})
 		return id, err
 	}
