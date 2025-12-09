@@ -1,10 +1,10 @@
 package cacher
 
 import (
-	"slices"
 	"encoding/json"
 	"fmt"
 	"os"
+	"slices"
 	"sync"
 )
 
@@ -52,7 +52,7 @@ func (c *JSONFileCacher) loadCache() error {
 			c.loaded = true
 			c.cache = make(map[string]json.RawMessage)
 			return nil
-		} 
+		}
 		return err
 	}
 	if len(data) == 0 {

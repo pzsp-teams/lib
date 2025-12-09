@@ -218,11 +218,11 @@ func TestServiceWithAutoCacheManagement_ListChannels_WarmsCache(t *testing.T) {
 		channelResolver: cr,
 	}
 	decor := &serviceWithAutoCacheManagement{
-		svc:   svc,
-		cache: fc,
-		teamResolver: fr,
+		svc:             svc,
+		cache:           fc,
+		teamResolver:    fr,
 		channelResolver: cr,
-		runner:   &util.SyncRunner{},
+		runner:          &util.SyncRunner{},
 	}
 
 	chans, err := decor.ListChannels(ctx, "my-team")
@@ -298,11 +298,11 @@ func TestServiceWithAutoCacheManagement_Get_WarmsCache(t *testing.T) {
 		channelResolver: cr,
 	}
 	decor := &serviceWithAutoCacheManagement{
-		svc:   svc,
-		cache: fc,
-		teamResolver: fr,
+		svc:             svc,
+		cache:           fc,
+		teamResolver:    fr,
 		channelResolver: cr,
-		runner:   &util.SyncRunner{},
+		runner:          &util.SyncRunner{},
 	}
 
 	ch, err := decor.Get(ctx, "team-ref", "my-channel")
@@ -353,11 +353,11 @@ func TestServiceWithAutoCacheManagement_CreateStandardChannel_InvalidatesAndCach
 		channelResolver: cr,
 	}
 	decor := &serviceWithAutoCacheManagement{
-		svc:   svc,
-		cache: fc,
-		teamResolver: fr,
+		svc:             svc,
+		cache:           fc,
+		teamResolver:    fr,
 		channelResolver: cr,
-		runner:   &util.SyncRunner{},
+		runner:          &util.SyncRunner{},
 	}
 
 	ch, err := decor.CreateStandardChannel(ctx, "  Team Name  ", "New Channel")
@@ -429,11 +429,11 @@ func TestServiceWithAutoCacheManagement_Delete_InvalidatesCache(t *testing.T) {
 		channelResolver: cr,
 	}
 	decor := &serviceWithAutoCacheManagement{
-		svc:   svc,
-		cache: fc,
-		teamResolver: fr,
+		svc:             svc,
+		cache:           fc,
+		teamResolver:    fr,
 		channelResolver: cr,
-		runner:   &util.SyncRunner{},
+		runner:          &util.SyncRunner{},
 	}
 
 	if err := decor.Delete(ctx, "my-team", "Channel To Delete"); err != nil {
@@ -496,11 +496,11 @@ func TestServiceWithAutoCacheManagement_AddMember_CachesMemberMapping(t *testing
 		channelResolver: cr,
 	}
 	decor := &serviceWithAutoCacheManagement{
-		svc:   svc,
-		cache: fc,
-		teamResolver: fr,
+		svc:             svc,
+		cache:           fc,
+		teamResolver:    fr,
 		channelResolver: cr,
-		runner:   &util.SyncRunner{},
+		runner:          &util.SyncRunner{},
 	}
 
 	member, err := decor.AddMember(ctx, "team-ref", "channel-ref", "  user@example.com  ", false)
@@ -555,11 +555,11 @@ func TestServiceWithAutoCacheManagement_RemoveMember_InvalidatesMemberMapping(t 
 		channelResolver: cr,
 	}
 	decor := &serviceWithAutoCacheManagement{
-		svc:   svc,
-		cache: fc,
-		teamResolver: fr,
+		svc:             svc,
+		cache:           fc,
+		teamResolver:    fr,
 		channelResolver: cr,
-		runner:   &util.SyncRunner{},
+		runner:          &util.SyncRunner{},
 	}
 
 	if err := decor.RemoveMember(ctx, "team-ref", "channel-ref", "user@example.com"); err != nil {

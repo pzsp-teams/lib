@@ -11,30 +11,30 @@ import (
 )
 
 type serviceWithAutoCacheManagement struct {
-	svc   Service
-	cache cacher.Cacher
-	teamResolver   resolver.TeamResolver
+	svc             Service
+	cache           cacher.Cacher
+	teamResolver    resolver.TeamResolver
 	channelResolver resolver.ChannelResolver
-	runner   util.TaskRunner
+	runner          util.TaskRunner
 }
 
 func NewSyncServiceWithAutoCacheManagement(svc Service, cache cacher.Cacher, teamResolver resolver.TeamResolver, channelResolver resolver.ChannelResolver) Service {
 	return &serviceWithAutoCacheManagement{
-		svc:   svc,
-		cache: cache,
-		teamResolver: teamResolver,
+		svc:             svc,
+		cache:           cache,
+		teamResolver:    teamResolver,
 		channelResolver: channelResolver,
-		runner:   &util.SyncRunner{},
+		runner:          &util.SyncRunner{},
 	}
 }
 
 func NewAsyncServiceWithAutoCacheManagement(svc Service, cache cacher.Cacher, teamResolver resolver.TeamResolver, channelResolver resolver.ChannelResolver) Service {
 	return &serviceWithAutoCacheManagement{
-		svc:   svc,
-		cache: cache,
-		teamResolver: teamResolver,
+		svc:             svc,
+		cache:           cache,
+		teamResolver:    teamResolver,
 		channelResolver: channelResolver,
-		runner:   &util.AsyncRunner{},
+		runner:          &util.AsyncRunner{},
 	}
 }
 
@@ -109,7 +109,6 @@ func (s *serviceWithAutoCacheManagement) updateCacheAfterCreate(teamRef, name st
 		s.addChannelsToCache(teamRef, local)
 	})
 }
-
 
 func (s *serviceWithAutoCacheManagement) Delete(ctx context.Context, teamRef, channelRef string) error {
 	if err := s.svc.Delete(ctx, teamRef, channelRef); err != nil {
