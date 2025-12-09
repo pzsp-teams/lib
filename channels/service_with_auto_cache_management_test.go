@@ -514,7 +514,7 @@ func TestServiceWithAutoCacheManagement_AddMember_CachesMemberMapping(t *testing
 	if fc.setCalls != 1 {
 		t.Fatalf("expected 1 Set call, got %d", fc.setCalls)
 	}
-	expectedKey := cacher.NewMemberKey("user@example.com", "team-id-1", "channel-id-1")
+	expectedKey := cacher.NewMemberKey("user@example.com", "team-id-1", "channel-id-1", nil)
 	if fc.setKeys[0] != expectedKey {
 		t.Errorf("expected member cache key %q, got %q", expectedKey, fc.setKeys[0])
 	}
@@ -569,7 +569,7 @@ func TestServiceWithAutoCacheManagement_RemoveMember_InvalidatesMemberMapping(t 
 	if fc.invalidateCalls != 1 {
 		t.Fatalf("expected 1 Invalidate call, got %d", fc.invalidateCalls)
 	}
-	expectedKey := cacher.NewMemberKey("user@example.com", "team-id-1", "channel-id-1")
+	expectedKey := cacher.NewMemberKey("user@example.com", "team-id-1", "channel-id-1", nil)
 	if fc.invalidateKeys[0] != expectedKey {
 		t.Errorf("expected invalidate key %q, got %q", expectedKey, fc.invalidateKeys[0])
 	}

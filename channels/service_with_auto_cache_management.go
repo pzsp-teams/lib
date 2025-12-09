@@ -285,7 +285,7 @@ func (s *serviceWithAutoCacheManagement) addMemberToCache(
 		return
 	}
 
-	key := cacher.NewMemberKey(ref, teamID, channelID)
+	key := cacher.NewMemberKey(ref, teamID, channelID, nil)
 	_ = s.cache.Set(key, member.ID)
 }
 
@@ -310,7 +310,7 @@ func (s *serviceWithAutoCacheManagement) invalidateMemberCache(
 		return
 	}
 
-	key := cacher.NewMemberKey(ref, teamID, channelID)
+	key := cacher.NewMemberKey(ref, teamID, channelID, nil)
 	_ = s.cache.Invalidate(key)
 }
 

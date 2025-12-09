@@ -1,6 +1,10 @@
 package cacher
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/pzsp-teams/lib/internal/util"
+)
 
 func TestNewTeamKey(t *testing.T) {
 	got := NewTeamKey("my-team")
@@ -21,8 +25,10 @@ func TestNewChannelKey(t *testing.T) {
 }
 
 func TestNewMemberKey(t *testing.T) {
-	got := NewMemberKey("user@example.com", "team-123", "chan-456")
-	want := "$member$:team-123:chan-456:user@example.com"
+	testPepper := "test-pepper"
+	got := NewMemberKey("user@example.com", "team-123", "chan-456", &testPepper)
+	hashedEmail := util.HashWithPepper(testPepper, "user@example.com")
+	want := "$member$:team-123:chan-456:" + hashedEmail
 
 	if got != want {
 		t.Fatalf("MemberKeyBuilder.ToString() = %q, want %q", got, want)
