@@ -3,6 +3,9 @@ package cacher
 import (
 	"fmt"
 	"strings"
+
+	"github.com/pzsp-teams/lib/internal/pepper"
+	"github.com/pzsp-teams/lib/internal/util"
 )
 
 type KeyType string
@@ -29,5 +32,10 @@ func NewChannelKey(teamID, name string) string {
 }
 
 func NewMemberKey(ref, teamID, channelID string) string {
-	return formatKey(Member, teamID, channelID, ref)
+	pepper, err := pepper.GetOrAskPepper()
+	if err != nil {
+		pepper = "default-pepper"
+	}
+	hashedRef := util.HashWithPepper(pepper, ref)
+	return formatKey(Member, teamID, channelID, hashedRef)
 }
