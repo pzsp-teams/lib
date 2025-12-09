@@ -38,7 +38,7 @@ func (m *TeamResolverCacheable) ResolveTeamRefToID(ctx context.Context, teamRef 
 		return ref, nil
 	}
 	if m.cacheEnabled && m.cacher != nil {
-		key := cacher.NewTeamKeyBuilder(ref).ToString()
+		key := cacher.NewTeamKey(ref)
 		value, found, err := m.cacher.Get(key)
 		if err == nil && found {
 			if ids, ok := value.([]string); ok && len(ids) == 1 && ids[0] != "" {
@@ -55,7 +55,7 @@ func (m *TeamResolverCacheable) ResolveTeamRefToID(ctx context.Context, teamRef 
 		return "", err
 	}
 	if m.cacheEnabled && m.cacher != nil {
-		key := cacher.NewTeamKeyBuilder(ref).ToString()
+		key := cacher.NewTeamKey(ref)
 		_ = m.cacher.Set(key, id)
 	}
 

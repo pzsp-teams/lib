@@ -159,8 +159,8 @@ func (s *ServiceWithAutoCacheManagement) addTeamsToCache(teams ...models.Team) {
 		return
 	}
 	for _, team := range teams {
-		keyBuilder := cacher.NewTeamKeyBuilder(strings.TrimSpace(team.DisplayName))
-		_ = s.cache.Set(keyBuilder.ToString(), team.ID)
+		key := cacher.NewTeamKey(strings.TrimSpace(team.DisplayName))
+		_ = s.cache.Set(key, team.ID)
 	}
 }
 
@@ -172,7 +172,7 @@ func (s *ServiceWithAutoCacheManagement) removeTeamsFromCache(teamRefs ...string
 		if util.IsLikelyGUID(teamRef) {
 			continue
 		}
-		keyBuilder := cacher.NewTeamKeyBuilder(strings.TrimSpace(teamRef))
-		_ = s.cache.Invalidate(keyBuilder.ToString())
+		key := cacher.NewTeamKey(strings.TrimSpace(teamRef))
+		_ = s.cache.Invalidate(key)
 	}
 }
