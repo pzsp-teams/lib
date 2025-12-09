@@ -27,6 +27,9 @@ func NewServiceWithAutoCacheManagement(svc *Service, cache cacher.Cacher) *Servi
 func (s *ServiceWithAutoCacheManagement) Get(ctx context.Context, teamRef string) (*models.Team, error) {
 	team, err := s.svc.Get(ctx, teamRef)
 	if err != nil {
+		s.run(func() {
+			s.removeTeamsFromCache(teamRef)
+		})
 		return nil, err
 	}
 	s.run(func() {
@@ -55,6 +58,9 @@ func (s *ServiceWithAutoCacheManagement) ListMyJoined(ctx context.Context) ([]*m
 func (s *ServiceWithAutoCacheManagement) Update(ctx context.Context, teamRef string, patch *msmodels.Team) (*models.Team, error) {
 	team, err := s.svc.Update(ctx, teamRef, patch)
 	if err != nil {
+		s.run(func() {
+			s.removeTeamsFromCache(teamRef)
+		})
 		return nil, err
 	}
 	s.run(func() {
