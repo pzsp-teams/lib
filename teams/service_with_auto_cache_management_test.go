@@ -170,7 +170,7 @@ func TestServiceWithAutoCacheManagement_Get_AddsTeamToCacheOnSuccess(t *testing.
 		},
 	}
 
-	svc := &Service{
+	svc := &service{
 		teamAPI:      fapi,
 		teamResolver: fr,
 	}
@@ -216,7 +216,7 @@ func TestServiceWithAutoCacheManagement_ListMyJoined_WarmsCache(t *testing.T) {
 		},
 	}
 
-	svc := &Service{
+	svc := &service{
 		teamAPI: fapi,
 	}
 	decor := NewServiceWithAutoCacheManagement(svc, fc)
@@ -268,7 +268,7 @@ func TestServiceWithAutoCacheManagement_Update_InvalidatesOldAndCachesNew(t *tes
 		},
 	}
 
-	svc := &Service{
+	svc := &service{
 		teamAPI:      fapi,
 		teamResolver: fr,
 	}
@@ -319,7 +319,7 @@ func TestServiceWithAutoCacheManagement_Update_DoesNotInvalidateForGUID(t *testi
 		},
 	}
 
-	svc := &Service{
+	svc := &service{
 		teamAPI:      fapi,
 		teamResolver: fr,
 	}
@@ -351,7 +351,7 @@ func TestServiceWithAutoCacheManagement_CreateFromTemplate_InvalidatesByName(t *
 		},
 	}
 
-	svc := &Service{
+	svc := &service{
 		teamAPI: fapi,
 	}
 	decor := NewServiceWithAutoCacheManagement(svc, fc)
@@ -395,7 +395,7 @@ func TestServiceWithAutoCacheManagement_CreateViaGroup_InvalidatesByName(t *test
 		},
 	}
 
-	svc := &Service{
+	svc := &service{
 		teamAPI: fapi,
 	}
 	decor := NewServiceWithAutoCacheManagement(svc, fc)
@@ -438,7 +438,7 @@ func TestServiceWithAutoCacheManagement_Archive_InvalidatesByName(t *testing.T) 
 		},
 	}
 
-	svc := &Service{
+	svc := &service{
 		teamAPI:      fapi,
 		teamResolver: fr,
 	}
@@ -480,7 +480,7 @@ func TestServiceWithAutoCacheManagement_Delete_DoesNotInvalidateForGUID(t *testi
 		},
 	}
 
-	svc := &Service{
+	svc := &service{
 		teamAPI:      fapi,
 		teamResolver: fr,
 	}
@@ -508,7 +508,7 @@ func TestServiceWithAutoCacheManagement_RestoreDeleted_DoesNotTouchCache(t *test
 		},
 	}
 
-	svc := &Service{
+	svc := &service{
 		teamAPI: fapi,
 	}
 	decor := NewServiceWithAutoCacheManagement(svc, fc)

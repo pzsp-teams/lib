@@ -17,8 +17,8 @@ import (
 )
 
 type Client struct {
-	Channels *channels.Service
-	Teams    *teams.Service
+	Channels channels.Service
+	Teams    teams.Service
 	Chats    *chats.Service
 }
 
@@ -44,12 +44,14 @@ func NewClient(ctx context.Context, authConfig *AuthConfig, senderConfig *Sender
 	channelMapper := resolver.NewChannelResolverCacheable(channelsAPI, cache, true)
 
 	teamSvc := teams.NewService(teamsAPI, teamMapper)
+	teamSvcWithCache := teams.NewServiceWithAutoCacheManagement(teamSvc, cache)
 	channelSvc := channels.NewService(channelsAPI, teamMapper, channelMapper)
+	channelSvcWithCache := channels.NewServiceWithAutoCacheManagement(channelSvc, cache)
 	chatSvc := chats.NewService(chatAPI)
 
 	return &Client{
-		Channels: channelSvc,
-		Teams:    teamSvc,
+		Channels: channelSvcWithCache,
+		Teams:    teamSvcWithCache,
 		Chats:    chatSvc,
 	}, nil
 }

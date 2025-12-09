@@ -15,18 +15,18 @@ import (
 )
 
 // Service will be used later
-type Service struct {
+type service struct {
 	teamAPI      api.TeamAPI
 	teamResolver resolver.TeamResolver
 }
 
 // NewService will be used later
-func NewService(teamsAPI api.TeamAPI, tr resolver.TeamResolver) *Service {
-	return &Service{teamAPI: teamsAPI, teamResolver: tr}
+func NewService(teamsAPI api.TeamAPI, tr resolver.TeamResolver) Service {
+	return &service{teamAPI: teamsAPI, teamResolver: tr}
 }
 
 // Get will be used later
-func (s *Service) Get(ctx context.Context, teamRef string) (*models.Team, error) {
+func (s *service) Get(ctx context.Context, teamRef string) (*models.Team, error) {
 	teamID, err := s.teamResolver.ResolveTeamRefToID(ctx, teamRef)
 	if err != nil {
 		return nil, err
@@ -41,7 +41,7 @@ func (s *Service) Get(ctx context.Context, teamRef string) (*models.Team, error)
 }
 
 // ListMyJoined will be used later
-func (s *Service) ListMyJoined(ctx context.Context) ([]*models.Team, error) {
+func (s *service) ListMyJoined(ctx context.Context) ([]*models.Team, error) {
 	resp, requestErr := s.teamAPI.ListMyJoined(ctx)
 	if requestErr != nil {
 		return nil, snd.MapError(requestErr)
@@ -58,7 +58,7 @@ func (s *Service) ListMyJoined(ctx context.Context) ([]*models.Team, error) {
 }
 
 // Update will be used later
-func (s *Service) Update(ctx context.Context, teamRef string, patch *msmodels.Team) (*models.Team, error) {
+func (s *service) Update(ctx context.Context, teamRef string, patch *msmodels.Team) (*models.Team, error) {
 	teamID, err := s.teamResolver.ResolveTeamRefToID(ctx, teamRef)
 	if err != nil {
 		return nil, err
@@ -73,7 +73,7 @@ func (s *Service) Update(ctx context.Context, teamRef string, patch *msmodels.Te
 }
 
 // CreateViaGroup will be used later
-func (s *Service) CreateViaGroup(ctx context.Context, displayName, mailNickname, visibility string) (*models.Team, error) {
+func (s *service) CreateViaGroup(ctx context.Context, displayName, mailNickname, visibility string) (*models.Team, error) {
 	id, requestErr := s.teamAPI.CreateViaGroup(ctx, displayName, mailNickname, visibility)
 	if requestErr != nil {
 		return nil, snd.MapError(requestErr)
@@ -88,7 +88,7 @@ func (s *Service) CreateViaGroup(ctx context.Context, displayName, mailNickname,
 }
 
 // CreateFromTemplate will be used later
-func (s *Service) CreateFromTemplate(ctx context.Context, displayName, description string, owners []string) (string, error) {
+func (s *service) CreateFromTemplate(ctx context.Context, displayName, description string, owners []string) (string, error) {
 	id, requestErr := s.teamAPI.CreateFromTemplate(ctx, displayName, description, owners)
 	if requestErr != nil {
 		if requestErr.Code == http.StatusCreated {
@@ -101,7 +101,7 @@ func (s *Service) CreateFromTemplate(ctx context.Context, displayName, descripti
 }
 
 // Archive will be used later
-func (s *Service) Archive(ctx context.Context, teamRef string, spoReadOnlyForMembers *bool) error {
+func (s *service) Archive(ctx context.Context, teamRef string, spoReadOnlyForMembers *bool) error {
 	teamID, err := s.teamResolver.ResolveTeamRefToID(ctx, teamRef)
 	if err != nil {
 		return err
@@ -115,7 +115,7 @@ func (s *Service) Archive(ctx context.Context, teamRef string, spoReadOnlyForMem
 }
 
 // Unarchive will be used later
-func (s *Service) Unarchive(ctx context.Context, teamRef string) error {
+func (s *service) Unarchive(ctx context.Context, teamRef string) error {
 	teamID, err := s.teamResolver.ResolveTeamRefToID(ctx, teamRef)
 	if err != nil {
 		return err
@@ -129,7 +129,7 @@ func (s *Service) Unarchive(ctx context.Context, teamRef string) error {
 }
 
 // Delete will be used later
-func (s *Service) Delete(ctx context.Context, teamRef string) error {
+func (s *service) Delete(ctx context.Context, teamRef string) error {
 	teamID, err := s.teamResolver.ResolveTeamRefToID(ctx, teamRef)
 	if err != nil {
 		return err
@@ -143,7 +143,7 @@ func (s *Service) Delete(ctx context.Context, teamRef string) error {
 }
 
 // RestoreDeleted will be used later
-func (s *Service) RestoreDeleted(ctx context.Context, deletedGroupID string) (string, error) {
+func (s *service) RestoreDeleted(ctx context.Context, deletedGroupID string) (string, error) {
 	obj, err := s.teamAPI.RestoreDeleted(ctx, deletedGroupID)
 	if err != nil {
 		return "", snd.MapError(err, snd.WithResource(snd.Team, deletedGroupID))
