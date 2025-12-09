@@ -25,6 +25,13 @@ func printUsage() {
 	fmt.Println("  send-message <team-name> <channel-name> <message>")
 	fmt.Println("  list-messages <team-name> <channel-name> [top]")
 	fmt.Println("  list-replies <team-name> <channel-name> <message-id> [top]")
+
+	fmt.Println("\nMember commands:")
+	fmt.Println("  list-members <team-name> <channel-name>")
+	fmt.Println("  add-member <team-name> <channel-name> <user-ref> [owner=true|false]")
+	fmt.Println("  update-member-role <team-name> <channel-name> <user-ref> <owner=true|false>")
+	fmt.Println("  remove-member <team-name> <channel-name> <user-ref>")
+
 	fmt.Println("\nTeam commands:")
 	fmt.Println("  list-my-teams")
 	fmt.Println("  get-team <team-name>")
@@ -36,6 +43,7 @@ func printUsage() {
 	fmt.Println("  delete-team <team-name>")
 	fmt.Println("  restore-team <deleted-group-id>")
 }
+
 
 func main() {
 	if len(os.Args) < 2 {
@@ -168,6 +176,34 @@ func main() {
 			os.Exit(1)
 		}
 		handleRestoreTeam(client, os.Args[2:])
+	
+	case "list-members":
+		if len(os.Args) < 4 {
+			fmt.Println("Usage: teams list-members <team-name> <channel-name>")
+			os.Exit(1)
+		}
+		handleListMembers(client, os.Args[2:])
+
+	case "add-member":
+		if len(os.Args) < 5 {
+			fmt.Println("Usage: teams add-member <team-name> <channel-name> <user-ref> [owner=true|false]")
+			os.Exit(1)
+		}
+		handleAddMember(client, os.Args[2:])
+
+	case "update-member-role":
+		if len(os.Args) < 6 {
+			fmt.Println("Usage: teams update-member-role <team-name> <channel-name> <user-ref> <owner=true|false>")
+			os.Exit(1)
+		}
+		handleUpdateMemberRole(client, os.Args[2:])
+
+	case "remove-member":
+		if len(os.Args) < 5 {
+			fmt.Println("Usage: teams remove-member <team-name> <channel-name> <user-ref>")
+			os.Exit(1)
+		}
+		handleRemoveMember(client, os.Args[2:])
 
 	default:
 		fmt.Println("Unknown command:", cmd)
@@ -509,4 +545,104 @@ func handleRestoreTeam(client *lib.Client, args []string) {
 		os.Exit(1)
 	}
 	fmt.Printf("Team restored. Directory object ID: %s\n", id)
+}
+
+func handleListMembers(client *lib.Client, args []string) {
+	teamName := args[0]
+	channelName := args[1]
+
+	members, err := client.Channels.ListMembers(context.TODO(), teamName, channelName)
+	if err != nil {
+		fmt.Printf("Error listing members: %v\n", err)
+		os.Exit(1)
+	}
+
+	if len(members) == 0 {
+		fmt.Printf("No members found in channel '%s'.\n", channelName)
+		return
+	}
+
+	fmt.Printf("Members in channel '%s':\n", channelName)
+	for _, m := range members {
+		if m == nil {
+			continue
+		}
+		fmt.Printf("- ID: %s\n", m.ID)
+	}
+}
+
+func handleAddMember(client *lib.Client, args []string) {
+	teamName := args[0]
+	channelName := args[1]
+	userRef := args[2]
+
+	isOwner := false
+	if len(args) > 3 {
+		val, err := strconv.ParseBool(args[3])
+		if err != nil {
+			fmt.Printf("Error: invalid owner flag (expected true/false): %v\n", err)
+			os.Exit(1)
+		}
+		isOwner = val
+	}
+
+	member, err := client.Channels.AddMember(context.TODO(), teamName, channelName, userRef, isOwner)
+	if err != nil {
+		fmt.Printf("Error adding member: %v\n", err)
+		os.Exit(1)
+	}
+
+	role := "member"
+	if isOwner {
+		role = "owner"
+	}
+
+	if member != nil {
+		fmt.Printf("Added %s as %s. Member ID: %s\n", userRef, role, member.ID)
+	} else {
+		fmt.Printf("Added %s as %s.\n", userRef, role)
+	}
+}
+
+func handleUpdateMemberRole(client *lib.Client, args []string) {
+	teamName := args[0]
+	channelName := args[1]
+	userRef := args[2]
+
+	val, err := strconv.ParseBool(args[3])
+	if err != nil {
+		fmt.Printf("Error: invalid owner flag (expected true/false): %v\n", err)
+		os.Exit(1)
+	}
+	isOwner := val
+
+	member, err := client.Channels.UpdateMemberRole(context.TODO(), teamName, channelName, userRef, isOwner)
+	if err != nil {
+		fmt.Printf("Error updating member role: %v\n", err)
+		os.Exit(1)
+	}
+
+	role := "member"
+	if isOwner {
+		role = "owner"
+	}
+
+	if member != nil {
+		fmt.Printf("Updated role for %s to %s. Member ID: %s\n", userRef, role, member.ID)
+	} else {
+		fmt.Printf("Updated role for %s to %s.\n", userRef, role)
+	}
+}
+
+func handleRemoveMember(client *lib.Client, args []string) {
+	teamName := args[0]
+	channelName := args[1]
+	userRef := args[2]
+
+	if err := client.Channels.RemoveMember(context.TODO(), teamName, channelName, userRef); err != nil {
+		fmt.Printf("Error removing member: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("Removed member %s from channel '%s'.\n", userRef, channelName)
 }
