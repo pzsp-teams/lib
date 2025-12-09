@@ -23,7 +23,7 @@ type Client struct {
 }
 
 // NewClient will be used later
-func NewClient(ctx context.Context, authConfig *AuthConfig, senderConfig *SenderConfig) (*Client, error) {
+func NewClient(ctx context.Context, authConfig *AuthConfig, senderConfig *SenderConfig, cacheEnabled bool, cachePath *string) (*Client, error) {
 	tokenProvider, err := auth.NewMSALTokenProvider(authConfig.toMSALCredentials())
 	if err != nil {
 		return nil, fmt.Errorf("creating token provider: %w", err)
@@ -33,25 +33,31 @@ func NewClient(ctx context.Context, authConfig *AuthConfig, senderConfig *Sender
 	if err != nil {
 		return nil, fmt.Errorf("creating graph client: %w", err)
 	}
-	cache := cacher.NewJSONFileCacher(defaultCachePath())
+	var cache cacher.Cacher
+	if cacheEnabled && cachePath != nil {
+		cache = cacher.NewJSONFileCacher(*cachePath)
+	} else if cacheEnabled {
+		cache = cacher.NewJSONFileCacher(defaultCachePath())
+	}
 	techParams := senderConfig.toTechParams()
 
 	teamsAPI := api.NewTeams(graphClient, techParams)
 	channelsAPI := api.NewChannels(graphClient, techParams)
 	chatAPI := api.NewChat(graphClient, techParams)
 
-	teamMapper := resolver.NewTeamResolverCacheable(teamsAPI, cache, true)
-	channelMapper := resolver.NewChannelResolverCacheable(channelsAPI, cache, true)
+	teamMapper := resolver.NewTeamResolverCacheable(teamsAPI, cache, cacheEnabled)
+	channelMapper := resolver.NewChannelResolverCacheable(channelsAPI, cache, cacheEnabled)
 
 	teamSvc := teams.NewService(teamsAPI, teamMapper)
-	teamSvcWithCache := teams.NewServiceWithAutoCacheManagement(teamSvc, cache)
 	channelSvc := channels.NewService(channelsAPI, teamMapper, channelMapper)
-	channelSvcWithCache := channels.NewServiceWithAutoCacheManagement(channelSvc, cache)
 	chatSvc := chats.NewService(chatAPI)
-
+	if cacheEnabled {
+		teamSvc = teams.NewServiceWithAutoCacheManagement(teamSvc, cache)
+		channelSvc = channels.NewServiceWithAutoCacheManagement(channelSvc, cache)
+	}
 	return &Client{
-		Channels: channelSvcWithCache,
-		Teams:    teamSvcWithCache,
+		Channels: channelSvc,
+		Teams:    teamSvc,
 		Chats:    chatSvc,
 	}, nil
 }
