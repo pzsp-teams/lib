@@ -1,6 +1,9 @@
 package lib
 
 import (
+	"os"
+	"path/filepath"
+
 	"github.com/pzsp-teams/lib/internal/auth"
 	"github.com/pzsp-teams/lib/internal/sender"
 )
@@ -35,4 +38,18 @@ func (cfg *AuthConfig) toMSALCredentials() *auth.MSALCredentials {
 		Scopes:     cfg.Scopes,
 		AuthMethod: auth.Method(cfg.AuthMethod),
 	}
+}
+
+func defaultCachePath() string {
+    dir, err := os.UserCacheDir()
+    if err != nil {
+        home, herr := os.UserHomeDir()
+        if herr != nil {
+            return "pzsp-teams-cache.json"
+        }
+        return filepath.Join(home, ".pzsp-teams-cache.json")
+    }
+    p := filepath.Join(dir, "pzsp-teams", "cache.json")
+    _ = os.MkdirAll(filepath.Dir(p), 0o755)
+    return p
 }
