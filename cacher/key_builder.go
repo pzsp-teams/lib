@@ -13,60 +13,21 @@ const (
 	Member  KeyType = "member"
 )
 
-type KeyBuilder interface {
-	ToString() string
-}
-
-type TeamKeyBuilder struct {
-	Type KeyType
-	Name string
-}
-
-func NewTeamKeyBuilder(name string) KeyBuilder {
-	return &TeamKeyBuilder{
-		Type: Team,
-		Name: strings.TrimSpace(name),
+func formatKey(t KeyType, parts ...string) string {
+	for i, p := range parts {
+		parts[i] = strings.TrimSpace(p)
 	}
+	return fmt.Sprintf("$%s$:%s", t, strings.Join(parts, ":"))
 }
 
-type ChannelKeyBuilder struct {
-	Type   KeyType
-	TeamID string
-	Name   string
+func NewTeamKey(name string) string {
+	return formatKey(Team, name)
 }
 
-func NewChannelKeyBuilder(teamID, name string) KeyBuilder {
-	return &ChannelKeyBuilder{
-		Type:   Channel,
-		TeamID: strings.TrimSpace(teamID),
-		Name:   strings.TrimSpace(name),
-	}
+func NewChannelKey(teamID, name string) string {
+	return formatKey(Channel, teamID, name)
 }
 
-type MemberKeyBuilder struct {
-	Type      KeyType
-	Ref       string
-	TeamID    string
-	ChannelID string
-}
-
-func NewMemberKeyBuilder(ref, teamID, channelID string) KeyBuilder {
-	return &MemberKeyBuilder{
-		Type:      Member,
-		Ref:       strings.TrimSpace(ref),
-		TeamID:    strings.TrimSpace(teamID),
-		ChannelID: strings.TrimSpace(channelID),
-	}
-}
-
-func (keyBuilder *TeamKeyBuilder) ToString() string {
-	return fmt.Sprintf("$%v$:%v", keyBuilder.Type, keyBuilder.Name)
-}
-
-func (keyBuilder *MemberKeyBuilder) ToString() string {
-	return fmt.Sprintf("$%v$:%v:%v:%v", keyBuilder.Type, keyBuilder.TeamID, keyBuilder.ChannelID, keyBuilder.Ref)
-}
-
-func (keyBuilder *ChannelKeyBuilder) ToString() string {
-	return fmt.Sprintf("$%v$:%v:%v", keyBuilder.Type, keyBuilder.TeamID, keyBuilder.Name)
+func NewMemberKey(ref, teamID, channelID string) string {
+	return formatKey(Member, teamID, channelID, ref)
 }

@@ -203,7 +203,7 @@ func TestChannelResolverCacheable_ResolveChannelRefToID_CacheHitSingleID(t *test
 	if fc.getCalls != 1 {
 		t.Errorf("expected 1 cache Get call, got %d", fc.getCalls)
 	}
-	if fc.lastGetKey != cacher.NewChannelKeyBuilder("team-1", "General").ToString() {
+	if fc.lastGetKey != cacher.NewChannelKey("team-1", "General") {
 		t.Errorf("unexpected cache key, got %q", fc.lastGetKey)
 	}
 	if fc.setCalls != 0 {
@@ -236,7 +236,7 @@ func TestChannelResolverCacheable_ResolveChannelRefToID_CacheMiss_UsesAPIAndCach
 	if fc.getCalls != 1 {
 		t.Errorf("expected 1 Get call, got %d", fc.getCalls)
 	}
-	if fc.lastGetKey != cacher.NewChannelKeyBuilder("team-42", "General").ToString() {
+	if fc.lastGetKey != cacher.NewChannelKey("team-42", "General") {
 		t.Errorf("unexpected cache key, got %q", fc.lastGetKey)
 	}
 
@@ -250,7 +250,7 @@ func TestChannelResolverCacheable_ResolveChannelRefToID_CacheMiss_UsesAPIAndCach
 	if fc.setCalls != 1 {
 		t.Errorf("expected 1 Set call, got %d", fc.setCalls)
 	}
-	if fc.lastSetKey != cacher.NewChannelKeyBuilder("team-42", "General").ToString() {
+	if fc.lastSetKey != cacher.NewChannelKey("team-42", "General") {
 		t.Errorf("unexpected Set key, got %q", fc.lastSetKey)
 	}
 	if v, ok := fc.lastSetValue.(string); !ok || v != "chan-id-xyz" {
@@ -338,7 +338,7 @@ func TestChannelResolverCacheable_ResolveUserRefToMemberID_CacheHitSingleID(t *t
 	if fc.getCalls != 1 {
 		t.Errorf("expected 1 Get call, got %d", fc.getCalls)
 	}
-	if fc.lastGetKey != cacher.NewMemberKeyBuilder("user-ref", "team-1", "chan-1").ToString() {
+	if fc.lastGetKey != cacher.NewMemberKey("user-ref", "team-1", "chan-1") {
 		t.Errorf("unexpected cache key, got %q", fc.lastGetKey)
 	}
 	if fc.setCalls != 0 {
@@ -371,7 +371,7 @@ func TestChannelResolverCacheable_ResolveUserRefToMemberID_CacheMiss_UsesAPIAndC
 	if fc.getCalls != 1 {
 		t.Errorf("expected 1 Get call, got %d", fc.getCalls)
 	}
-	if fc.lastGetKey != cacher.NewMemberKeyBuilder("u-1", "team-42", "chan-7").ToString() {
+	if fc.lastGetKey != cacher.NewMemberKey("u-1", "team-42", "chan-7") {
 		t.Errorf("unexpected cache key, got %q", fc.lastGetKey)
 	}
 
@@ -385,7 +385,7 @@ func TestChannelResolverCacheable_ResolveUserRefToMemberID_CacheMiss_UsesAPIAndC
 	if fc.setCalls != 1 {
 		t.Errorf("expected 1 Set call, got %d", fc.setCalls)
 	}
-	if fc.lastSetKey != cacher.NewMemberKeyBuilder("u-1", "team-42", "chan-7").ToString() {
+	if fc.lastSetKey != cacher.NewMemberKey("u-1", "team-42", "chan-7") {
 		t.Errorf("unexpected Set key, got %q", fc.lastSetKey)
 	}
 	if v, ok := fc.lastSetValue.(string); !ok || v != "m-1" {

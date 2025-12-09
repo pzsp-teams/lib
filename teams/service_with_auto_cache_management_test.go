@@ -194,7 +194,7 @@ func TestServiceWithAutoCacheManagement_Get_AddsTeamToCacheOnSuccess(t *testing.
 	if fc.setCalls != 1 {
 		t.Fatalf("expected 1 Set call, got %d", fc.setCalls)
 	}
-	expectedKey := cacher.NewTeamKeyBuilder("My Team").ToString()
+	expectedKey := cacher.NewTeamKey("My Team")
 	if fc.setKeys[0] != expectedKey {
 		t.Errorf("expected cache key %q, got %q", expectedKey, fc.setKeys[0])
 	}
@@ -234,8 +234,8 @@ func TestServiceWithAutoCacheManagement_ListMyJoined_WarmsCache(t *testing.T) {
 	}
 
 	expectedKeys := []string{
-		cacher.NewTeamKeyBuilder("Team One").ToString(),
-		cacher.NewTeamKeyBuilder("Team Two").ToString(),
+		cacher.NewTeamKey("Team One"),
+		cacher.NewTeamKey("Team Two"),
 	}
 	if len(fc.setKeys) != len(expectedKeys) {
 		t.Fatalf("expected %d keys, got %d", len(expectedKeys), len(fc.setKeys))
@@ -285,7 +285,7 @@ func TestServiceWithAutoCacheManagement_Update_InvalidatesOldAndCachesNew(t *tes
 	if fc.invalidateCalls != 1 {
 		t.Fatalf("expected 1 Invalidate call, got %d", fc.invalidateCalls)
 	}
-	expectedInvalidKey := cacher.NewTeamKeyBuilder("Old Name").ToString()
+	expectedInvalidKey := cacher.NewTeamKey("Old Name")
 	if fc.invalidateKeys[0] != expectedInvalidKey {
 		t.Errorf("expected invalidate key %q, got %q", expectedInvalidKey, fc.invalidateKeys[0])
 	}
@@ -293,7 +293,7 @@ func TestServiceWithAutoCacheManagement_Update_InvalidatesOldAndCachesNew(t *tes
 	if fc.setCalls != 1 {
 		t.Fatalf("expected 1 Set call, got %d", fc.setCalls)
 	}
-	expectedSetKey := cacher.NewTeamKeyBuilder("New Name").ToString()
+	expectedSetKey := cacher.NewTeamKey("New Name")
 	if fc.setKeys[0] != expectedSetKey {
 		t.Errorf("expected Set key %q, got %q", expectedSetKey, fc.setKeys[0])
 	}
@@ -367,7 +367,7 @@ func TestServiceWithAutoCacheManagement_CreateFromTemplate_InvalidatesByName(t *
 	if fc.invalidateCalls != 1 {
 		t.Fatalf("expected 1 Invalidate call, got %d", fc.invalidateCalls)
 	}
-	expectedKey := cacher.NewTeamKeyBuilder("My Team").ToString()
+	expectedKey := cacher.NewTeamKey("My Team")
 	if fc.invalidateKeys[0] != expectedKey {
 		t.Errorf("expected invalidate key %q, got %q", expectedKey, fc.invalidateKeys[0])
 	}
@@ -411,7 +411,7 @@ func TestServiceWithAutoCacheManagement_CreateViaGroup_InvalidatesByName(t *test
 	if fc.invalidateCalls != 1 {
 		t.Fatalf("expected 1 Invalidate call, got %d", fc.invalidateCalls)
 	}
-	expectedKey := cacher.NewTeamKeyBuilder("My Team").ToString()
+	expectedKey := cacher.NewTeamKey("My Team")
 	if fc.invalidateKeys[0] != expectedKey {
 		t.Errorf("expected invalidate key %q, got %q", expectedKey, fc.invalidateKeys[0])
 	}
@@ -451,7 +451,7 @@ func TestServiceWithAutoCacheManagement_Archive_InvalidatesByName(t *testing.T) 
 	if fc.invalidateCalls != 1 {
 		t.Fatalf("expected 1 Invalidate call, got %d", fc.invalidateCalls)
 	}
-	expectedKey := cacher.NewTeamKeyBuilder("My Team").ToString()
+	expectedKey := cacher.NewTeamKey("My Team")
 	if fc.invalidateKeys[0] != expectedKey {
 		t.Errorf("expected invalidate key %q, got %q", expectedKey, fc.invalidateKeys[0])
 	}
