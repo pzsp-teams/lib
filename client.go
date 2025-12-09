@@ -45,15 +45,15 @@ func NewClient(ctx context.Context, authConfig *AuthConfig, senderConfig *Sender
 	channelsAPI := api.NewChannels(graphClient, techParams)
 	chatAPI := api.NewChat(graphClient, techParams)
 
-	teamMapper := resolver.NewTeamResolverCacheable(teamsAPI, cache, cacheEnabled)
-	channelMapper := resolver.NewChannelResolverCacheable(channelsAPI, cache, cacheEnabled)
+	teamResolver := resolver.NewTeamResolverCacheable(teamsAPI, cache, cacheEnabled)
+	channelResolver := resolver.NewChannelResolverCacheable(channelsAPI, cache, cacheEnabled)
 
-	teamSvc := teams.NewService(teamsAPI, teamMapper)
-	channelSvc := channels.NewService(channelsAPI, teamMapper, channelMapper)
+	teamSvc := teams.NewService(teamsAPI, teamResolver)
+	channelSvc := channels.NewService(channelsAPI, teamResolver, channelResolver)
 	chatSvc := chats.NewService(chatAPI)
 	if cacheEnabled {
 		teamSvc = teams.NewServiceWithAutoCacheManagement(teamSvc, cache)
-		channelSvc = channels.NewServiceWithAutoCacheManagement(channelSvc, cache)
+		channelSvc = channels.NewSyncServiceWithAutoCacheManagement(channelSvc, cache, teamResolver, channelResolver)
 	}
 	return &Client{
 		Channels: channelSvc,
