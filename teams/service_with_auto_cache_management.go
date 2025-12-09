@@ -11,14 +11,14 @@ import (
 )
 
 type ServiceWithAutoCacheManagement struct {
-	svc   *Service
+	svc   *service
 	cache cacher.Cacher
 	run   func(func())
 }
 
-func NewServiceWithAutoCacheManagement(svc *Service, cache cacher.Cacher) *ServiceWithAutoCacheManagement {
+func NewServiceWithAutoCacheManagement(svc Service, cache cacher.Cacher) *ServiceWithAutoCacheManagement {
 	return &ServiceWithAutoCacheManagement{
-		svc:   svc,
+		svc:   svc.(*service),
 		cache: cache,
 		run:   func(fn func()) { go fn() },
 	}
