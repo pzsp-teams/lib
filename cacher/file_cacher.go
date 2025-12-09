@@ -1,6 +1,7 @@
 package cacher
 
 import (
+	"slices"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -20,20 +21,20 @@ func NewJSONFileCacher(path string) Cacher {
 	}
 }
 
-func (cacher *JSONFileCacher) Get(key string) (value any, found bool, err error) {
-	cacher.mu.Lock()
-	defer cacher.mu.Unlock()
-	if cacher.loaded {
-		return cacher.getFromCache(key)
+func (c *JSONFileCacher) Get(key string) (value any, found bool, err error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.loaded {
+		return c.getFromCache(key)
 	}
-	if err := cacher.loadCache(); err != nil {
+	if err := c.loadCache(); err != nil {
 		return nil, false, err
 	}
-	return cacher.getFromCache(key)
+	return c.getFromCache(key)
 }
 
-func (cacher *JSONFileCacher) getFromCache(key string) (value any, found bool, err error) {
-	data, ok := cacher.cache[key]
+func (c *JSONFileCacher) getFromCache(key string) (value any, found bool, err error) {
+	data, ok := c.cache[key]
 	if !ok {
 		return nil, false, nil
 	}
@@ -44,52 +45,44 @@ func (cacher *JSONFileCacher) getFromCache(key string) (value any, found bool, e
 	return result, true, nil
 }
 
-func (cacher *JSONFileCacher) loadCache() error {
-	data, err := os.ReadFile(cacher.file)
+func (c *JSONFileCacher) loadCache() error {
+	data, err := os.ReadFile(c.file)
 	if err != nil {
 		if os.IsNotExist(err) {
-			cacher.loaded = true
-			cacher.cache = make(map[string]json.RawMessage)
+			c.loaded = true
+			c.cache = make(map[string]json.RawMessage)
 			return nil
-		} else {
-			return err
-		}
+		} 
+		return err
 	}
 	if len(data) == 0 {
-		cacher.loaded = true
-		cacher.cache = make(map[string]json.RawMessage)
+		c.cache = make(map[string]json.RawMessage)
 	} else {
-		if err := json.Unmarshal(data, &cacher.cache); err != nil {
+		if err := json.Unmarshal(data, &c.cache); err != nil {
 			return err
 		}
-		cacher.loaded = true
 	}
+	c.loaded = true
 	return nil
 }
 
-func (cacher *JSONFileCacher) Set(key string, value any) error {
-	cacher.mu.Lock()
-	defer cacher.mu.Unlock()
-	if !cacher.loaded {
-		if err := cacher.loadCache(); err != nil {
-			return err
-		}
+func (c *JSONFileCacher) Set(key string, value any) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if err := c.ensureLoadedLocked(); err != nil {
+		return err
 	}
 	str, ok := value.(string)
 	if !ok {
 		return fmt.Errorf("JSONFileCacher.Set: expected string, got %T", value)
 	}
 	var slice []string
-	if raw, exists := cacher.cache[key]; exists && raw != nil {
+	if raw, exists := c.cache[key]; exists && raw != nil {
 		if err := json.Unmarshal(raw, &slice); err != nil {
 			slice = nil
 		}
 	}
-	seen := make(map[string]struct{}, len(slice))
-	for _, s := range slice {
-		seen[s] = struct{}{}
-	}
-	if _, exists := seen[str]; exists {
+	if slices.Contains(slice, str) {
 		return nil
 	}
 	slice = append(slice, str)
@@ -97,39 +90,39 @@ func (cacher *JSONFileCacher) Set(key string, value any) error {
 	if err != nil {
 		return err
 	}
-	cacher.cache[key] = record
-	data, err := json.MarshalIndent(cacher.cache, "", "  ")
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(cacher.file, data, 0o644)
+	c.cache[key] = record
+	return c.persistLocked()
 }
 
-func (cacher *JSONFileCacher) Invalidate(key string) error {
-	cacher.mu.Lock()
-	defer cacher.mu.Unlock()
-	if !cacher.loaded {
-		err := cacher.loadCache()
-		if err != nil {
-			return err
-		}
-	}
-	delete(cacher.cache, key)
-	data, err := json.MarshalIndent(cacher.cache, "", "  ")
-	if err != nil {
+func (c *JSONFileCacher) Invalidate(key string) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if err := c.ensureLoadedLocked(); err != nil {
 		return err
 	}
-	return os.WriteFile(cacher.file, data, 0o644)
+	delete(c.cache, key)
+	return c.persistLocked()
 }
 
-func (cacher *JSONFileCacher) Clear() error {
-	cacher.mu.Lock()
-	defer cacher.mu.Unlock()
-	cacher.cache = make(map[string]json.RawMessage)
-	cacher.loaded = true
-	data, err := json.MarshalIndent(cacher.cache, "", "  ")
+func (c *JSONFileCacher) Clear() error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.cache = make(map[string]json.RawMessage)
+	c.loaded = true
+	return c.persistLocked()
+}
+
+func (c *JSONFileCacher) ensureLoadedLocked() error {
+	if c.loaded {
+		return nil
+	}
+	return c.loadCache()
+}
+
+func (c *JSONFileCacher) persistLocked() error {
+	data, err := json.MarshalIndent(c.cache, "", "  ")
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(cacher.file, data, 0o644)
+	return os.WriteFile(c.file, data, 0o644)
 }
