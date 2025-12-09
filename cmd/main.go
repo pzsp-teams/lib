@@ -10,7 +10,7 @@ import (
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
 
 	lib "github.com/pzsp-teams/lib"
-	channelsPkg "github.com/pzsp-teams/lib/channels"
+	"github.com/pzsp-teams/lib/models"
 )
 
 func printUsage() {
@@ -272,15 +272,15 @@ func handleSendMessage(client *lib.Client, args []string) {
 	teamName := args[0]
 	channelName := args[1]
 	messageContent := args[2]
-	contentType := channelsPkg.MessageContentTypeHTML
+	contentType := models.MessageContentTypeHTML
 	if len(args) > 3 {
 		ct := strings.ToLower(args[3])
 		if ct == "text" {
-			contentType = channelsPkg.MessageContentTypeText
+			contentType = models.MessageContentTypeText
 		}
 	}
 
-	message, err := client.Channels.SendMessage(context.TODO(), teamName, channelName, channelsPkg.MessageBody{
+	message, err := client.Channels.SendMessage(context.TODO(), teamName, channelName, models.MessageBody{
 		Content:     messageContent,
 		ContentType: contentType,
 	})
@@ -296,7 +296,7 @@ func handleListMessages(client *lib.Client, args []string) {
 	teamName := args[0]
 	channelName := args[1]
 
-	var opts *channelsPkg.ListMessagesOptions
+	var opts *models.ListMessagesOptions
 	if len(args) > 2 {
 		var top int32
 		_, err := fmt.Sscanf(args[2], "%d", &top)
@@ -304,7 +304,7 @@ func handleListMessages(client *lib.Client, args []string) {
 			fmt.Printf("Error: Invalid top value: %v\n", err)
 			os.Exit(1)
 		}
-		opts = &channelsPkg.ListMessagesOptions{Top: &top}
+		opts = &models.ListMessagesOptions{Top: &top}
 	}
 
 	messages, err := client.Channels.ListMessages(context.TODO(), teamName, channelName, opts)
@@ -356,7 +356,7 @@ func handleListReplies(client *lib.Client, args []string) {
 	}
 }
 
-func getMessageFrom(msg *channelsPkg.Message) string {
+func getMessageFrom(msg *models.Message) string {
 	if msg.From != nil {
 		if msg.From.DisplayName != "" {
 			return msg.From.DisplayName
@@ -397,7 +397,7 @@ func handleGetTeam(client *lib.Client, args []string) {
 		fmt.Printf("Error getting team: %v\n", err)
 		os.Exit(1)
 	}
-	fmt.Printf("Team ID: %s\nName: %s\nDescription: %s\nVisibility: %s\nArchived: %v\n",
+	fmt.Printf("Team ID: %s\nName: %s\nDescription: %s\nVisibility: %v\nArchived: %v\n",
 		t.ID, t.DisplayName, t.Description, t.Visibility, t.IsArchived)
 }
 
