@@ -67,7 +67,7 @@ func NewClient(ctx context.Context, authConfig *AuthConfig, senderConfig *Sender
 		Channels: channelSvc,
 		Teams:    teamSvc,
 		Chats:    chatSvc,
-		waitFns: waitFns,
+		waitFns:  waitFns,
 	}, nil
 }
 

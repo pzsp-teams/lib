@@ -11,24 +11,24 @@ import (
 )
 
 type ServiceWithAutoCacheManagement struct {
-	svc   Service
-	cache cacher.Cacher
-	runner   util.TaskRunner
+	svc    Service
+	cache  cacher.Cacher
+	runner util.TaskRunner
 }
 
 func NewSyncServiceWithAutoCacheManagement(svc Service, cache cacher.Cacher) *ServiceWithAutoCacheManagement {
 	return &ServiceWithAutoCacheManagement{
-		svc:   svc,
-		cache: cache,
-		runner:   &util.SyncRunner{},
+		svc:    svc,
+		cache:  cache,
+		runner: &util.SyncRunner{},
 	}
 }
 
 func NewAsyncServiceWithAutoCacheManagement(svc Service, cache cacher.Cacher) *ServiceWithAutoCacheManagement {
 	return &ServiceWithAutoCacheManagement{
-		svc:   svc,
-		cache: cache,
-		runner:   &util.AsyncRunner{},
+		svc:    svc,
+		cache:  cache,
+		runner: &util.AsyncRunner{},
 	}
 }
 
