@@ -77,17 +77,17 @@ func (s *ServiceWithAutoCacheManagement) CreatePrivateChannel(
 }
 
 func (s *ServiceWithAutoCacheManagement) updateCacheAfterCreate(teamRef, name string, ch *models.Channel) {
-    if ch != nil {
-        local := *ch
-        s.run(func() {
-            s.removeChannelFromCache(teamRef, name)
-            s.addChannelsToCache(teamRef, local)
-        })
-        return
-    }
-    s.run(func() {
-        s.removeChannelFromCache(teamRef, name)
-    })
+	if ch != nil {
+		local := *ch
+		s.run(func() {
+			s.removeChannelFromCache(teamRef, name)
+			s.addChannelsToCache(teamRef, local)
+		})
+		return
+	}
+	s.run(func() {
+		s.removeChannelFromCache(teamRef, name)
+	})
 }
 
 func (s *ServiceWithAutoCacheManagement) Delete(ctx context.Context, teamRef, channelRef string) error {
