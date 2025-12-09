@@ -8,6 +8,7 @@ import (
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
 	"github.com/pzsp-teams/lib/cacher"
 	snd "github.com/pzsp-teams/lib/internal/sender"
+	"github.com/pzsp-teams/lib/internal/util"
 )
 
 type fakeCacher struct {
@@ -221,7 +222,7 @@ func TestServiceWithAutoCacheManagement_ListChannels_WarmsCache(t *testing.T) {
 		cache: fc,
 		teamResolver: fr,
 		channelResolver: cr,
-		run:   func(fn func()) { fn() },
+		runner:   &util.SyncRunner{},
 	}
 
 	chans, err := decor.ListChannels(ctx, "my-team")
@@ -301,7 +302,7 @@ func TestServiceWithAutoCacheManagement_Get_WarmsCache(t *testing.T) {
 		cache: fc,
 		teamResolver: fr,
 		channelResolver: cr,
-		run:   func(fn func()) { fn() },
+		runner:   &util.SyncRunner{},
 	}
 
 	ch, err := decor.Get(ctx, "team-ref", "my-channel")
@@ -356,7 +357,7 @@ func TestServiceWithAutoCacheManagement_CreateStandardChannel_InvalidatesAndCach
 		cache: fc,
 		teamResolver: fr,
 		channelResolver: cr,
-		run:   func(fn func()) { fn() },
+		runner:   &util.SyncRunner{},
 	}
 
 	ch, err := decor.CreateStandardChannel(ctx, "  Team Name  ", "New Channel")
@@ -432,7 +433,7 @@ func TestServiceWithAutoCacheManagement_Delete_InvalidatesCache(t *testing.T) {
 		cache: fc,
 		teamResolver: fr,
 		channelResolver: cr,
-		run:   func(fn func()) { fn() },
+		runner:   &util.SyncRunner{},
 	}
 
 	if err := decor.Delete(ctx, "my-team", "Channel To Delete"); err != nil {
@@ -499,7 +500,7 @@ func TestServiceWithAutoCacheManagement_AddMember_CachesMemberMapping(t *testing
 		cache: fc,
 		teamResolver: fr,
 		channelResolver: cr,
-		run:   func(fn func()) { fn() },
+		runner:   &util.SyncRunner{},
 	}
 
 	member, err := decor.AddMember(ctx, "team-ref", "channel-ref", "  user@example.com  ", false)
@@ -558,7 +559,7 @@ func TestServiceWithAutoCacheManagement_RemoveMember_InvalidatesMemberMapping(t 
 		cache: fc,
 		teamResolver: fr,
 		channelResolver: cr,
-		run:   func(fn func()) { fn() },
+		runner:   &util.SyncRunner{},
 	}
 
 	if err := decor.RemoveMember(ctx, "team-ref", "channel-ref", "user@example.com"); err != nil {

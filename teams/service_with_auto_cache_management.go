@@ -11,28 +11,38 @@ import (
 )
 
 type ServiceWithAutoCacheManagement struct {
-	svc   *service
+	svc   Service
 	cache cacher.Cacher
-	run   func(func())
+	runner   util.TaskRunner
 }
 
-func NewServiceWithAutoCacheManagement(svc Service, cache cacher.Cacher) *ServiceWithAutoCacheManagement {
+func NewSyncServiceWithAutoCacheManagement(svc Service, cache cacher.Cacher) *ServiceWithAutoCacheManagement {
 	return &ServiceWithAutoCacheManagement{
-		svc:   svc.(*service),
+		svc:   svc,
 		cache: cache,
-		run:   func(fn func()) { fn() },
+		runner:   &util.SyncRunner{},
 	}
+}
+
+func NewAsyncServiceWithAutoCacheManagement(svc Service, cache cacher.Cacher) *ServiceWithAutoCacheManagement {
+	return &ServiceWithAutoCacheManagement{
+		svc:   svc,
+		cache: cache,
+		runner:   &util.AsyncRunner{},
+	}
+}
+
+func (s *ServiceWithAutoCacheManagement) Wait() {
+	s.runner.Wait()
 }
 
 func (s *ServiceWithAutoCacheManagement) Get(ctx context.Context, teamRef string) (*models.Team, error) {
 	team, err := s.svc.Get(ctx, teamRef)
 	if err != nil {
-		s.run(func() {
-			_ = s.cache.Clear()
-		})
+		s.onError()
 		return nil, err
 	}
-	s.run(func() {
+	s.runner.Run(func() {
 		s.addTeamsToCache(*team)
 	})
 	return team, nil
@@ -41,9 +51,7 @@ func (s *ServiceWithAutoCacheManagement) Get(ctx context.Context, teamRef string
 func (s *ServiceWithAutoCacheManagement) ListMyJoined(ctx context.Context) ([]*models.Team, error) {
 	teams, err := s.svc.ListMyJoined(ctx)
 	if err != nil {
-		s.run(func() {
-			_ = s.cache.Clear()
-		})
+		s.onError()
 		return nil, err
 	}
 	vals := make([]models.Team, 0, len(teams))
@@ -52,7 +60,7 @@ func (s *ServiceWithAutoCacheManagement) ListMyJoined(ctx context.Context) ([]*m
 			vals = append(vals, *t)
 		}
 	}
-	s.run(func() {
+	s.runner.Run(func() {
 		s.addTeamsToCache(vals...)
 	})
 	return teams, nil
@@ -61,12 +69,10 @@ func (s *ServiceWithAutoCacheManagement) ListMyJoined(ctx context.Context) ([]*m
 func (s *ServiceWithAutoCacheManagement) Update(ctx context.Context, teamRef string, patch *msmodels.Team) (*models.Team, error) {
 	team, err := s.svc.Update(ctx, teamRef, patch)
 	if err != nil {
-		s.run(func() {
-			_ = s.cache.Clear()
-		})
+		s.onError()
 		return nil, err
 	}
-	s.run(func() {
+	s.runner.Run(func() {
 		s.removeTeamsFromCache(teamRef)
 		s.addTeamsToCache(*team)
 	})
@@ -76,12 +82,10 @@ func (s *ServiceWithAutoCacheManagement) Update(ctx context.Context, teamRef str
 func (s *ServiceWithAutoCacheManagement) CreateFromTemplate(ctx context.Context, displayName, description string, owners []string) (string, error) {
 	id, err := s.svc.CreateFromTemplate(ctx, displayName, description, owners)
 	if err != nil {
-		s.run(func() {
-			_ = s.cache.Clear()
-		})
+		s.onError()
 		return id, err
 	}
-	s.run(func() {
+	s.runner.Run(func() {
 		s.removeTeamsFromCache(displayName)
 	})
 	return id, err
@@ -90,12 +94,10 @@ func (s *ServiceWithAutoCacheManagement) CreateFromTemplate(ctx context.Context,
 func (s *ServiceWithAutoCacheManagement) CreateViaGroup(ctx context.Context, displayName, mailNickname, visibility string) (*models.Team, error) {
 	team, err := s.svc.CreateViaGroup(ctx, displayName, mailNickname, visibility)
 	if err != nil {
-		s.run(func() {
-			_ = s.cache.Clear()
-		})
+		s.onError()
 		return nil, err
 	}
-	s.run(func() {
+	s.runner.Run(func() {
 		s.removeTeamsFromCache(displayName)
 	})
 	return team, nil
@@ -104,12 +106,10 @@ func (s *ServiceWithAutoCacheManagement) CreateViaGroup(ctx context.Context, dis
 func (s *ServiceWithAutoCacheManagement) Archive(ctx context.Context, teamRef string, spoReadOnlyForMembers *bool) error {
 	err := s.svc.Archive(ctx, teamRef, spoReadOnlyForMembers)
 	if err != nil {
-		s.run(func() {
-			_ = s.cache.Clear()
-		})
+		s.onError()
 		return err
 	}
-	s.run(func() {
+	s.runner.Run(func() {
 		s.removeTeamsFromCache(teamRef)
 	})
 	return nil
@@ -118,12 +118,10 @@ func (s *ServiceWithAutoCacheManagement) Archive(ctx context.Context, teamRef st
 func (s *ServiceWithAutoCacheManagement) Unarchive(ctx context.Context, teamRef string) error {
 	err := s.svc.Unarchive(ctx, teamRef)
 	if err != nil {
-		s.run(func() {
-			_ = s.cache.Clear()
-		})
+		s.onError()
 		return err
 	}
-	s.run(func() {
+	s.runner.Run(func() {
 		s.removeTeamsFromCache(teamRef)
 	})
 	return nil
@@ -132,12 +130,10 @@ func (s *ServiceWithAutoCacheManagement) Unarchive(ctx context.Context, teamRef 
 func (s *ServiceWithAutoCacheManagement) Delete(ctx context.Context, teamRef string) error {
 	err := s.svc.Delete(ctx, teamRef)
 	if err != nil {
-		s.run(func() {
-			_ = s.cache.Clear()
-		})
+		s.onError()
 		return err
 	}
-	s.run(func() {
+	s.runner.Run(func() {
 		s.removeTeamsFromCache(teamRef)
 	})
 	return nil
@@ -146,9 +142,7 @@ func (s *ServiceWithAutoCacheManagement) Delete(ctx context.Context, teamRef str
 func (s *ServiceWithAutoCacheManagement) RestoreDeleted(ctx context.Context, deletedGroupID string) (string, error) {
 	id, err := s.svc.RestoreDeleted(ctx, deletedGroupID)
 	if err != nil {
-		s.run(func() {
-			_ = s.cache.Clear()
-		})
+		s.onError()
 		return id, err
 	}
 	return id, nil
@@ -175,4 +169,13 @@ func (s *ServiceWithAutoCacheManagement) removeTeamsFromCache(teamRefs ...string
 		key := cacher.NewTeamKey(strings.TrimSpace(teamRef))
 		_ = s.cache.Invalidate(key)
 	}
+}
+
+func (s *ServiceWithAutoCacheManagement) onError() {
+	if s.cache == nil {
+		return
+	}
+	s.runner.Run(func() {
+		_ = s.cache.Clear()
+	})
 }

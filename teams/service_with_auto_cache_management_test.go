@@ -8,6 +8,7 @@ import (
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
 	"github.com/pzsp-teams/lib/cacher"
 	snd "github.com/pzsp-teams/lib/internal/sender"
+	"github.com/pzsp-teams/lib/internal/util"
 )
 
 type fakeCacher struct {
@@ -174,8 +175,8 @@ func TestServiceWithAutoCacheManagement_Get_AddsTeamToCacheOnSuccess(t *testing.
 		teamAPI:      fapi,
 		teamResolver: fr,
 	}
-	decor := NewServiceWithAutoCacheManagement(svc, fc)
-	decor.run = func(f func()) { f() }
+	decor := NewSyncServiceWithAutoCacheManagement(svc, fc)
+	decor.runner = &util.SyncRunner{}
 
 	team, err := decor.Get(ctx, "my-ref")
 	if err != nil {
@@ -219,8 +220,8 @@ func TestServiceWithAutoCacheManagement_ListMyJoined_WarmsCache(t *testing.T) {
 	svc := &service{
 		teamAPI: fapi,
 	}
-	decor := NewServiceWithAutoCacheManagement(svc, fc)
-	decor.run = func(f func()) { f() }
+	decor := NewSyncServiceWithAutoCacheManagement(svc, fc)
+	decor.runner = &util.SyncRunner{}
 	teams, err := decor.ListMyJoined(ctx)
 	if err != nil {
 		t.Fatalf("unexpected error from ListMyJoined: %v", err)
@@ -272,8 +273,8 @@ func TestServiceWithAutoCacheManagement_Update_InvalidatesOldAndCachesNew(t *tes
 		teamAPI:      fapi,
 		teamResolver: fr,
 	}
-	decor := NewServiceWithAutoCacheManagement(svc, fc)
-	decor.run = func(f func()) { f() }
+	decor := NewSyncServiceWithAutoCacheManagement(svc, fc)
+	decor.runner = &util.SyncRunner{}
 	team, err := decor.Update(ctx, "  Old Name  ", nil)
 	if err != nil {
 		t.Fatalf("unexpected error from Update: %v", err)
@@ -323,8 +324,8 @@ func TestServiceWithAutoCacheManagement_Update_DoesNotInvalidateForGUID(t *testi
 		teamAPI:      fapi,
 		teamResolver: fr,
 	}
-	decor := NewServiceWithAutoCacheManagement(svc, fc)
-	decor.run = func(f func()) { f() }
+	decor := NewSyncServiceWithAutoCacheManagement(svc, fc)
+	decor.runner = &util.SyncRunner{}
 	_, err := decor.Update(ctx, guidRef, nil)
 	if err != nil {
 		t.Fatalf("unexpected error from Update: %v", err)
@@ -354,8 +355,8 @@ func TestServiceWithAutoCacheManagement_CreateFromTemplate_InvalidatesByName(t *
 	svc := &service{
 		teamAPI: fapi,
 	}
-	decor := NewServiceWithAutoCacheManagement(svc, fc)
-	decor.run = func(f func()) { f() }
+	decor := NewSyncServiceWithAutoCacheManagement(svc, fc)
+	decor.runner = &util.SyncRunner{}
 	id, err := decor.CreateFromTemplate(ctx, "  My Team  ", "desc", []string{"owner"})
 	if err != nil {
 		t.Fatalf("unexpected error from CreateFromTemplate: %v", err)
@@ -398,8 +399,8 @@ func TestServiceWithAutoCacheManagement_CreateViaGroup_InvalidatesByName(t *test
 	svc := &service{
 		teamAPI: fapi,
 	}
-	decor := NewServiceWithAutoCacheManagement(svc, fc)
-	decor.run = func(f func()) { f() }
+	decor := NewSyncServiceWithAutoCacheManagement(svc, fc)
+	decor.runner = &util.SyncRunner{}
 	team, err := decor.CreateViaGroup(ctx, "  My Team  ", "nick", "Public")
 	if err != nil {
 		t.Fatalf("unexpected error from CreateViaGroup: %v", err)
@@ -442,8 +443,8 @@ func TestServiceWithAutoCacheManagement_Archive_InvalidatesByName(t *testing.T) 
 		teamAPI:      fapi,
 		teamResolver: fr,
 	}
-	decor := NewServiceWithAutoCacheManagement(svc, fc)
-	decor.run = func(f func()) { f() }
+	decor := NewSyncServiceWithAutoCacheManagement(svc, fc)
+	decor.runner = &util.SyncRunner{}
 	if err := decor.Archive(ctx, "  My Team  ", nil); err != nil {
 		t.Fatalf("unexpected error from Archive: %v", err)
 	}
@@ -484,8 +485,8 @@ func TestServiceWithAutoCacheManagement_Delete_DoesNotInvalidateForGUID(t *testi
 		teamAPI:      fapi,
 		teamResolver: fr,
 	}
-	decor := NewServiceWithAutoCacheManagement(svc, fc)
-	decor.run = func(f func()) { f() }
+	decor := NewSyncServiceWithAutoCacheManagement(svc, fc)
+	decor.runner = &util.SyncRunner{}
 	if err := decor.Delete(ctx, guidRef); err != nil {
 		t.Fatalf("unexpected error from Delete: %v", err)
 	}
@@ -511,8 +512,8 @@ func TestServiceWithAutoCacheManagement_RestoreDeleted_DoesNotTouchCache(t *test
 	svc := &service{
 		teamAPI: fapi,
 	}
-	decor := NewServiceWithAutoCacheManagement(svc, fc)
-	decor.run = func(f func()) { f() }
+	decor := NewSyncServiceWithAutoCacheManagement(svc, fc)
+	decor.runner = &util.SyncRunner{}
 	id, err := decor.RestoreDeleted(ctx, "deleted-123")
 	if err != nil {
 		t.Fatalf("unexpected error from RestoreDeleted: %v", err)
