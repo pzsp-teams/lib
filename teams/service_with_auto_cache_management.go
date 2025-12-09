@@ -10,33 +10,33 @@ import (
 	"github.com/pzsp-teams/lib/models"
 )
 
-type ServiceWithAutoCacheManagement struct {
+type serviceWithAutoCacheManagement struct {
 	svc    Service
 	cache  cacher.Cacher
 	runner util.TaskRunner
 }
 
-func NewSyncServiceWithAutoCacheManagement(svc Service, cache cacher.Cacher) *ServiceWithAutoCacheManagement {
-	return &ServiceWithAutoCacheManagement{
+func NewSyncServiceWithAutoCacheManagement(svc Service, cache cacher.Cacher) *serviceWithAutoCacheManagement {
+	return &serviceWithAutoCacheManagement{
 		svc:    svc,
 		cache:  cache,
 		runner: &util.SyncRunner{},
 	}
 }
 
-func NewAsyncServiceWithAutoCacheManagement(svc Service, cache cacher.Cacher) *ServiceWithAutoCacheManagement {
-	return &ServiceWithAutoCacheManagement{
+func NewAsyncServiceWithAutoCacheManagement(svc Service, cache cacher.Cacher) *serviceWithAutoCacheManagement {
+	return &serviceWithAutoCacheManagement{
 		svc:    svc,
 		cache:  cache,
 		runner: &util.AsyncRunner{},
 	}
 }
 
-func (s *ServiceWithAutoCacheManagement) Wait() {
+func (s *serviceWithAutoCacheManagement) Wait() {
 	s.runner.Wait()
 }
 
-func (s *ServiceWithAutoCacheManagement) Get(ctx context.Context, teamRef string) (*models.Team, error) {
+func (s *serviceWithAutoCacheManagement) Get(ctx context.Context, teamRef string) (*models.Team, error) {
 	team, err := s.svc.Get(ctx, teamRef)
 	if err != nil {
 		s.onError()
@@ -48,25 +48,20 @@ func (s *ServiceWithAutoCacheManagement) Get(ctx context.Context, teamRef string
 	return team, nil
 }
 
-func (s *ServiceWithAutoCacheManagement) ListMyJoined(ctx context.Context) ([]*models.Team, error) {
+func (s *serviceWithAutoCacheManagement) ListMyJoined(ctx context.Context) ([]*models.Team, error) {
 	teams, err := s.svc.ListMyJoined(ctx)
 	if err != nil {
 		s.onError()
 		return nil, err
 	}
-	vals := make([]models.Team, 0, len(teams))
-	for _, t := range teams {
-		if t != nil {
-			vals = append(vals, *t)
-		}
-	}
+	vals := util.CopyNonNil(teams)
 	s.runner.Run(func() {
 		s.addTeamsToCache(vals...)
 	})
 	return teams, nil
 }
 
-func (s *ServiceWithAutoCacheManagement) Update(ctx context.Context, teamRef string, patch *msmodels.Team) (*models.Team, error) {
+func (s *serviceWithAutoCacheManagement) Update(ctx context.Context, teamRef string, patch *msmodels.Team) (*models.Team, error) {
 	team, err := s.svc.Update(ctx, teamRef, patch)
 	if err != nil {
 		s.onError()
@@ -79,7 +74,7 @@ func (s *ServiceWithAutoCacheManagement) Update(ctx context.Context, teamRef str
 	return team, nil
 }
 
-func (s *ServiceWithAutoCacheManagement) CreateFromTemplate(ctx context.Context, displayName, description string, owners []string) (string, error) {
+func (s *serviceWithAutoCacheManagement) CreateFromTemplate(ctx context.Context, displayName, description string, owners []string) (string, error) {
 	id, err := s.svc.CreateFromTemplate(ctx, displayName, description, owners)
 	if err != nil {
 		s.onError()
@@ -91,7 +86,7 @@ func (s *ServiceWithAutoCacheManagement) CreateFromTemplate(ctx context.Context,
 	return id, err
 }
 
-func (s *ServiceWithAutoCacheManagement) CreateViaGroup(ctx context.Context, displayName, mailNickname, visibility string) (*models.Team, error) {
+func (s *serviceWithAutoCacheManagement) CreateViaGroup(ctx context.Context, displayName, mailNickname, visibility string) (*models.Team, error) {
 	team, err := s.svc.CreateViaGroup(ctx, displayName, mailNickname, visibility)
 	if err != nil {
 		s.onError()
@@ -103,7 +98,7 @@ func (s *ServiceWithAutoCacheManagement) CreateViaGroup(ctx context.Context, dis
 	return team, nil
 }
 
-func (s *ServiceWithAutoCacheManagement) Archive(ctx context.Context, teamRef string, spoReadOnlyForMembers *bool) error {
+func (s *serviceWithAutoCacheManagement) Archive(ctx context.Context, teamRef string, spoReadOnlyForMembers *bool) error {
 	err := s.svc.Archive(ctx, teamRef, spoReadOnlyForMembers)
 	if err != nil {
 		s.onError()
@@ -115,7 +110,7 @@ func (s *ServiceWithAutoCacheManagement) Archive(ctx context.Context, teamRef st
 	return nil
 }
 
-func (s *ServiceWithAutoCacheManagement) Unarchive(ctx context.Context, teamRef string) error {
+func (s *serviceWithAutoCacheManagement) Unarchive(ctx context.Context, teamRef string) error {
 	err := s.svc.Unarchive(ctx, teamRef)
 	if err != nil {
 		s.onError()
@@ -127,7 +122,7 @@ func (s *ServiceWithAutoCacheManagement) Unarchive(ctx context.Context, teamRef 
 	return nil
 }
 
-func (s *ServiceWithAutoCacheManagement) Delete(ctx context.Context, teamRef string) error {
+func (s *serviceWithAutoCacheManagement) Delete(ctx context.Context, teamRef string) error {
 	err := s.svc.Delete(ctx, teamRef)
 	if err != nil {
 		s.onError()
@@ -139,16 +134,13 @@ func (s *ServiceWithAutoCacheManagement) Delete(ctx context.Context, teamRef str
 	return nil
 }
 
-func (s *ServiceWithAutoCacheManagement) RestoreDeleted(ctx context.Context, deletedGroupID string) (string, error) {
-	id, err := s.svc.RestoreDeleted(ctx, deletedGroupID)
-	if err != nil {
-		s.onError()
-		return id, err
-	}
-	return id, nil
+func (s *serviceWithAutoCacheManagement) RestoreDeleted(ctx context.Context, deletedGroupID string) (string, error) {
+	return withErrorClear(func() (string, error) {
+		return s.svc.RestoreDeleted(ctx, deletedGroupID)
+	}, s)
 }
 
-func (s *ServiceWithAutoCacheManagement) addTeamsToCache(teams ...models.Team) {
+func (s *serviceWithAutoCacheManagement) addTeamsToCache(teams ...models.Team) {
 	if s.cache == nil || teams == nil {
 		return
 	}
@@ -158,7 +150,7 @@ func (s *ServiceWithAutoCacheManagement) addTeamsToCache(teams ...models.Team) {
 	}
 }
 
-func (s *ServiceWithAutoCacheManagement) removeTeamsFromCache(teamRefs ...string) {
+func (s *serviceWithAutoCacheManagement) removeTeamsFromCache(teamRefs ...string) {
 	if s.cache == nil {
 		return
 	}
@@ -171,11 +163,25 @@ func (s *ServiceWithAutoCacheManagement) removeTeamsFromCache(teamRefs ...string
 	}
 }
 
-func (s *ServiceWithAutoCacheManagement) onError() {
+func (s *serviceWithAutoCacheManagement) onError() {
 	if s.cache == nil {
 		return
 	}
 	s.runner.Run(func() {
 		_ = s.cache.Clear()
 	})
+}
+
+
+
+func withErrorClear[T any](
+    fn func() (T, error), s *serviceWithAutoCacheManagement,
+) (T, error) {
+    res, err := fn()
+    if err != nil {
+        s.onError()
+        var zero T
+        return zero, err
+    }
+    return res, nil
 }
