@@ -20,7 +20,7 @@ func NewServiceWithAutoCacheManagement(svc Service, cache cacher.Cacher) *Servic
 	return &ServiceWithAutoCacheManagement{
 		svc:   svc.(*service),
 		cache: cache,
-		run:   func(fn func()) { go fn() },
+		run:   func(fn func()) { fn() },
 	}
 }
 
