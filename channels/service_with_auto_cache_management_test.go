@@ -219,6 +219,8 @@ func TestServiceWithAutoCacheManagement_ListChannels_WarmsCache(t *testing.T) {
 	decor := &serviceWithAutoCacheManagement{
 		svc:   svc,
 		cache: fc,
+		teamResolver: fr,
+		channelResolver: cr,
 		run:   func(fn func()) { fn() },
 	}
 
@@ -297,6 +299,8 @@ func TestServiceWithAutoCacheManagement_Get_WarmsCache(t *testing.T) {
 	decor := &serviceWithAutoCacheManagement{
 		svc:   svc,
 		cache: fc,
+		teamResolver: fr,
+		channelResolver: cr,
 		run:   func(fn func()) { fn() },
 	}
 
@@ -350,6 +354,8 @@ func TestServiceWithAutoCacheManagement_CreateStandardChannel_InvalidatesAndCach
 	decor := &serviceWithAutoCacheManagement{
 		svc:   svc,
 		cache: fc,
+		teamResolver: fr,
+		channelResolver: cr,
 		run:   func(fn func()) { fn() },
 	}
 
@@ -424,6 +430,8 @@ func TestServiceWithAutoCacheManagement_Delete_InvalidatesCache(t *testing.T) {
 	decor := &serviceWithAutoCacheManagement{
 		svc:   svc,
 		cache: fc,
+		teamResolver: fr,
+		channelResolver: cr,
 		run:   func(fn func()) { fn() },
 	}
 
@@ -489,6 +497,8 @@ func TestServiceWithAutoCacheManagement_AddMember_CachesMemberMapping(t *testing
 	decor := &serviceWithAutoCacheManagement{
 		svc:   svc,
 		cache: fc,
+		teamResolver: fr,
+		channelResolver: cr,
 		run:   func(fn func()) { fn() },
 	}
 
@@ -546,6 +556,8 @@ func TestServiceWithAutoCacheManagement_RemoveMember_InvalidatesMemberMapping(t 
 	decor := &serviceWithAutoCacheManagement{
 		svc:   svc,
 		cache: fc,
+		teamResolver: fr,
+		channelResolver: cr,
 		run:   func(fn func()) { fn() },
 	}
 
