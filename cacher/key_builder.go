@@ -32,10 +32,10 @@ func NewChannelKey(teamID, name string) string {
 }
 
 func NewMemberKey(ref, teamID, channelID string) string {
-	pepper, err := pepper.GetOrAskPepper()
+	pep, err := pepper.GetOrAskPepper()
 	if err != nil {
-		pepper = "default-pepper"
+		pep = "default-pepper"
 	}
-	hashedRef := util.HashWithPepper(pepper, ref)
+	hashedRef := util.HashWithPepper(pep, ref)
 	return formatKey(Member, teamID, channelID, hashedRef)
 }
