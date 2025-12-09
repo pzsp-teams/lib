@@ -46,12 +46,12 @@ func main() {
 	authConfig := loadAuthConfig()
 	senderConfig := newSenderConfig()
 
-	client, err := lib.NewClient(context.TODO(), authConfig, senderConfig)
+	client, err := lib.NewClient(context.TODO(), authConfig, senderConfig, true, nil)
 	if err != nil {
 		fmt.Printf("Error creating Teams client: %v\n", err)
 		os.Exit(1)
 	}
-
+	defer client.Close()
 	switch cmd {
 	case "create-channel":
 		if len(os.Args) < 4 {
