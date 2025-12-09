@@ -211,13 +211,16 @@ func TestServiceWithAutoCacheManagement_ListChannels_WarmsCache(t *testing.T) {
 		},
 	}
 
-	svc := &Service{
+	svc := &service{
 		channelAPI:      fapi,
 		teamResolver:    fr,
 		channelResolver: cr,
 	}
-	decor := NewServiceWithAutoCacheManagement(svc, fc)
-	decor.run = func(fn func()) { fn() }
+	decor := &serviceWithAutoCacheManagement{
+		svc:   svc,
+		cache: fc,
+		run:   func(fn func()) { fn() },
+	}
 
 	chans, err := decor.ListChannels(ctx, "my-team")
 	if err != nil {
@@ -286,13 +289,16 @@ func TestServiceWithAutoCacheManagement_Get_WarmsCache(t *testing.T) {
 		},
 	}
 
-	svc := &Service{
+	svc := &service{
 		channelAPI:      fapi,
 		teamResolver:    fr,
 		channelResolver: cr,
 	}
-	decor := NewServiceWithAutoCacheManagement(svc, fc)
-	decor.run = func(fn func()) { fn() }
+	decor := &serviceWithAutoCacheManagement{
+		svc:   svc,
+		cache: fc,
+		run:   func(fn func()) { fn() },
+	}
 
 	ch, err := decor.Get(ctx, "team-ref", "my-channel")
 	if err != nil {
@@ -336,13 +342,16 @@ func TestServiceWithAutoCacheManagement_CreateStandardChannel_InvalidatesAndCach
 		},
 	}
 
-	svc := &Service{
+	svc := &service{
 		channelAPI:      fapi,
 		teamResolver:    fr,
 		channelResolver: cr,
 	}
-	decor := NewServiceWithAutoCacheManagement(svc, fc)
-	decor.run = func(fn func()) { fn() }
+	decor := &serviceWithAutoCacheManagement{
+		svc:   svc,
+		cache: fc,
+		run:   func(fn func()) { fn() },
+	}
 
 	ch, err := decor.CreateStandardChannel(ctx, "  Team Name  ", "New Channel")
 	if err != nil {
@@ -407,13 +416,16 @@ func TestServiceWithAutoCacheManagement_Delete_InvalidatesCache(t *testing.T) {
 		},
 	}
 
-	svc := &Service{
+	svc := &service{
 		channelAPI:      fapi,
 		teamResolver:    fr,
 		channelResolver: cr,
 	}
-	decor := NewServiceWithAutoCacheManagement(svc, fc)
-	decor.run = func(fn func()) { fn() }
+	decor := &serviceWithAutoCacheManagement{
+		svc:   svc,
+		cache: fc,
+		run:   func(fn func()) { fn() },
+	}
 
 	if err := decor.Delete(ctx, "my-team", "Channel To Delete"); err != nil {
 		t.Fatalf("unexpected error from Delete: %v", err)
@@ -469,13 +481,16 @@ func TestServiceWithAutoCacheManagement_AddMember_CachesMemberMapping(t *testing
 		},
 	}
 
-	svc := &Service{
+	svc := &service{
 		channelAPI:      fapi,
 		teamResolver:    fr,
 		channelResolver: cr,
 	}
-	decor := NewServiceWithAutoCacheManagement(svc, fc)
-	decor.run = func(fn func()) { fn() }
+	decor := &serviceWithAutoCacheManagement{
+		svc:   svc,
+		cache: fc,
+		run:   func(fn func()) { fn() },
+	}
 
 	member, err := decor.AddMember(ctx, "team-ref", "channel-ref", "  user@example.com  ", false)
 	if err != nil {
@@ -523,13 +538,16 @@ func TestServiceWithAutoCacheManagement_RemoveMember_InvalidatesMemberMapping(t 
 		},
 	}
 
-	svc := &Service{
+	svc := &service{
 		channelAPI:      fapi,
 		teamResolver:    fr,
 		channelResolver: cr,
 	}
-	decor := NewServiceWithAutoCacheManagement(svc, fc)
-	decor.run = func(fn func()) { fn() }
+	decor := &serviceWithAutoCacheManagement{
+		svc:   svc,
+		cache: fc,
+		run:   func(fn func()) { fn() },
+	}
 
 	if err := decor.RemoveMember(ctx, "team-ref", "channel-ref", "user@example.com"); err != nil {
 		t.Fatalf("unexpected error from RemoveMember: %v", err)
