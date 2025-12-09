@@ -67,7 +67,7 @@ func (res *ChannelResolverCacheable) ResolveUserRefToMemberID(ctx context.Contex
 		return "", fmt.Errorf("empty user reference")
 	}
 	if res.cacheEnabled {
-		key := cacher.NewMemberKey(ref, teamID, channelID)
+		key := cacher.NewMemberKey(ref, teamID, channelID, nil)
 		value, found, err := res.cacher.Get(key)
 		if err == nil && found {
 			if ids, ok := value.([]string); ok && len(ids) == 1 {
@@ -87,7 +87,7 @@ func (res *ChannelResolverCacheable) ResolveUserRefToMemberID(ctx context.Contex
 		return "", fmt.Errorf("user %q not found in channel %q", ref, channelID)
 	}
 	if res.cacheEnabled {
-		key := cacher.NewMemberKey(ref, teamID, channelID)
+		key := cacher.NewMemberKey(ref, teamID, channelID, nil)
 		_ = res.cacher.Set(key, id)
 	}
 	return id, nil

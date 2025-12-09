@@ -31,11 +31,14 @@ func NewChannelKey(teamID, name string) string {
 	return formatKey(Channel, teamID, name)
 }
 
-func NewMemberKey(ref, teamID, channelID string) string {
-	pep, err := pepper.GetOrAskPepper()
-	if err != nil {
-		pep = "default-pepper"
+func NewMemberKey(ref, teamID, channelID string, pep *string) string {
+	if pep == nil {
+		p, err := pepper.GetOrAskPepper()
+		if err != nil {
+			p = "default-pepper"
+		}
+		pep = &p
 	}
-	hashedRef := util.HashWithPepper(pep, ref)
+	hashedRef := util.HashWithPepper(*pep, ref)
 	return formatKey(Member, teamID, channelID, hashedRef)
 }
