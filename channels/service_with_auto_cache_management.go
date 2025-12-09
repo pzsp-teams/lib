@@ -59,17 +59,7 @@ func (s *ServiceWithAutoCacheManagement) CreateStandardChannel(ctx context.Conte
 	if err != nil {
 		return nil, err
 	}
-	if ch != nil {
-		local := *ch
-		s.run(func() {
-			s.removeChannelFromCache(teamRef, name)
-			s.addChannelsToCache(teamRef, local)
-		})
-	} else {
-		s.run(func() {
-			s.removeChannelFromCache(teamRef, name)
-		})
-	}
+	s.updateCacheAfterCreate(teamRef, name, ch)
 	return ch, nil
 }
 
@@ -82,18 +72,22 @@ func (s *ServiceWithAutoCacheManagement) CreatePrivateChannel(
 	if err != nil {
 		return nil, err
 	}
-	if ch != nil {
-		local := *ch
-		s.run(func() {
-			s.removeChannelFromCache(teamRef, name)
-			s.addChannelsToCache(teamRef, local)
-		})
-	} else {
-		s.run(func() {
-			s.removeChannelFromCache(teamRef, name)
-		})
-	}
+	s.updateCacheAfterCreate(teamRef, name, ch)
 	return ch, nil
+}
+
+func (s *ServiceWithAutoCacheManagement) updateCacheAfterCreate(teamRef, name string, ch *models.Channel) {
+    if ch != nil {
+        local := *ch
+        s.run(func() {
+            s.removeChannelFromCache(teamRef, name)
+            s.addChannelsToCache(teamRef, local)
+        })
+        return
+    }
+    s.run(func() {
+        s.removeChannelFromCache(teamRef, name)
+    })
 }
 
 func (s *ServiceWithAutoCacheManagement) Delete(ctx context.Context, teamRef, channelRef string) error {
