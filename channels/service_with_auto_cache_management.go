@@ -271,7 +271,7 @@ func (s *serviceWithAutoCacheManagement) addChannelsToCache(
 		if name == "" || util.IsLikelyChannelID(name) {
 			continue
 		}
-		key := cacher.NewChannelKeyBuilder(teamID, name).ToString()
+		key := cacher.NewChannelKey(teamID, name)
 		_ = s.cache.Set(key, ch.ID)
 	}
 }
@@ -291,7 +291,7 @@ func (s *serviceWithAutoCacheManagement) removeChannelFromCache(
 	if err != nil {
 		return
 	}
-	key := cacher.NewChannelKeyBuilder(teamID, ref).ToString()
+	key := cacher.NewChannelKey(teamID, ref)
 	_ = s.cache.Invalidate(key)
 }
 
@@ -317,7 +317,7 @@ func (s *serviceWithAutoCacheManagement) addMemberToCache(
 		return
 	}
 
-	key := cacher.NewMemberKeyBuilder(ref, teamID, channelID).ToString()
+	key := cacher.NewMemberKey(ref, teamID, channelID)
 	_ = s.cache.Set(key, member.ID)
 }
 
@@ -342,6 +342,6 @@ func (s *serviceWithAutoCacheManagement) invalidateMemberCache(
 		return
 	}
 
-	key := cacher.NewMemberKeyBuilder(ref, teamID, channelID).ToString()
+	key := cacher.NewMemberKey(ref, teamID, channelID)
 	_ = s.cache.Invalidate(key)
 }

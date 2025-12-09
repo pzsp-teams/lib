@@ -126,7 +126,7 @@ func TestTeamResolverCacheable_ResolveTeamRefToID_CacheHitSingleID(t *testing.T)
 	if fc.getCalls != 1 {
 		t.Errorf("expected 1 cache Get call, got %d", fc.getCalls)
 	}
-	expectedKey := cacher.NewTeamKeyBuilder("My Team").ToString()
+	expectedKey := cacher.NewTeamKey("My Team")
 	if fc.lastGetKey != expectedKey {
 		t.Errorf("expected cache key %q, got %q", expectedKey, fc.lastGetKey)
 	}
@@ -162,7 +162,7 @@ func TestTeamResolverCacheable_ResolveTeamRefToID_CacheMiss_UsesAPIAndCaches(t *
 	if fc.getCalls != 1 {
 		t.Errorf("expected 1 Get call, got %d", fc.getCalls)
 	}
-	expectedKey := cacher.NewTeamKeyBuilder("My Team").ToString()
+	expectedKey := cacher.NewTeamKey("My Team")
 	if fc.lastGetKey != expectedKey {
 		t.Errorf("expected cache key %q, got %q", expectedKey, fc.lastGetKey)
 	}

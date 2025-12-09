@@ -235,8 +235,8 @@ func TestServiceWithAutoCacheManagement_ListChannels_WarmsCache(t *testing.T) {
 	}
 
 	expectedKeys := []string{
-		cacher.NewChannelKeyBuilder("team-id-123", "General").ToString(),
-		cacher.NewChannelKeyBuilder("team-id-123", "My Channel").ToString(),
+		cacher.NewChannelKey("team-id-123", "General"),
+		cacher.NewChannelKey("team-id-123", "My Channel"),
 	}
 	if len(fc.setKeys) != len(expectedKeys) {
 		t.Fatalf("expected %d cache keys, got %d", len(expectedKeys), len(fc.setKeys))
@@ -311,7 +311,7 @@ func TestServiceWithAutoCacheManagement_Get_WarmsCache(t *testing.T) {
 	if fc.setCalls != 1 {
 		t.Fatalf("expected 1 Set call, got %d", fc.setCalls)
 	}
-	expectedKey := cacher.NewChannelKeyBuilder("team-id-xyz", "My Channel").ToString()
+	expectedKey := cacher.NewChannelKey("team-id-xyz", "My Channel")
 	if fc.setKeys[0] != expectedKey {
 		t.Errorf("expected cache key %q, got %q", expectedKey, fc.setKeys[0])
 	}
@@ -364,7 +364,7 @@ func TestServiceWithAutoCacheManagement_CreateStandardChannel_InvalidatesAndCach
 	if fc.invalidateCalls != 1 {
 		t.Fatalf("expected 1 Invalidate call, got %d", fc.invalidateCalls)
 	}
-	invalidateKey := cacher.NewChannelKeyBuilder("team-id-1", "New Channel").ToString()
+	invalidateKey := cacher.NewChannelKey("team-id-1", "New Channel")
 	if fc.invalidateKeys[0] != invalidateKey {
 		t.Errorf("expected invalidate key %q, got %q", invalidateKey, fc.invalidateKeys[0])
 	}
@@ -372,7 +372,7 @@ func TestServiceWithAutoCacheManagement_CreateStandardChannel_InvalidatesAndCach
 	if fc.setCalls != 1 {
 		t.Fatalf("expected 1 Set call, got %d", fc.setCalls)
 	}
-	setKey := cacher.NewChannelKeyBuilder("team-id-1", "New Channel").ToString()
+	setKey := cacher.NewChannelKey("team-id-1", "New Channel")
 	if fc.setKeys[0] != setKey {
 		t.Errorf("expected Set key %q, got %q", setKey, fc.setKeys[0])
 	}
@@ -434,7 +434,7 @@ func TestServiceWithAutoCacheManagement_Delete_InvalidatesCache(t *testing.T) {
 	if fc.invalidateCalls != 1 {
 		t.Fatalf("expected 1 Invalidate call, got %d", fc.invalidateCalls)
 	}
-	expectedKey := cacher.NewChannelKeyBuilder("team-id-del", "Channel To Delete").ToString()
+	expectedKey := cacher.NewChannelKey("team-id-del", "Channel To Delete")
 	if fc.invalidateKeys[0] != expectedKey {
 		t.Errorf("expected invalidate key %q, got %q", expectedKey, fc.invalidateKeys[0])
 	}
@@ -503,7 +503,7 @@ func TestServiceWithAutoCacheManagement_AddMember_CachesMemberMapping(t *testing
 	if fc.setCalls != 1 {
 		t.Fatalf("expected 1 Set call, got %d", fc.setCalls)
 	}
-	expectedKey := cacher.NewMemberKeyBuilder("user@example.com", "team-id-1", "channel-id-1").ToString()
+	expectedKey := cacher.NewMemberKey("user@example.com", "team-id-1", "channel-id-1")
 	if fc.setKeys[0] != expectedKey {
 		t.Errorf("expected member cache key %q, got %q", expectedKey, fc.setKeys[0])
 	}
@@ -556,7 +556,7 @@ func TestServiceWithAutoCacheManagement_RemoveMember_InvalidatesMemberMapping(t 
 	if fc.invalidateCalls != 1 {
 		t.Fatalf("expected 1 Invalidate call, got %d", fc.invalidateCalls)
 	}
-	expectedKey := cacher.NewMemberKeyBuilder("user@example.com", "team-id-1", "channel-id-1").ToString()
+	expectedKey := cacher.NewMemberKey("user@example.com", "team-id-1", "channel-id-1")
 	if fc.invalidateKeys[0] != expectedKey {
 		t.Errorf("expected invalidate key %q, got %q", expectedKey, fc.invalidateKeys[0])
 	}
