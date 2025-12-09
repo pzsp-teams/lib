@@ -33,7 +33,7 @@ func NewClient(ctx context.Context, authConfig *AuthConfig, senderConfig *Sender
 	if err != nil {
 		return nil, fmt.Errorf("creating graph client: %w", err)
 	}
-	cache := cacher.NewJSONFileCacher("cache.json")
+	cache := cacher.NewJSONFileCacher(defaultCachePath())
 	techParams := senderConfig.toTechParams()
 
 	teamsAPI := api.NewTeams(graphClient, techParams)
