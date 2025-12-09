@@ -10,8 +10,8 @@ import (
 )
 
 const (
-	serviceName = "pzsp-teams-cache"  
-	userName    = "pepper"      
+	serviceName = "pzsp-teams-cache"
+	userName    = "pepper"
 )
 
 func GetOrAskPepper() (string, error) {
