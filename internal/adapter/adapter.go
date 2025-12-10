@@ -105,12 +105,22 @@ func MapGraphMember(graphMember msmodels.ConversationMemberable) *models.Member 
 	if len(roles) > 0 {
 		role = roles[0]
 	}
+	email := ""
+	ad := graphMember.GetAdditionalData()
+	if ad != nil {
+		if raw, ok := ad["email"]; ok {
+			if v, ok := raw.(string); ok {
+				email = v
+			}
+		}
+	}
 
 	return &models.Member{
 		ID:          util.Deref(graphMember.GetId()),
 		UserID:      userID,
 		DisplayName: displayName,
 		Role:        role,
+		Email:       email,
 	}
 }
 

@@ -6,4 +6,5 @@ type Member struct {
 	UserID      string
 	DisplayName string
 	Role        string
+	Email       string
 }
