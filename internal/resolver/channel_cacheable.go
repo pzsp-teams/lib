@@ -119,17 +119,12 @@ func matchesUserRef(um msmodels.AadUserConversationMemberable, userRef string) b
 	if util.Deref(um.GetDisplayName()) == userRef {
 		return true
 	}
-	ad := um.GetAdditionalData()
-	if ad == nil {
-		return false
-	}
-	for _, key := range []string{"userPrincipalName", "mail", "email"} {
-		raw, ok := ad[key]
-		if !ok {
-			continue
-		}
-		if v, ok := raw.(string); ok && strings.EqualFold(v, userRef) {
-			return true
+	email, error := um.GetBackingStore().Get("email")
+	if error == nil {
+		if emailStr, ok := email.(*string); ok {
+			if util.Deref(emailStr) == userRef	{
+				return true
+			}
 		}
 	}
 	return false
