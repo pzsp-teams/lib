@@ -94,7 +94,6 @@ func (res *ChannelResolverCacheable) ResolveUserRefToMemberID(ctx context.Contex
 }
 
 func findMemberID(members []msmodels.ConversationMemberable, ref string) string {
-	id := ""
 	for _, member := range members {
 		if member == nil {
 			continue
@@ -104,11 +103,10 @@ func findMemberID(members []msmodels.ConversationMemberable, ref string) string 
 			continue
 		}
 		if matchesUserRef(um, ref) {
-			id = util.Deref(member.GetId())
-			break
+			return util.Deref(member.GetId())
 		}
 	}
-	return id
+	return ""
 }
 
 func matchesUserRef(um msmodels.AadUserConversationMemberable, userRef string) bool {
