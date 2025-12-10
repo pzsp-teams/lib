@@ -192,7 +192,7 @@ func (s *serviceWithAutoCacheManagement) AddMember(
 	if member != nil {
 		local := *member
 		s.runner.Run(func() {
-			s.addMemberToCache(teamRef, channelRef, userRef, local)
+			s.addMemberToCache(teamRef, channelRef, userRef, &local)
 		})
 	}
 	return member, nil
@@ -265,7 +265,7 @@ func (s *serviceWithAutoCacheManagement) removeChannelFromCache(
 
 func (s *serviceWithAutoCacheManagement) addMemberToCache(
 	teamRef, channelRef, userRef string,
-	member models.Member,
+	member *models.Member,
 ) {
 	if s.cache == nil {
 		return
