@@ -106,12 +106,10 @@ func MapGraphMember(graphMember msmodels.ConversationMemberable) *models.Member 
 		role = roles[0]
 	}
 	email := ""
-	ad := graphMember.GetAdditionalData()
-	if ad != nil {
-		if raw, ok := ad["email"]; ok {
-			if v, ok := raw.(string); ok {
-				email = v
-			}
+	value, error := graphMember.GetBackingStore().Get("email")
+	if error == nil {
+		if emailStr, ok := value.(*string); ok {
+			email = *emailStr
 		}
 	}
 
