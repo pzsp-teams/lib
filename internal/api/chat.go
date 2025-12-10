@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"fmt"
-	"net/http"
 
 	graph "github.com/microsoftgraph/msgraph-sdk-go"
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
@@ -43,12 +42,12 @@ func (c *chatsAPI) Create(ctx context.Context, emails []string, topic string) (m
 	body.SetChatType(&chatType)
 
 	members := make([]msmodels.ConversationMemberable, len(emails))
-	for i, name := range emails {
+	for i, email := range emails {
 		chatMember := msmodels.NewAadUserConversationMember()
 		roles := []string{"owner"}
 		chatMember.SetRoles(roles)
 		data := map[string]any{
-			"user@odata.bind": fmt.Sprintf("https://graph.microsoft.com/v1.0/users('%s')", name),
+			graphUserBindKey: fmt.Sprintf(graphUserBindFmt, email),
 		}
 
 		chatMember.SetAdditionalData(data)
@@ -67,7 +66,7 @@ func (c *chatsAPI) Create(ctx context.Context, emails []string, topic string) (m
 
 	out, ok := resp.(msmodels.Chatable)
 	if !ok {
-		return nil, &sender.RequestError{Code: http.StatusUnprocessableEntity, Message: "Expected Chatable"}
+		return nil, newTypeError("Chatable")
 	}
 	return out, nil
 }
@@ -91,7 +90,7 @@ func (c *chatsAPI) SendMessage(ctx context.Context, chatID, content string) (msm
 
 	out, ok := resp.(msmodels.ChatMessageable)
 	if !ok {
-		return nil, &sender.RequestError{Code: http.StatusUnprocessableEntity, Message: "Expected ChatMessageable"}
+		return nil, newTypeError("ChatMessageable")
 	}
 	return out, nil
 }
@@ -113,7 +112,7 @@ func (c *chatsAPI) ListMyJoined(ctx context.Context) (msmodels.ChatCollectionRes
 	}
 	out, ok := resp.(msmodels.ChatCollectionResponseable)
 	if !ok {
-		return nil, &sender.RequestError{Code: http.StatusUnprocessableEntity, Message: "Expected ChatCollectionResponseable"}
+		return nil, newTypeError("ChatCollectionResponseable")
 	}
 	return out, nil
 }
@@ -130,7 +129,7 @@ func (c *chatsAPI) ListMembers(ctx context.Context, chatID string) (msmodels.Con
 
 	out, ok := resp.(msmodels.ConversationMemberCollectionResponseable)
 	if !ok {
-		return nil, &sender.RequestError{Code: http.StatusUnprocessableEntity, Message: "Expected ConversationMemberCollectionResponseable"}
+		return nil, newTypeError("ConversationMemberCollectionResponseable")
 	}
 	return out, nil
 }
@@ -139,7 +138,7 @@ func (c *chatsAPI) AddMember(ctx context.Context, chatID, email string) (msmodel
 	chatMember := msmodels.NewAadUserConversationMember()
 	chatMember.SetRoles([]string{"owner"})
 	data := map[string]any{
-		"user@odata.bind": fmt.Sprintf("https://graph.microsoft.com/v1.0/users('%s')", email),
+		graphUserBindKey: fmt.Sprintf(graphUserBindFmt, email),
 	}
 	chatMember.SetAdditionalData(data)
 
@@ -154,7 +153,7 @@ func (c *chatsAPI) AddMember(ctx context.Context, chatID, email string) (msmodel
 
 	out, ok := resp.(msmodels.ConversationMemberable)
 	if !ok {
-		return nil, &sender.RequestError{Code: http.StatusUnprocessableEntity, Message: "Expected ConversationMemberable"}
+		return nil, newTypeError("ConversationMemberable")
 	}
 
 	return out, nil

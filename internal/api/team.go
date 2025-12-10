@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -43,7 +42,7 @@ func (t *teamAPI) CreateFromTemplate(ctx context.Context, displayName, descripti
 	first := "General"
 	body.SetFirstChannelName(&first)
 	body.SetAdditionalData(map[string]any{
-		"template@odata.bind": "https://graph.microsoft.com/v1.0/teamsTemplates('standard')",
+		templateBindKey: templateBindValue,
 	})
 	call := func(ctx context.Context) (sender.Response, error) {
 		return t.client.Teams().Post(ctx, body, nil)
@@ -77,7 +76,7 @@ func (t *teamAPI) CreateViaGroup(ctx context.Context, displayName, mailNickname,
 	}
 	group, ok := gresp.(msmodels.Groupable)
 	if !ok || group.GetId() == nil {
-		return "", &sender.RequestError{Code: http.StatusUnprocessableEntity, Message: "Expected Groupable"}
+		return "", newTypeError("Groupable")
 	}
 	groupID := *group.GetId()
 	body := msmodels.NewTeam()
@@ -120,7 +119,7 @@ func (t *teamAPI) Get(ctx context.Context, teamID string) (msmodels.Teamable, *s
 	}
 	out, ok := resp.(msmodels.Teamable)
 	if !ok {
-		return nil, &sender.RequestError{Code: http.StatusUnprocessableEntity, Message: "Expected Teamable"}
+		return nil, newTypeError("Teamable")
 	}
 	return out, nil
 }
@@ -136,7 +135,7 @@ func (t *teamAPI) ListMyJoined(ctx context.Context) (msmodels.TeamCollectionResp
 	}
 	out, ok := resp.(msmodels.TeamCollectionResponseable)
 	if !ok {
-		return nil, &sender.RequestError{Code: http.StatusUnprocessableEntity, Message: "Expected TeamCollectionResponseable"}
+		return nil, newTypeError("TeamCollectionResponseable")
 	}
 	return out, nil
 }
@@ -152,7 +151,7 @@ func (t *teamAPI) Update(ctx context.Context, teamID string, patch *msmodels.Tea
 	}
 	out, ok := resp.(msmodels.Teamable)
 	if !ok {
-		return nil, &sender.RequestError{Code: http.StatusUnprocessableEntity, Message: "Expected Teamable"}
+		return nil, newTypeError("Teamable")
 	}
 	return out, nil
 }
@@ -215,7 +214,7 @@ func (t *teamAPI) RestoreDeleted(ctx context.Context, deletedGroupID string) (ms
 	}
 	out, ok := resp.(msmodels.DirectoryObjectable)
 	if !ok {
-		return nil, &sender.RequestError{Code: http.StatusUnprocessableEntity, Message: fmt.Sprintf("Expected DirectoryObjectable, got %T", resp)}
+		return nil, newTypeError("DirectoryObjectable")
 	}
 	return out, nil
 }
