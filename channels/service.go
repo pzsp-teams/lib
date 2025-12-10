@@ -30,7 +30,7 @@ func (s *service) ListChannels(ctx context.Context, teamRef string) ([]*models.C
 	if err != nil {
 		return nil, err
 	}
-	
+
 	resp, requestErr := s.channelAPI.ListChannels(ctx, teamID)
 	if requestErr != nil {
 		return nil, snd.MapError(requestErr, snd.WithResource(snd.Team, teamRef))
@@ -265,5 +265,3 @@ func memberRole(isOwner bool) string {
 	}
 	return "member"
 }
-
-
