@@ -12,7 +12,7 @@ func TestSyncRunner_RunAndWait(t *testing.T) {
 	r.Run(func() {
 		atomic.AddInt32(&called, 1)
 	})
-	r.Wait() 
+	r.Wait()
 
 	if atomic.LoadInt32(&called) != 1 {
 		t.Fatalf("expected called=1, got %d", called)
@@ -71,6 +71,3 @@ func TestAsyncRunner_RunIsNonBlocking(t *testing.T) {
 		t.Fatalf("expected function to finish after Wait()")
 	}
 }
-
-
-
