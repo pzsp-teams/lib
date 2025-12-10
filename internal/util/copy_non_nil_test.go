@@ -33,7 +33,7 @@ func TestCopyNonNil_Ints(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt 
+		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			got := CopyNonNil(tt.input)
 
