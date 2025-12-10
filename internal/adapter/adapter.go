@@ -106,8 +106,8 @@ func MapGraphMember(graphMember msmodels.ConversationMemberable) *models.Member 
 		role = roles[0]
 	}
 	email := ""
-	value, error := graphMember.GetBackingStore().Get("email")
-	if error == nil {
+	value, err := graphMember.GetBackingStore().Get("email")
+	if err == nil {
 		if emailStr, ok := value.(*string); ok {
 			email = *emailStr
 		}
