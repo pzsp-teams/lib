@@ -7,9 +7,9 @@ import (
 )
 
 const (
-	graphUserBindFmt = "https://graph.microsoft.com/v1.0/users('%s')"
-	graphUserBindKey = "user@odata.bind"
-	templateBindKey = "template@odata.bind"
+	graphUserBindFmt  = "https://graph.microsoft.com/v1.0/users('%s')"
+	graphUserBindKey  = "user@odata.bind"
+	templateBindKey   = "template@odata.bind"
 	templateBindValue = "https://graph.microsoft.com/v1.0/teamsTemplates('standard')"
 )
 
