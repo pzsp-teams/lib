@@ -10,7 +10,7 @@ import (
 	"github.com/pzsp-teams/lib/models"
 )
 
-type serviceWithAutoCacheManagement struct {
+type serviceWithCache struct {
 	svc             Service
 	cache           cacher.Cacher
 	teamResolver    resolver.TeamResolver
@@ -18,13 +18,13 @@ type serviceWithAutoCacheManagement struct {
 	runner          util.TaskRunner
 }
 
-func newServiceWithAutoCacheManagement(
+func newServiceWithCache(
 	svc Service,
 	cache cacher.Cacher,
 	teamResolver resolver.TeamResolver,
 	channelResolver resolver.ChannelResolver,
-) *serviceWithAutoCacheManagement {
-	return &serviceWithAutoCacheManagement{
+) *serviceWithCache {
+	return &serviceWithCache{
 		svc:             svc,
 		cache:           cache,
 		teamResolver:    teamResolver,
@@ -32,23 +32,23 @@ func newServiceWithAutoCacheManagement(
 	}
 }
 
-func NewSyncServiceWithAutoCacheManagement(svc Service, cache cacher.Cacher, teamResolver resolver.TeamResolver, channelResolver resolver.ChannelResolver) Service {
-	newSvc := newServiceWithAutoCacheManagement(svc, cache, teamResolver, channelResolver)
+func NewSyncServiceWithCache(svc Service, cache cacher.Cacher, teamResolver resolver.TeamResolver, channelResolver resolver.ChannelResolver) Service {
+	newSvc := newServiceWithCache(svc, cache, teamResolver, channelResolver)
 	newSvc.runner = &util.SyncRunner{}
 	return newSvc
 }
 
-func NewAsyncServiceWithAutoCacheManagement(svc Service, cache cacher.Cacher, teamResolver resolver.TeamResolver, channelResolver resolver.ChannelResolver) Service {
-	newSvc := newServiceWithAutoCacheManagement(svc, cache, teamResolver, channelResolver)
+func NewAsyncServiceWithCache(svc Service, cache cacher.Cacher, teamResolver resolver.TeamResolver, channelResolver resolver.ChannelResolver) Service {
+	newSvc := newServiceWithCache(svc, cache, teamResolver, channelResolver)
 	newSvc.runner = &util.AsyncRunner{}
 	return newSvc
 }
 
-func (s *serviceWithAutoCacheManagement) Wait() {
+func (s *serviceWithCache) Wait() {
 	s.runner.Wait()
 }
 
-func (s *serviceWithAutoCacheManagement) ListChannels(ctx context.Context, teamRef string) ([]*models.Channel, error) {
+func (s *serviceWithCache) ListChannels(ctx context.Context, teamRef string) ([]*models.Channel, error) {
 	chans, err := s.svc.ListChannels(ctx, teamRef)
 	if err != nil {
 		s.onError()
@@ -61,7 +61,7 @@ func (s *serviceWithAutoCacheManagement) ListChannels(ctx context.Context, teamR
 	return chans, nil
 }
 
-func (s *serviceWithAutoCacheManagement) Get(ctx context.Context, teamRef, channelRef string) (*models.Channel, error) {
+func (s *serviceWithCache) Get(ctx context.Context, teamRef, channelRef string) (*models.Channel, error) {
 	ch, err := s.svc.Get(ctx, teamRef, channelRef)
 	if err != nil {
 		s.onError()
@@ -76,7 +76,7 @@ func (s *serviceWithAutoCacheManagement) Get(ctx context.Context, teamRef, chann
 	return ch, nil
 }
 
-func (s *serviceWithAutoCacheManagement) CreateStandardChannel(ctx context.Context, teamRef, name string) (*models.Channel, error) {
+func (s *serviceWithCache) CreateStandardChannel(ctx context.Context, teamRef, name string) (*models.Channel, error) {
 	ch, err := s.svc.CreateStandardChannel(ctx, teamRef, name)
 	if err != nil {
 		s.onError()
@@ -86,7 +86,7 @@ func (s *serviceWithAutoCacheManagement) CreateStandardChannel(ctx context.Conte
 	return ch, nil
 }
 
-func (s *serviceWithAutoCacheManagement) CreatePrivateChannel(
+func (s *serviceWithCache) CreatePrivateChannel(
 	ctx context.Context,
 	teamRef, name string,
 	memberRefs, ownerRefs []string,
@@ -100,7 +100,7 @@ func (s *serviceWithAutoCacheManagement) CreatePrivateChannel(
 	return ch, nil
 }
 
-func (s *serviceWithAutoCacheManagement) updateCacheAfterCreate(teamRef, name string, ch *models.Channel) {
+func (s *serviceWithCache) updateCacheAfterCreate(teamRef, name string, ch *models.Channel) {
 	s.runner.Run(func() {
 		s.removeChannelFromCache(teamRef, name)
 		if ch == nil {
@@ -111,7 +111,7 @@ func (s *serviceWithAutoCacheManagement) updateCacheAfterCreate(teamRef, name st
 	})
 }
 
-func (s *serviceWithAutoCacheManagement) Delete(ctx context.Context, teamRef, channelRef string) error {
+func (s *serviceWithCache) Delete(ctx context.Context, teamRef, channelRef string) error {
 	if err := s.svc.Delete(ctx, teamRef, channelRef); err != nil {
 		s.onError()
 		return err
@@ -122,7 +122,7 @@ func (s *serviceWithAutoCacheManagement) Delete(ctx context.Context, teamRef, ch
 	return nil
 }
 
-func (s *serviceWithAutoCacheManagement) SendMessage(
+func (s *serviceWithCache) SendMessage(
 	ctx context.Context,
 	teamRef, channelRef string,
 	body models.MessageBody,
@@ -132,7 +132,7 @@ func (s *serviceWithAutoCacheManagement) SendMessage(
 	}, s)
 }
 
-func (s *serviceWithAutoCacheManagement) ListMessages(
+func (s *serviceWithCache) ListMessages(
 	ctx context.Context,
 	teamRef, channelRef string,
 	opts *models.ListMessagesOptions,
@@ -142,7 +142,7 @@ func (s *serviceWithAutoCacheManagement) ListMessages(
 	}, s)
 }
 
-func (s *serviceWithAutoCacheManagement) GetMessage(
+func (s *serviceWithCache) GetMessage(
 	ctx context.Context,
 	teamRef, channelRef, messageID string,
 ) (*models.Message, error) {
@@ -151,7 +151,7 @@ func (s *serviceWithAutoCacheManagement) GetMessage(
 	}, s)
 }
 
-func (s *serviceWithAutoCacheManagement) ListReplies(
+func (s *serviceWithCache) ListReplies(
 	ctx context.Context,
 	teamRef, channelRef, messageID string,
 	top *int32,
@@ -161,7 +161,7 @@ func (s *serviceWithAutoCacheManagement) ListReplies(
 	}, s)
 }
 
-func (s *serviceWithAutoCacheManagement) GetReply(
+func (s *serviceWithCache) GetReply(
 	ctx context.Context,
 	teamRef, channelRef, messageID, replyID string,
 ) (*models.Message, error) {
@@ -170,7 +170,7 @@ func (s *serviceWithAutoCacheManagement) GetReply(
 	}, s)
 }
 
-func (s *serviceWithAutoCacheManagement) ListMembers(
+func (s *serviceWithCache) ListMembers(
 	ctx context.Context,
 	teamRef, channelRef string,
 ) ([]*models.Member, error) {
@@ -179,7 +179,7 @@ func (s *serviceWithAutoCacheManagement) ListMembers(
 	}, s)
 }
 
-func (s *serviceWithAutoCacheManagement) AddMember(
+func (s *serviceWithCache) AddMember(
 	ctx context.Context,
 	teamRef, channelRef, userRef string,
 	isOwner bool,
@@ -198,7 +198,7 @@ func (s *serviceWithAutoCacheManagement) AddMember(
 	return member, nil
 }
 
-func (s *serviceWithAutoCacheManagement) UpdateMemberRole(
+func (s *serviceWithCache) UpdateMemberRole(
 	ctx context.Context,
 	teamRef, channelRef, userRef string,
 	isOwner bool,
@@ -208,7 +208,7 @@ func (s *serviceWithAutoCacheManagement) UpdateMemberRole(
 	}, s)
 }
 
-func (s *serviceWithAutoCacheManagement) RemoveMember(
+func (s *serviceWithCache) RemoveMember(
 	ctx context.Context,
 	teamRef, channelRef, userRef string,
 ) error {
@@ -222,7 +222,7 @@ func (s *serviceWithAutoCacheManagement) RemoveMember(
 	return nil
 }
 
-func (s *serviceWithAutoCacheManagement) addChannelsToCache(
+func (s *serviceWithCache) addChannelsToCache(
 	teamRef string,
 	chans ...models.Channel,
 ) {
@@ -244,7 +244,7 @@ func (s *serviceWithAutoCacheManagement) addChannelsToCache(
 	}
 }
 
-func (s *serviceWithAutoCacheManagement) removeChannelFromCache(
+func (s *serviceWithCache) removeChannelFromCache(
 	teamRef, channelRef string,
 ) {
 	if s.cache == nil {
@@ -263,7 +263,7 @@ func (s *serviceWithAutoCacheManagement) removeChannelFromCache(
 	_ = s.cache.Invalidate(key)
 }
 
-func (s *serviceWithAutoCacheManagement) addMemberToCache(
+func (s *serviceWithCache) addMemberToCache(
 	teamRef, channelRef, userRef string,
 	member *models.Member,
 ) {
@@ -289,7 +289,7 @@ func (s *serviceWithAutoCacheManagement) addMemberToCache(
 	_ = s.cache.Set(key, member.ID)
 }
 
-func (s *serviceWithAutoCacheManagement) invalidateMemberCache(
+func (s *serviceWithCache) invalidateMemberCache(
 	teamRef, channelRef, userRef string,
 ) {
 	if s.cache == nil {
@@ -314,7 +314,7 @@ func (s *serviceWithAutoCacheManagement) invalidateMemberCache(
 	_ = s.cache.Invalidate(key)
 }
 
-func (s *serviceWithAutoCacheManagement) onError() {
+func (s *serviceWithCache) onError() {
 	if s.cache == nil {
 		return
 	}
@@ -324,7 +324,7 @@ func (s *serviceWithAutoCacheManagement) onError() {
 }
 
 func withErrorClear[T any](
-	fn func() (T, error), s *serviceWithAutoCacheManagement,
+	fn func() (T, error), s *serviceWithCache,
 ) (T, error) {
 	res, err := fn()
 	if err != nil {
