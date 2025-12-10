@@ -46,8 +46,7 @@ func (s *service) ListMyJoined(ctx context.Context) ([]*models.Team, error) {
 	if requestErr != nil {
 		return nil, snd.MapError(requestErr)
 	}
-	teams := util.MapSlices(resp.GetValue(), adapter.MapGraphTeam)
-	return teams, nil
+	return util.MapSlices(resp.GetValue(), adapter.MapGraphTeam), nil
 }
 
 // Update will be used later

@@ -35,8 +35,7 @@ func (s *service) ListChannels(ctx context.Context, teamRef string) ([]*models.C
 	if requestErr != nil {
 		return nil, snd.MapError(requestErr, snd.WithResource(snd.Team, teamRef))
 	}
-	chans := util.MapSlices(resp.GetValue(), adapter.MapGraphChannel)
-	return chans, nil
+	return util.MapSlices(resp.GetValue(), adapter.MapGraphChannel), nil
 }
 
 // Get will be used later
@@ -134,8 +133,7 @@ func (s *service) ListMessages(ctx context.Context, teamRef, channelRef string, 
 	if requestErr != nil {
 		return nil, snd.MapError(requestErr, snd.WithResource(snd.Team, teamRef), snd.WithResource(snd.Channel, channelRef))
 	}
-	messages := util.MapSlices(resp.GetValue(), adapter.MapGraphMessage)
-	return messages, nil
+	return util.MapSlices(resp.GetValue(), adapter.MapGraphMessage), nil
 }
 
 // GetMessage retrieves a specific message from a channel
@@ -164,8 +162,7 @@ func (s *service) ListReplies(ctx context.Context, teamRef, channelRef, messageI
 	if requestErr != nil {
 		return nil, snd.MapError(requestErr, snd.WithResource(snd.Team, teamRef), snd.WithResource(snd.Channel, channelRef), snd.WithResource(snd.Message, messageID))
 	}
-	replies := util.MapSlices(resp.GetValue(), adapter.MapGraphMessage)
-	return replies, nil
+	return util.MapSlices(resp.GetValue(), adapter.MapGraphMessage), nil
 }
 
 // GetReply retrieves a specific reply to a message
@@ -193,8 +190,7 @@ func (s *service) ListMembers(ctx context.Context, teamRef, channelRef string) (
 	if requestErr != nil {
 		return nil, snd.MapError(requestErr, snd.WithResource(snd.Team, teamRef), snd.WithResource(snd.Channel, channelRef))
 	}
-	members := util.MapSlices(resp.GetValue(), adapter.MapGraphMember)
-	return members, nil
+	return util.MapSlices(resp.GetValue(), adapter.MapGraphMember), nil
 }
 
 func (s *service) AddMember(ctx context.Context, teamRef, channelRef, userRef string, isOwner bool) (*models.Member, error) {
