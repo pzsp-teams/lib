@@ -187,7 +187,7 @@ func newConversationMember(id, userID, displayName string, roles []string) msmod
 	return m
 }
 
-func TestServiceWithAutoCacheManagement_ListChannels_WarmsCache(t *testing.T) {
+func TestServiceWithCache_ListChannels_WarmsCache(t *testing.T) {
 	ctx := context.Background()
 
 	fc := &fakeCacher{}
@@ -217,7 +217,7 @@ func TestServiceWithAutoCacheManagement_ListChannels_WarmsCache(t *testing.T) {
 		teamResolver:    fr,
 		channelResolver: cr,
 	}
-	decor := &serviceWithAutoCacheManagement{
+	decor := &serviceWithCache{
 		svc:             svc,
 		cache:           fc,
 		teamResolver:    fr,
@@ -257,7 +257,7 @@ func TestServiceWithAutoCacheManagement_ListChannels_WarmsCache(t *testing.T) {
 	}
 }
 
-func TestServiceWithAutoCacheManagement_Get_WarmsCache(t *testing.T) {
+func TestServiceWithCache_Get_WarmsCache(t *testing.T) {
 	ctx := context.Background()
 
 	fc := &fakeCacher{}
@@ -297,7 +297,7 @@ func TestServiceWithAutoCacheManagement_Get_WarmsCache(t *testing.T) {
 		teamResolver:    fr,
 		channelResolver: cr,
 	}
-	decor := &serviceWithAutoCacheManagement{
+	decor := &serviceWithCache{
 		svc:             svc,
 		cache:           fc,
 		teamResolver:    fr,
@@ -325,7 +325,7 @@ func TestServiceWithAutoCacheManagement_Get_WarmsCache(t *testing.T) {
 	}
 }
 
-func TestServiceWithAutoCacheManagement_CreateStandardChannel_InvalidatesAndCaches(t *testing.T) {
+func TestServiceWithCache_CreateStandardChannel_InvalidatesAndCaches(t *testing.T) {
 	ctx := context.Background()
 
 	fc := &fakeCacher{}
@@ -352,7 +352,7 @@ func TestServiceWithAutoCacheManagement_CreateStandardChannel_InvalidatesAndCach
 		teamResolver:    fr,
 		channelResolver: cr,
 	}
-	decor := &serviceWithAutoCacheManagement{
+	decor := &serviceWithCache{
 		svc:             svc,
 		cache:           fc,
 		teamResolver:    fr,
@@ -388,7 +388,7 @@ func TestServiceWithAutoCacheManagement_CreateStandardChannel_InvalidatesAndCach
 	}
 }
 
-func TestServiceWithAutoCacheManagement_Delete_InvalidatesCache(t *testing.T) {
+func TestServiceWithCache_Delete_InvalidatesCache(t *testing.T) {
 	ctx := context.Background()
 
 	fc := &fakeCacher{}
@@ -428,7 +428,7 @@ func TestServiceWithAutoCacheManagement_Delete_InvalidatesCache(t *testing.T) {
 		teamResolver:    fr,
 		channelResolver: cr,
 	}
-	decor := &serviceWithAutoCacheManagement{
+	decor := &serviceWithCache{
 		svc:             svc,
 		cache:           fc,
 		teamResolver:    fr,
@@ -452,7 +452,7 @@ func TestServiceWithAutoCacheManagement_Delete_InvalidatesCache(t *testing.T) {
 	}
 }
 
-func TestServiceWithAutoCacheManagement_AddMember_CachesMemberMapping(t *testing.T) {
+func TestServiceWithCache_AddMember_CachesMemberMapping(t *testing.T) {
 	ctx := context.Background()
 
 	fc := &fakeCacher{}
@@ -495,7 +495,7 @@ func TestServiceWithAutoCacheManagement_AddMember_CachesMemberMapping(t *testing
 		teamResolver:    fr,
 		channelResolver: cr,
 	}
-	decor := &serviceWithAutoCacheManagement{
+	decor := &serviceWithCache{
 		svc:             svc,
 		cache:           fc,
 		teamResolver:    fr,
@@ -523,7 +523,7 @@ func TestServiceWithAutoCacheManagement_AddMember_CachesMemberMapping(t *testing
 	}
 }
 
-func TestServiceWithAutoCacheManagement_RemoveMember_InvalidatesMemberMapping(t *testing.T) {
+func TestServiceWithCache_RemoveMember_InvalidatesMemberMapping(t *testing.T) {
 	ctx := context.Background()
 
 	fc := &fakeCacher{}
@@ -554,7 +554,7 @@ func TestServiceWithAutoCacheManagement_RemoveMember_InvalidatesMemberMapping(t 
 		teamResolver:    fr,
 		channelResolver: cr,
 	}
-	decor := &serviceWithAutoCacheManagement{
+	decor := &serviceWithCache{
 		svc:             svc,
 		cache:           fc,
 		teamResolver:    fr,

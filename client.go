@@ -54,8 +54,8 @@ func NewClient(ctx context.Context, authConfig *AuthConfig, senderConfig *Sender
 	chatSvc := chats.NewService(chatAPI)
 	waitFns := make([]func(), 0, 2)
 	if cacheEnabled {
-		teamSvc = teams.NewAsyncServiceWithAutoCacheManagement(teamSvc, cache)
-		channelSvc = channels.NewAsyncServiceWithAutoCacheManagement(channelSvc, cache, teamResolver, channelResolver)
+		teamSvc = teams.NewAsyncServiceWithCache(teamSvc, cache)
+		channelSvc = channels.NewAsyncServiceWithCache(channelSvc, cache, teamResolver, channelResolver)
 		if w, ok := channelSvc.(interface{ Wait() }); ok {
 			waitFns = append(waitFns, w.Wait)
 		}
