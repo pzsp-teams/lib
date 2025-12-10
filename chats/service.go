@@ -54,8 +54,7 @@ func (s *Service) ListMyJoined(ctx context.Context) ([]*models.Chat, error) {
 	if requestErr != nil {
 		return nil, snd.MapError(requestErr)
 	}
-	chats := util.MapSlices(resp.GetValue(), adapter.MapGraphChat)
-	return chats, nil
+	return util.MapSlices(resp.GetValue(), adapter.MapGraphChat), nil
 }
 
 func (s *Service) ListMembers(ctx context.Context, chatID string) ([]*models.Member, error) {
@@ -63,8 +62,7 @@ func (s *Service) ListMembers(ctx context.Context, chatID string) ([]*models.Mem
 	if requestErr != nil {
 		return nil, snd.MapError(requestErr, snd.WithResource(snd.Chat, chatID))
 	}
-	members := util.MapSlices(resp.GetValue(), adapter.MapGraphMember)
-	return members, nil
+	return util.MapSlices(resp.GetValue(), adapter.MapGraphMember), nil
 }
 
 func (s *Service) AddMember(ctx context.Context, chatID, email string) (*models.Member, error) {
