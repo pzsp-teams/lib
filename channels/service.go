@@ -8,6 +8,7 @@ import (
 	"github.com/pzsp-teams/lib/internal/api"
 	"github.com/pzsp-teams/lib/internal/resolver"
 	snd "github.com/pzsp-teams/lib/internal/sender"
+	"github.com/pzsp-teams/lib/internal/util"
 	"github.com/pzsp-teams/lib/models"
 )
 
@@ -29,17 +30,12 @@ func (s *service) ListChannels(ctx context.Context, teamRef string) ([]*models.C
 	if err != nil {
 		return nil, err
 	}
-
+	
 	resp, requestErr := s.channelAPI.ListChannels(ctx, teamID)
 	if requestErr != nil {
 		return nil, snd.MapError(requestErr, snd.WithResource(snd.Team, teamRef))
 	}
-
-	chans := make([]*models.Channel, 0, len(resp.GetValue()))
-	for _, ch := range resp.GetValue() {
-		chans = append(chans, adapter.MapGraphChannel(ch))
-	}
-
+	chans := util.MapSlices(resp.GetValue(), adapter.MapGraphChannel)
 	return chans, nil
 }
 
@@ -130,22 +126,15 @@ func (s *service) ListMessages(ctx context.Context, teamRef, channelRef string, 
 	if err != nil {
 		return nil, err
 	}
-
 	var top *int32
 	if opts != nil && opts.Top != nil {
 		top = opts.Top
 	}
-
 	resp, requestErr := s.channelAPI.ListMessages(ctx, teamID, channelID, top)
 	if requestErr != nil {
 		return nil, snd.MapError(requestErr, snd.WithResource(snd.Team, teamRef), snd.WithResource(snd.Channel, channelRef))
 	}
-
-	messages := make([]*models.Message, 0, len(resp.GetValue()))
-	for _, msg := range resp.GetValue() {
-		messages = append(messages, adapter.MapGraphMessage(msg))
-	}
-
+	messages := util.MapSlices(resp.GetValue(), adapter.MapGraphMessage)
 	return messages, nil
 }
 
@@ -175,12 +164,7 @@ func (s *service) ListReplies(ctx context.Context, teamRef, channelRef, messageI
 	if requestErr != nil {
 		return nil, snd.MapError(requestErr, snd.WithResource(snd.Team, teamRef), snd.WithResource(snd.Channel, channelRef), snd.WithResource(snd.Message, messageID))
 	}
-
-	replies := make([]*models.Message, 0, len(resp.GetValue()))
-	for _, reply := range resp.GetValue() {
-		replies = append(replies, adapter.MapGraphMessage(reply))
-	}
-
+	replies := util.MapSlices(resp.GetValue(), adapter.MapGraphMessage)
 	return replies, nil
 }
 
@@ -209,12 +193,7 @@ func (s *service) ListMembers(ctx context.Context, teamRef, channelRef string) (
 	if requestErr != nil {
 		return nil, snd.MapError(requestErr, snd.WithResource(snd.Team, teamRef), snd.WithResource(snd.Channel, channelRef))
 	}
-
-	members := make([]*models.Member, 0, len(resp.GetValue()))
-	for _, member := range resp.GetValue() {
-		members = append(members, adapter.MapGraphMember(member))
-	}
-
+	members := util.MapSlices(resp.GetValue(), adapter.MapGraphMember)
 	return members, nil
 }
 
@@ -223,12 +202,7 @@ func (s *service) AddMember(ctx context.Context, teamRef, channelRef, userRef st
 	if err != nil {
 		return nil, err
 	}
-
-	role := "member"
-	if isOwner {
-		role = "owner"
-	}
-
+	role := memberRole(isOwner)
 	created, requestErr := s.channelAPI.AddMember(ctx, teamID, channelID, userRef, role)
 	if requestErr != nil {
 		return nil, snd.MapError(requestErr, snd.WithResource(snd.Team, teamRef), snd.WithResource(snd.Channel, channelRef), snd.WithResource(snd.User, userRef))
@@ -248,10 +222,7 @@ func (s *service) UpdateMemberRole(ctx context.Context, teamRef, channelRef, use
 		return nil, err
 	}
 
-	role := "member"
-	if isOwner {
-		role = "owner"
-	}
+	role := memberRole(isOwner)
 
 	updated, requestErr := s.channelAPI.UpdateMemberRole(ctx, teamID, channelID, memberID, role)
 	if requestErr != nil {
@@ -291,3 +262,12 @@ func (s *service) resolveTeamAndChannelID(ctx context.Context, teamRef, channelR
 	}
 	return teamID, channelID, nil
 }
+
+func memberRole(isOwner bool) string {
+	if isOwner {
+		return "owner"
+	}
+	return "member"
+}
+
+

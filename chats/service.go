@@ -6,6 +6,7 @@ import (
 	"github.com/pzsp-teams/lib/internal/adapter"
 	"github.com/pzsp-teams/lib/internal/api"
 	snd "github.com/pzsp-teams/lib/internal/sender"
+	"github.com/pzsp-teams/lib/internal/util"
 	"github.com/pzsp-teams/lib/models"
 )
 
@@ -53,12 +54,7 @@ func (s *Service) ListMyJoined(ctx context.Context) ([]*models.Chat, error) {
 	if requestErr != nil {
 		return nil, snd.MapError(requestErr)
 	}
-
-	chats := make([]*models.Chat, len(resp.GetValue()))
-	for i, c := range resp.GetValue() {
-		chats[i] = adapter.MapGraphChat(c)
-	}
-
+	chats := util.MapSlices(resp.GetValue(), adapter.MapGraphChat)
 	return chats, nil
 }
 
@@ -67,14 +63,7 @@ func (s *Service) ListMembers(ctx context.Context, chatID string) ([]*models.Mem
 	if requestErr != nil {
 		return nil, snd.MapError(requestErr, snd.WithResource(snd.Chat, chatID))
 	}
-
-	members := make([]*models.Member, len(resp.GetValue()))
-	for i, m := range resp.GetValue() {
-		if result := adapter.MapGraphMember(m); result != nil {
-			members[i] = result
-		}
-	}
-
+	members := util.MapSlices(resp.GetValue(), adapter.MapGraphMember)
 	return members, nil
 }
 
