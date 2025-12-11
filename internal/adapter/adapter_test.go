@@ -291,6 +291,7 @@ type newMemberParams struct {
 	UserID      *string
 	DisplayName *string
 	Role        *string
+	Email       *string
 }
 
 func newGraphMember(params *newMemberParams) msmodels.ConversationMemberable {
@@ -326,13 +327,13 @@ func TestMapGraphMember(t *testing.T) {
 		},
 		{
 			"Complete member",
-			&newMemberParams{ptr("member-id"), ptr("user-id"), ptr("Jane Smith"), ptr("owner")},
-			&models.Member{ID: "member-id", UserID: "user-id", DisplayName: "Jane Smith", Role: "owner"},
+			&newMemberParams{ptr("member-id"), ptr("user-id"), ptr("Jane Smith"), ptr("owner"), ptr("jane.smith@example.com")},
+			&models.Member{ID: "member-id", UserID: "user-id", DisplayName: "Jane Smith", Role: "owner", Email: "jane.smith@example.com"},
 		},
 		{
 			"Missing fields",
 			&newMemberParams{},
-			&models.Member{ID: "", UserID: "", DisplayName: "", Role: ""},
+			&models.Member{ID: "", UserID: "", DisplayName: "", Role: "", Email: ""},
 		},
 	}
 
