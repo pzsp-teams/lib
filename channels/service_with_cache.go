@@ -174,9 +174,16 @@ func (s *serviceWithCache) ListMembers(
 	ctx context.Context,
 	teamRef, channelRef string,
 ) ([]*models.Member, error) {
-	return withErrorClear(func() ([]*models.Member, error) {
-		return s.svc.ListMembers(ctx, teamRef, channelRef)
-	}, s)
+	members, err := s.svc.ListMembers(ctx, teamRef, channelRef)
+	if err != nil {
+		s.onError()
+		return nil, err
+	}
+	local := util.CopyNonNil(members)
+	s.runner.Run(func() {
+		s.addMembersToCache(teamRef, channelRef, local...)
+	})
+	return members, nil
 }
 
 func (s *serviceWithCache) AddMember(
@@ -192,7 +199,7 @@ func (s *serviceWithCache) AddMember(
 	if member != nil {
 		local := *member
 		s.runner.Run(func() {
-			s.addMemberToCache(teamRef, channelRef, userRef, &local)
+			s.addMembersToCache(teamRef, channelRef, local)
 		})
 	}
 	return member, nil
@@ -222,10 +229,7 @@ func (s *serviceWithCache) RemoveMember(
 	return nil
 }
 
-func (s *serviceWithCache) addChannelsToCache(
-	teamRef string,
-	chans ...models.Channel,
-) {
+func (s *serviceWithCache) addChannelsToCache(teamRef string, chans ...models.Channel) {
 	if s.cache == nil || len(chans) == 0 {
 		return
 	}
@@ -244,9 +248,7 @@ func (s *serviceWithCache) addChannelsToCache(
 	}
 }
 
-func (s *serviceWithCache) removeChannelFromCache(
-	teamRef, channelRef string,
-) {
+func (s *serviceWithCache) removeChannelFromCache(teamRef, channelRef string) {
 	if s.cache == nil {
 		return
 	}
@@ -263,35 +265,30 @@ func (s *serviceWithCache) removeChannelFromCache(
 	_ = s.cache.Invalidate(key)
 }
 
-func (s *serviceWithCache) addMemberToCache(
-	teamRef, channelRef, userRef string,
-	member *models.Member,
-) {
+func (s *serviceWithCache) addMembersToCache(teamRef, channelRef string, members ...models.Member) {
 	if s.cache == nil {
 		return
 	}
-	ref := strings.TrimSpace(userRef)
-	if ref == "" {
-		return
+	for _, member := range members {
+		ref := strings.TrimSpace(strings.TrimSpace(member.Email))
+		if ref == "" {
+			continue
+		}
+		ctx := context.Background()
+		teamID, err := s.teamResolver.ResolveTeamRefToID(ctx, teamRef)
+		if err != nil {
+			continue
+		}
+		channelID, err := s.channelResolver.ResolveChannelRefToID(ctx, teamID, channelRef)
+		if err != nil {
+			continue
+		}
+		key := cacher.NewMemberKey(ref, teamID, channelID, nil)
+		_ = s.cache.Set(key, member.ID)
 	}
-
-	ctx := context.Background()
-	teamID, err := s.teamResolver.ResolveTeamRefToID(ctx, teamRef)
-	if err != nil {
-		return
-	}
-	channelID, err := s.channelResolver.ResolveChannelRefToID(ctx, teamID, channelRef)
-	if err != nil {
-		return
-	}
-
-	key := cacher.NewMemberKey(ref, teamID, channelID, nil)
-	_ = s.cache.Set(key, member.ID)
 }
 
-func (s *serviceWithCache) invalidateMemberCache(
-	teamRef, channelRef, userRef string,
-) {
+func (s *serviceWithCache) invalidateMemberCache(teamRef, channelRef, userRef string) {
 	if s.cache == nil {
 		return
 	}
