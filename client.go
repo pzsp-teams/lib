@@ -33,6 +33,11 @@ func NewClient(ctx context.Context, authConfig *AuthConfig, senderConfig *Sender
 		return nil, fmt.Errorf("creating graph client: %w", err)
 	}
 
+	return NewClientFromGraphClient(graphClient, senderConfig)
+}
+
+// NewClientFromGraphClient will be used later
+func NewClientFromGraphClient(graphClient *graph.GraphServiceClient, senderConfig *SenderConfig) (*Client, error) {
 	techParams := senderConfig.toTechParams()
 
 	teamsAPI := api.NewTeams(graphClient, techParams)
