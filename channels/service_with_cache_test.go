@@ -453,75 +453,81 @@ func TestServiceWithCache_Delete_InvalidatesCache(t *testing.T) {
 }
 
 func TestServiceWithCache_AddMember_CachesMemberMapping(t *testing.T) {
-	ctx := context.Background()
+    ctx := context.Background()
 
-	fc := &fakeCacher{}
-	fr := &fakeTeamResolver{
-		resolveFunc: func(ctx context.Context, teamRef string) (string, error) {
-			if teamRef != "team-ref" {
-				t.Errorf("expected teamRef team-ref, got %q", teamRef)
-			}
-			return "team-id-1", nil
-		},
-	}
-	cr := &fakeChannelResolver{
-		resolveChannelFunc: func(ctx context.Context, teamID, channelRef string) (string, error) {
-			if teamID != "team-id-1" {
-				t.Errorf("expected teamID team-id-1, got %q", teamID)
-			}
-			if channelRef != "channel-ref" {
-				t.Errorf("expected channelRef channel-ref, got %q", channelRef)
-			}
-			return "channel-id-1", nil
-		},
-	}
-	fapi := &fakeChannelAPI{
-		addMemberFunc: func(ctx context.Context, teamID, channelID, userRef, role string) (msmodels.ConversationMemberable, *snd.RequestError) {
-			if teamID != "team-id-1" {
-				t.Errorf("expected teamID team-id-1, got %q", teamID)
-			}
-			if channelID != "channel-id-1" {
-				t.Errorf("expected channelID channel-id-1, got %q", channelID)
-			}
-			if strings.TrimSpace(userRef) != "user@example.com" {
-				t.Errorf("expected userRef user@example.com, got %q", userRef)
-			}
-			return newConversationMember("member-id-1", "user-id-42", "User Name", []string{"member"}), nil
-		},
-	}
+    fc := &fakeCacher{}
+    fr := &fakeTeamResolver{
+        resolveFunc: func(ctx context.Context, teamRef string) (string, error) {
+            if teamRef != "team-ref" {
+                t.Errorf("expected teamRef team-ref, got %q", teamRef)
+            }
+            return "team-id-1", nil
+        },
+    }
+    cr := &fakeChannelResolver{
+        resolveChannelFunc: func(ctx context.Context, teamID, channelRef string) (string, error) {
+            if teamID != "team-id-1" {
+                t.Errorf("expected teamID team-id-1, got %q", teamID)
+            }
+            if channelRef != "channel-ref" {
+                t.Errorf("expected channelRef channel-ref, got %q", channelRef)
+            }
+            return "channel-id-1", nil
+        },
+    }
+    fapi := &fakeChannelAPI{
+        addMemberFunc: func(ctx context.Context, teamID, channelID, userRef, role string) (msmodels.ConversationMemberable, *snd.RequestError) {
+            if teamID != "team-id-1" {
+                t.Errorf("expected teamID team-id-1, got %q", teamID)
+            }
+            if channelID != "channel-id-1" {
+                t.Errorf("expected channelID channel-id-1, got %q", channelID)
+            }
+            if strings.TrimSpace(userRef) != "user@example.com" {
+                t.Errorf("expected userRef user@example.com, got %q", userRef)
+            }
 
-	svc := &service{
-		channelAPI:      fapi,
-		teamResolver:    fr,
-		channelResolver: cr,
-	}
-	decor := &serviceWithCache{
-		svc:             svc,
-		cache:           fc,
-		teamResolver:    fr,
-		channelResolver: cr,
-		runner:          &util.SyncRunner{},
-	}
+            m := newConversationMember("member-id-1", "user-id-42", "User Name", []string{"member"})
+            email := strings.TrimSpace(userRef)
+            _ = m.GetBackingStore().Set("email", &email)
 
-	member, err := decor.AddMember(ctx, "team-ref", "channel-ref", "  user@example.com  ", false)
-	if err != nil {
-		t.Fatalf("unexpected error from AddMember: %v", err)
-	}
-	if member == nil || member.ID == "" {
-		t.Fatalf("expected non-nil member with ID, got %#v", member)
-	}
+            return m, nil
+        },
+    }
 
-	if fc.setCalls != 1 {
-		t.Fatalf("expected 1 Set call, got %d", fc.setCalls)
-	}
-	expectedKey := cacher.NewMemberKey("user@example.com", "team-id-1", "channel-id-1", nil)
-	if fc.setKeys[0] != expectedKey {
-		t.Errorf("expected member cache key %q, got %q", expectedKey, fc.setKeys[0])
-	}
-	if v, ok := fc.setValues[0].(string); !ok || v != member.ID {
-		t.Errorf("expected cached value %q, got %#v", member.ID, fc.setValues[0])
-	}
+    svc := &service{
+        channelAPI:      fapi,
+        teamResolver:    fr,
+        channelResolver: cr,
+    }
+    decor := &serviceWithCache{
+        svc:             svc,
+        cache:           fc,
+        teamResolver:    fr,
+        channelResolver: cr,
+        runner:          &util.SyncRunner{},
+    }
+
+    member, err := decor.AddMember(ctx, "team-ref", "channel-ref", "  user@example.com  ", false)
+    if err != nil {
+        t.Fatalf("unexpected error from AddMember: %v", err)
+    }
+    if member == nil || member.ID == "" {
+        t.Fatalf("expected non-nil member with ID, got %#v", member)
+    }
+
+    if fc.setCalls != 1 {
+        t.Fatalf("expected 1 Set call, got %d", fc.setCalls)
+    }
+    expectedKey := cacher.NewMemberKey("user@example.com", "team-id-1", "channel-id-1", nil)
+    if fc.setKeys[0] != expectedKey {
+        t.Errorf("expected member cache key %q, got %q", expectedKey, fc.setKeys[0])
+    }
+    if v, ok := fc.setValues[0].(string); !ok || v != member.ID {
+        t.Errorf("expected cached value %q, got %#v", member.ID, fc.setValues[0])
+    }
 }
+
 
 func TestServiceWithCache_RemoveMember_InvalidatesMemberMapping(t *testing.T) {
 	ctx := context.Background()
