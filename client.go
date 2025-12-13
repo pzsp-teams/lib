@@ -34,6 +34,11 @@ func NewClient(ctx context.Context, authConfig *AuthConfig, senderConfig *Sender
 	if err != nil {
 		return nil, fmt.Errorf("creating graph client: %w", err)
 	}
+
+	return NewClientFromGraphClient(graphClient, senderConfig, cacheEnabled, cachePath)
+}
+
+func NewClientFromGraphClient(graphClient *graph.GraphServiceClient, senderConfig *SenderConfig, cacheEnabled bool, cachePath *string) (*Client, error) {
 	var cache cacher.Cacher
 	if cacheEnabled && cachePath != nil {
 		cache = cacher.NewJSONFileCacher(*cachePath)
