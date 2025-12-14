@@ -1,0 +1,24 @@
+name: Notify Python Package Update
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  trigger-python-repo:
+    name: Trigger Python Repo CI
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch Event to Python Repo
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.PAT_TOKEN }}
+          repository: pzsp-teams/lib-python
+          event-type: verify-new-go-lib-version
+          client-payload: '{"go_ref": "${{ github.sha }}"}'
+      - name: Confirm Dispatch
+        run: echo "Dispatched event to pzsp-teams/lib-python repository."

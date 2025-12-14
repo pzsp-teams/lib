@@ -87,16 +87,3 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
         continue-on-error: true
 
-  trigger-python-repo:
-    name: Trigger Python Repo CI
-    runs-on: ubuntu-latest
-    needs: [test, vuln-check]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    steps:
-      - name: Dispatch Event to Python Repo
-        uses: peter-evans/repository-dispatch@v3
-        with:
-          token: ${{ secrets.PAT_TOKEN }}
-          repository: pzsp-teams/lib-python
-          event-type: verify-new-go-lib-version
-          client-payload: '{"go_ref": "${{ github.sha }}"}'
