@@ -12,25 +12,25 @@ import (
 )
 
 type OneOnOneChatAPI interface {
-	CreateOneOnOneChat(ctx context.Context, ownerRef, recipientRef string) (msmodels.Chatable, *sender.RequestError)
+	CreateOneOnOneChat(ctx context.Context, recipientRef string) (msmodels.Chatable, *sender.RequestError)
 }
 
 type GroupChatAPI interface {
-	CreateGroupChat(ctx context.Context, ownerRef string, recipientRefs []string, topic string) (msmodels.Chatable, *sender.RequestError)
+	CreateGroupChat(ctx context.Context, recipientRefs []string, topic string, includeMe bool) (msmodels.Chatable, *sender.RequestError)
 	AddMemberToGroupChat(ctx context.Context, chatID, userRef string) (msmodels.ConversationMemberable, *sender.RequestError)
 	RemoveMemberFromGroupChat(ctx context.Context, chatID, userRef string) *sender.RequestError
 	ListGroupChatMembers(ctx context.Context, chatID string) (msmodels.ConversationMemberCollectionResponseable, *sender.RequestError)
 	UpdateGroupChatTopic(ctx context.Context, chatID, topic string) (msmodels.Chatable, *sender.RequestError)
 }
 
-type ChatsAPI interface {
+type ChatAPI interface {
 	OneOnOneChatAPI
 	GroupChatAPI
 	SendMessage(ctx context.Context, chatID, content, contentType string) (msmodels.ChatMessageable, *sender.RequestError)
 	DeleteMessage(ctx context.Context, chatID, messageID string) *sender.RequestError
 	GetMessage(ctx context.Context, chatID, messageID string) (msmodels.ChatMessageable, *sender.RequestError)
 	ListMyJoined(ctx context.Context) (msmodels.ChatCollectionResponseable, *sender.RequestError)
-	ListAllMessages(ctx context.Context, userID string, startTime, endTime *time.Time, top *int32) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError)
+	ListAllMessages(ctx context.Context, startTime, endTime *time.Time, top *int32) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError)
 	ListPinnedMessages(ctx context.Context, chatID string) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError)
 	PinMessage(ctx context.Context, chatID, messageID string) (msmodels.PinnedChatMessageInfoable, *sender.RequestError)
 	UnpinMessage(ctx context.Context, chatID, messageID string) *sender.RequestError
@@ -41,17 +41,22 @@ type chatsAPI struct {
 	techParams sender.RequestTechParams
 }
 
-func NewChat(client *graph.GraphServiceClient, techParams sender.RequestTechParams) ChatsAPI {
+func NewChat(client *graph.GraphServiceClient, techParams sender.RequestTechParams) ChatAPI {
 	return &chatsAPI{client, techParams}
 }
 
-func (c *chatsAPI) CreateOneOnOneChat(ctx context.Context, ownerRef, recipientRef string) (msmodels.Chatable, *sender.RequestError) {
+func (c *chatsAPI) CreateOneOnOneChat(ctx context.Context, userRef string) (msmodels.Chatable, *sender.RequestError) {
 	body := msmodels.NewChat()
 	chatType := msmodels.ONEONONE_CHATTYPE
 	body.SetChatType(&chatType)
 
-	userRefs := []string{ownerRef, recipientRef}
-	members := make([]msmodels.ConversationMemberable, len(userRefs))
+	me, err := getMe(ctx, c.client, c.techParams)
+	if err != nil {
+		return nil, err
+	}
+
+	userRefs := []string{*me.GetId(), userRef}
+	members := make([]msmodels.ConversationMemberable, 0, len(userRefs))
 	addToMembers(&members, userRefs, "owner")
 	body.SetMembers(members)
 
@@ -71,13 +76,20 @@ func (c *chatsAPI) CreateOneOnOneChat(ctx context.Context, ownerRef, recipientRe
 	return out, nil
 }
 
-func (c *chatsAPI) CreateGroupChat(ctx context.Context, ownerRef string, recipientRefs []string, topic string) (msmodels.Chatable, *sender.RequestError) {
+func (c *chatsAPI) CreateGroupChat(ctx context.Context, userRefs []string, topic string, includeMe bool) (msmodels.Chatable, *sender.RequestError) {
 	body := msmodels.NewChat()
 	chatType := msmodels.GROUP_CHATTYPE
 	body.SetChatType(&chatType)
 	body.SetTopic(&topic)
 
-	userRefs := append(recipientRefs, ownerRef)
+	if includeMe {
+		me, err := getMe(ctx, c.client, c.techParams)
+		if err != nil {
+			return nil, err
+		}
+		userRefs = append(userRefs, *me.GetId())
+	}
+
 	members := make([]msmodels.ConversationMemberable, len(userRefs))
 	addToMembers(&members, userRefs, "owner")
 	body.SetMembers(members)
@@ -124,8 +136,7 @@ func (c *chatsAPI) AddMemberToGroupChat(ctx context.Context, chatID, userRef str
 
 func (c *chatsAPI) RemoveMemberFromGroupChat(ctx context.Context, chatID, userRef string) *sender.RequestError {
 	call := func(ctx context.Context) (sender.Response, error) {
-		return nil, c.client.
-			Chats().
+		return nil, c.client.Chats().
 			ByChatId(chatID).
 			Members().
 			ByConversationMemberId(userRef).
@@ -134,7 +145,6 @@ func (c *chatsAPI) RemoveMemberFromGroupChat(ctx context.Context, chatID, userRe
 
 	_, err := sender.SendRequest(ctx, call, c.techParams)
 	return err
-
 }
 
 func (c *chatsAPI) ListGroupChatMembers(ctx context.Context, chatID string) (msmodels.ConversationMemberCollectionResponseable, *sender.RequestError) {
@@ -214,7 +224,12 @@ func (c *chatsAPI) DeleteMessage(ctx context.Context, chatID, messageID string) 
 
 func (c *chatsAPI) GetMessage(ctx context.Context, chatID, messageID string) (msmodels.ChatMessageable, *sender.RequestError) {
 	call := func(ctx context.Context) (sender.Response, error) {
-		return c.client.Chats().ByChatId(chatID).Messages().ByChatMessageId(messageID).Get(ctx, nil)
+		return c.client.
+			Chats().
+			ByChatId(chatID).
+			Messages().
+			ByChatMessageId(messageID).
+			Get(ctx, nil)
 	}
 
 	resp, err := sender.SendRequest(ctx, call, c.techParams)
@@ -239,7 +254,10 @@ func (c *chatsAPI) ListMyJoined(ctx context.Context) (msmodels.ChatCollectionRes
 		QueryParameters: requestParameters,
 	}
 	call := func(ctx context.Context) (sender.Response, error) {
-		return c.client.Me().Chats().Get(ctx, configuration)
+		return c.client.
+			Me().
+			Chats().
+			Get(ctx, configuration)
 	}
 	resp, err := sender.SendRequest(ctx, call, c.techParams)
 	if err != nil {
@@ -252,7 +270,7 @@ func (c *chatsAPI) ListMyJoined(ctx context.Context) (msmodels.ChatCollectionRes
 	return out, nil
 }
 
-func (c *chatsAPI) ListAllMessages(ctx context.Context, userID string, startTime, endTime *time.Time, top *int32) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError) {
+func (c *chatsAPI) ListAllMessages(ctx context.Context, startTime, endTime *time.Time, top *int32) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError) {
 	requestParameters := &graphusers.ItemChatsGetAllMessagesRequestBuilderGetQueryParameters{
 		Top: top,
 	}
@@ -271,7 +289,7 @@ func (c *chatsAPI) ListAllMessages(ctx context.Context, userID string, startTime
 	}
 
 	call := func(ctx context.Context) (sender.Response, error) {
-		return c.client.Users().ByUserId(userID).Chats().GetAllMessages().GetAsGetAllMessagesGetResponse(ctx, configuration)
+		return c.client.Me().Chats().GetAllMessages().GetAsGetAllMessagesGetResponse(ctx, configuration)
 	}
 
 	resp, err := sender.SendRequest(ctx, call, c.techParams)

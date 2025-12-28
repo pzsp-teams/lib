@@ -1,9 +1,11 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 
+	graph "github.com/microsoftgraph/msgraph-sdk-go"
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
 	"github.com/pzsp-teams/lib/internal/sender"
 )
@@ -37,6 +39,23 @@ func messageToGraph(content, contentType string) msmodels.ItemBodyable {
 	}
 	body.SetContentType(&ct)
 	return body
+}
+
+func getMe(ctx context.Context, client *graph.GraphServiceClient, techParams sender.RequestTechParams) (msmodels.Userable, *sender.RequestError) {
+	call := func(ctx context.Context) (sender.Response, error) {
+		return client.Me().Get(ctx, nil)
+	}
+
+	resp, err := sender.SendRequest(ctx, call, techParams)
+	if err != nil {
+		return nil, err
+	}
+
+	user, ok := resp.(msmodels.Userable)
+	if !ok {
+		return nil, newTypeError("msmodels.Userable")
+	}
+	return user, nil
 }
 
 func newTypeError(expected string) *sender.RequestError {
