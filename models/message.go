@@ -2,8 +2,6 @@ package models
 
 import (
 	"time"
-
-	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
 )
 
 /*
@@ -39,17 +37,6 @@ type MessageFrom struct {
 type MessageBody struct {
 	Content     string
 	ContentType MessageContentType
-}
-
-func (b MessageBody) ToGraphItemBody() msmodels.ItemBodyable {
-	body := msmodels.NewItemBody()
-	body.SetContent(&b.Content)
-	ct := msmodels.TEXT_BODYTYPE
-	if b.ContentType == MessageContentTypeHTML {
-		ct = msmodels.HTML_BODYTYPE
-	}
-	body.SetContentType(&ct)
-	return body
 }
 
 // ListMessagesOptions contains options for listing messages.

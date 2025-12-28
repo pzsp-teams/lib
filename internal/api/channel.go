@@ -11,14 +11,14 @@ import (
 	"github.com/pzsp-teams/lib/internal/sender"
 )
 
-// ChannelsAPIInterface will be used later
+// ChannesAPI will be used later
 type ChannelAPI interface {
 	ListChannels(ctx context.Context, teamID string) (msmodels.ChannelCollectionResponseable, *sender.RequestError)
 	GetChannel(ctx context.Context, teamID, channelID string) (msmodels.Channelable, *sender.RequestError)
 	CreateStandardChannel(ctx context.Context, teamID string, channel msmodels.Channelable) (msmodels.Channelable, *sender.RequestError)
 	CreatePrivateChannelWithMembers(ctx context.Context, teamID, displayName string, memberIDs, ownersID []string) (msmodels.Channelable, *sender.RequestError)
 	DeleteChannel(ctx context.Context, teamID, channelID string) *sender.RequestError
-	SendMessage(ctx context.Context, teamID, channelID string, message msmodels.ChatMessageable) (msmodels.ChatMessageable, *sender.RequestError)
+	SendMessage(ctx context.Context, teamID, channelID, content, contentType string) (msmodels.ChatMessageable, *sender.RequestError)
 	ListMessages(ctx context.Context, teamID, channelID string, top *int32) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError)
 	GetMessage(ctx context.Context, teamID, channelID, messageID string) (msmodels.ChatMessageable, *sender.RequestError)
 	ListReplies(ctx context.Context, teamID, channelID, messageID string, top *int32) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError)
@@ -40,16 +40,16 @@ func NewChannels(client *graph.GraphServiceClient, techParams sender.RequestTech
 }
 
 // ListChannels will be used later
-func (api *channelAPI) ListChannels(ctx context.Context, teamID string) (msmodels.ChannelCollectionResponseable, *sender.RequestError) {
+func (c *channelAPI) ListChannels(ctx context.Context, teamID string) (msmodels.ChannelCollectionResponseable, *sender.RequestError) {
 	call := func(ctx context.Context) (sender.Response, error) {
-		return api.client.
+		return c.client.
 			Teams().
 			ByTeamId(teamID).
 			Channels().
 			Get(ctx, nil)
 	}
 
-	resp, err := sender.SendRequest(ctx, call, api.techParams)
+	resp, err := sender.SendRequest(ctx, call, c.techParams)
 	if err != nil {
 		return nil, err
 	}
@@ -63,9 +63,9 @@ func (api *channelAPI) ListChannels(ctx context.Context, teamID string) (msmodel
 }
 
 // GetChannel will be used later
-func (api *channelAPI) GetChannel(ctx context.Context, teamID, channelID string) (msmodels.Channelable, *sender.RequestError) {
+func (c *channelAPI) GetChannel(ctx context.Context, teamID, channelID string) (msmodels.Channelable, *sender.RequestError) {
 	call := func(ctx context.Context) (sender.Response, error) {
-		return api.client.
+		return c.client.
 			Teams().
 			ByTeamId(teamID).
 			Channels().
@@ -73,7 +73,7 @@ func (api *channelAPI) GetChannel(ctx context.Context, teamID, channelID string)
 			Get(ctx, nil)
 	}
 
-	resp, err := sender.SendRequest(ctx, call, api.techParams)
+	resp, err := sender.SendRequest(ctx, call, c.techParams)
 	if err != nil {
 		return nil, err
 	}
@@ -87,16 +87,16 @@ func (api *channelAPI) GetChannel(ctx context.Context, teamID, channelID string)
 }
 
 // CreateStandardChannel creates a standard channel in a team. All members of the team will have access to the channel.
-func (api *channelAPI) CreateStandardChannel(ctx context.Context, teamID string, channel msmodels.Channelable) (msmodels.Channelable, *sender.RequestError) {
+func (c *channelAPI) CreateStandardChannel(ctx context.Context, teamID string, channel msmodels.Channelable) (msmodels.Channelable, *sender.RequestError) {
 	call := func(ctx context.Context) (sender.Response, error) {
-		return api.client.
+		return c.client.
 			Teams().
 			ByTeamId(teamID).
 			Channels().
 			Post(ctx, channel, nil)
 	}
 
-	resp, err := sender.SendRequest(ctx, call, api.techParams)
+	resp, err := sender.SendRequest(ctx, call, c.techParams)
 	if err != nil {
 		return nil, err
 	}
@@ -110,7 +110,7 @@ func (api *channelAPI) CreateStandardChannel(ctx context.Context, teamID string,
 }
 
 // CreatePrivateChannelWithMembers creates a private channel in a team with specified members and owners.
-func (api *channelAPI) CreatePrivateChannelWithMembers(ctx context.Context, teamID, displayName string, memberRefs, ownerRefs []string) (msmodels.Channelable, *sender.RequestError) {
+func (c *channelAPI) CreatePrivateChannelWithMembers(ctx context.Context, teamID, displayName string, memberRefs, ownerRefs []string) (msmodels.Channelable, *sender.RequestError) {
 	ch := msmodels.NewChannel()
 	ch.SetDisplayName(&displayName)
 	mt := msmodels.PRIVATE_CHANNELMEMBERSHIPTYPE
@@ -121,14 +121,14 @@ func (api *channelAPI) CreatePrivateChannelWithMembers(ctx context.Context, team
 	addToMembers(&members, ownerRefs, "owner")
 	ch.SetMembers(members)
 	call := func(ctx context.Context) (sender.Response, error) {
-		return api.client.
+		return c.client.
 			Teams().
 			ByTeamId(teamID).
 			Channels().
 			Post(ctx, ch, nil)
 	}
 
-	resp, err := sender.SendRequest(ctx, call, api.techParams)
+	resp, err := sender.SendRequest(ctx, call, c.techParams)
 	if err != nil {
 		return nil, err
 	}
@@ -141,21 +141,10 @@ func (api *channelAPI) CreatePrivateChannelWithMembers(ctx context.Context, team
 	return out, nil
 }
 
-func addToMembers(members *[]msmodels.ConversationMemberable, userRefs []string, role string) {
-	for _, userRef := range userRefs {
-		member := msmodels.NewAadUserConversationMember()
-		member.SetRoles([]string{role})
-		member.SetAdditionalData(map[string]any{
-			graphUserBindKey: fmt.Sprintf(graphUserBindFmt, userRef),
-		})
-		*members = append(*members, member)
-	}
-}
-
 // DeleteChannel will be used later
-func (api *channelAPI) DeleteChannel(ctx context.Context, teamID, channelID string) *sender.RequestError {
+func (c *channelAPI) DeleteChannel(ctx context.Context, teamID, channelID string) *sender.RequestError {
 	call := func(ctx context.Context) (sender.Response, error) {
-		err := api.client.
+		err := c.client.
 			Teams().
 			ByTeamId(teamID).
 			Channels().
@@ -164,14 +153,17 @@ func (api *channelAPI) DeleteChannel(ctx context.Context, teamID, channelID stri
 		return nil, err
 	}
 
-	_, err := sender.SendRequest(ctx, call, api.techParams)
+	_, err := sender.SendRequest(ctx, call, c.techParams)
 	return err
 }
 
 // SendMessage will be used later
-func (api *channelAPI) SendMessage(ctx context.Context, teamID, channelID string, message msmodels.ChatMessageable) (msmodels.ChatMessageable, *sender.RequestError) {
+func (c *channelAPI) SendMessage(ctx context.Context, teamID, channelID, content, contentType string) (msmodels.ChatMessageable, *sender.RequestError) {
+	message := msmodels.NewChatMessage()
+	message.SetBody(messageToGraph(content, contentType))
+
 	call := func(ctx context.Context) (sender.Response, error) {
-		return api.client.
+		return c.client.
 			Teams().
 			ByTeamId(teamID).
 			Channels().
@@ -180,7 +172,7 @@ func (api *channelAPI) SendMessage(ctx context.Context, teamID, channelID string
 			Post(ctx, message, nil)
 	}
 
-	resp, err := sender.SendRequest(ctx, call, api.techParams)
+	resp, err := sender.SendRequest(ctx, call, c.techParams)
 	if err != nil {
 		return nil, err
 	}
@@ -194,13 +186,13 @@ func (api *channelAPI) SendMessage(ctx context.Context, teamID, channelID string
 }
 
 // ListMessages will be used later
-func (api *channelAPI) ListMessages(ctx context.Context, teamID, channelID string, top *int32) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError) {
+func (c *channelAPI) ListMessages(ctx context.Context, teamID, channelID string, top *int32) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError) {
 	call := func(ctx context.Context) (sender.Response, error) {
 		queryParameters := &graphteams.ItemChannelsItemMessagesRequestBuilderGetQueryParameters{}
 		if top != nil {
 			queryParameters.Top = top
 		}
-		return api.client.
+		return c.client.
 			Teams().
 			ByTeamId(teamID).
 			Channels().
@@ -211,7 +203,7 @@ func (api *channelAPI) ListMessages(ctx context.Context, teamID, channelID strin
 			})
 	}
 
-	resp, err := sender.SendRequest(ctx, call, api.techParams)
+	resp, err := sender.SendRequest(ctx, call, c.techParams)
 	if err != nil {
 		return nil, err
 	}
@@ -225,9 +217,9 @@ func (api *channelAPI) ListMessages(ctx context.Context, teamID, channelID strin
 }
 
 // GetMessage will be used later
-func (api *channelAPI) GetMessage(ctx context.Context, teamID, channelID, messageID string) (msmodels.ChatMessageable, *sender.RequestError) {
+func (c *channelAPI) GetMessage(ctx context.Context, teamID, channelID, messageID string) (msmodels.ChatMessageable, *sender.RequestError) {
 	call := func(ctx context.Context) (sender.Response, error) {
-		return api.client.
+		return c.client.
 			Teams().
 			ByTeamId(teamID).
 			Channels().
@@ -237,7 +229,7 @@ func (api *channelAPI) GetMessage(ctx context.Context, teamID, channelID, messag
 			Get(ctx, nil)
 	}
 
-	resp, err := sender.SendRequest(ctx, call, api.techParams)
+	resp, err := sender.SendRequest(ctx, call, c.techParams)
 	if err != nil {
 		return nil, err
 	}
@@ -251,13 +243,13 @@ func (api *channelAPI) GetMessage(ctx context.Context, teamID, channelID, messag
 }
 
 // ListReplies will be used later
-func (api *channelAPI) ListReplies(ctx context.Context, teamID, channelID, messageID string, top *int32) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError) {
+func (c *channelAPI) ListReplies(ctx context.Context, teamID, channelID, messageID string, top *int32) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError) {
 	call := func(ctx context.Context) (sender.Response, error) {
 		queryParameters := &graphteams.ItemChannelsItemMessagesItemRepliesRequestBuilderGetQueryParameters{}
 		if top != nil {
 			queryParameters.Top = top
 		}
-		return api.client.
+		return c.client.
 			Teams().
 			ByTeamId(teamID).
 			Channels().
@@ -270,7 +262,7 @@ func (api *channelAPI) ListReplies(ctx context.Context, teamID, channelID, messa
 			})
 	}
 
-	resp, err := sender.SendRequest(ctx, call, api.techParams)
+	resp, err := sender.SendRequest(ctx, call, c.techParams)
 	if err != nil {
 		return nil, err
 	}
@@ -284,9 +276,9 @@ func (api *channelAPI) ListReplies(ctx context.Context, teamID, channelID, messa
 }
 
 // GetReply will be used later
-func (api *channelAPI) GetReply(ctx context.Context, teamID, channelID, messageID, replyID string) (msmodels.ChatMessageable, *sender.RequestError) {
+func (c *channelAPI) GetReply(ctx context.Context, teamID, channelID, messageID, replyID string) (msmodels.ChatMessageable, *sender.RequestError) {
 	call := func(ctx context.Context) (sender.Response, error) {
-		return api.client.
+		return c.client.
 			Teams().
 			ByTeamId(teamID).
 			Channels().
@@ -298,7 +290,7 @@ func (api *channelAPI) GetReply(ctx context.Context, teamID, channelID, messageI
 			Get(ctx, nil)
 	}
 
-	resp, err := sender.SendRequest(ctx, call, api.techParams)
+	resp, err := sender.SendRequest(ctx, call, c.techParams)
 	if err != nil {
 		return nil, err
 	}
@@ -311,9 +303,9 @@ func (api *channelAPI) GetReply(ctx context.Context, teamID, channelID, messageI
 	return out, nil
 }
 
-func (api *channelAPI) ListMembers(ctx context.Context, teamID, channelID string) (msmodels.ConversationMemberCollectionResponseable, *sender.RequestError) {
+func (c *channelAPI) ListMembers(ctx context.Context, teamID, channelID string) (msmodels.ConversationMemberCollectionResponseable, *sender.RequestError) {
 	call := func(ctx context.Context) (sender.Response, error) {
-		return api.client.
+		return c.client.
 			Teams().
 			ByTeamId(teamID).
 			Channels().
@@ -322,7 +314,7 @@ func (api *channelAPI) ListMembers(ctx context.Context, teamID, channelID string
 			Get(ctx, nil)
 	}
 
-	resp, err := sender.SendRequest(ctx, call, api.techParams)
+	resp, err := sender.SendRequest(ctx, call, c.techParams)
 	if err != nil {
 		return nil, err
 	}
@@ -335,14 +327,14 @@ func (api *channelAPI) ListMembers(ctx context.Context, teamID, channelID string
 	return out, nil
 }
 
-func (api *channelAPI) AddMember(ctx context.Context, teamID, channelID, userRef, role string) (msmodels.ConversationMemberable, *sender.RequestError) {
+func (c *channelAPI) AddMember(ctx context.Context, teamID, channelID, userRef, role string) (msmodels.ConversationMemberable, *sender.RequestError) {
 	member := msmodels.NewAadUserConversationMember()
 	member.SetRoles([]string{role})
 	member.SetAdditionalData(map[string]any{
 		graphUserBindKey: fmt.Sprintf(graphUserBindFmt, userRef),
 	})
 	call := func(ctx context.Context) (sender.Response, error) {
-		return api.client.
+		return c.client.
 			Teams().
 			ByTeamId(teamID).
 			Channels().
@@ -351,7 +343,7 @@ func (api *channelAPI) AddMember(ctx context.Context, teamID, channelID, userRef
 			Post(ctx, member, nil)
 	}
 
-	resp, err := sender.SendRequest(ctx, call, api.techParams)
+	resp, err := sender.SendRequest(ctx, call, c.techParams)
 	if err != nil {
 		return nil, err
 	}
@@ -364,11 +356,11 @@ func (api *channelAPI) AddMember(ctx context.Context, teamID, channelID, userRef
 	return out, nil
 }
 
-func (api *channelAPI) UpdateMemberRole(ctx context.Context, teamID, channelID, memberID, role string) (msmodels.ConversationMemberable, *sender.RequestError) {
+func (c *channelAPI) UpdateMemberRole(ctx context.Context, teamID, channelID, memberID, role string) (msmodels.ConversationMemberable, *sender.RequestError) {
 	member := msmodels.NewAadUserConversationMember()
 	member.SetRoles([]string{role})
 	call := func(ctx context.Context) (sender.Response, error) {
-		return api.client.
+		return c.client.
 			Teams().
 			ByTeamId(teamID).
 			Channels().
@@ -378,7 +370,7 @@ func (api *channelAPI) UpdateMemberRole(ctx context.Context, teamID, channelID, 
 			Patch(ctx, member, nil)
 	}
 
-	resp, err := sender.SendRequest(ctx, call, api.techParams)
+	resp, err := sender.SendRequest(ctx, call, c.techParams)
 	if err != nil {
 		return nil, err
 	}
@@ -391,9 +383,9 @@ func (api *channelAPI) UpdateMemberRole(ctx context.Context, teamID, channelID, 
 	return out, nil
 }
 
-func (api *channelAPI) RemoveMember(ctx context.Context, teamID, channelID, memberID string) *sender.RequestError {
+func (c *channelAPI) RemoveMember(ctx context.Context, teamID, channelID, memberID string) *sender.RequestError {
 	call := func(ctx context.Context) (sender.Response, error) {
-		err := api.client.
+		err := c.client.
 			Teams().
 			ByTeamId(teamID).
 			Channels().
@@ -404,6 +396,6 @@ func (api *channelAPI) RemoveMember(ctx context.Context, teamID, channelID, memb
 		return nil, err
 	}
 
-	_, err := sender.SendRequest(ctx, call, api.techParams)
+	_, err := sender.SendRequest(ctx, call, c.techParams)
 	return err
 }
