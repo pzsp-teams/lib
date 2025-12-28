@@ -9,10 +9,12 @@ import (
 )
 
 const (
-	graphUserBindFmt  = "https://graph.microsoft.com/v1.0/users('%s')"
-	graphUserBindKey  = "user@odata.bind"
-	templateBindKey   = "template@odata.bind"
-	templateBindValue = "https://graph.microsoft.com/v1.0/teamsTemplates('standard')"
+	graphUserBindFmt    = "https://graph.microsoft.com/v1.0/users('%s')"
+	graphUserBindKey    = "user@odata.bind"
+	templateBindValue   = "https://graph.microsoft.com/v1.0/teamsTemplates('standard')"
+	templateBindKey     = "template@odata.bind"
+	graphMessageBindFmt = "https://graph.microsoft.com/v1.0/chats/%s/messages/%s"
+	graphMessageBindKey = "message@odata.bind"
 )
 
 func addToMembers(members *[]msmodels.ConversationMemberable, userRefs []string, role string) {
