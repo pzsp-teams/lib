@@ -19,11 +19,12 @@ func (e RequestError) Error() string {
 type Resource string
 
 const (
-	Team    Resource = "TEAM"
-	Channel Resource = "CHANNEL"
-	Chat    Resource = "CHAT"
-	User    Resource = "USER"
-	Message Resource = "MESSAGE"
+	Team          Resource = "TEAM"
+	Channel       Resource = "CHANNEL"
+	Chat          Resource = "CHAT"
+	User          Resource = "USER"
+	Message       Resource = "MESSAGE"
+	PinnedMessage Resource = "PINNED_MESSAGE"
 )
 
 type ErrData struct {
