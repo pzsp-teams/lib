@@ -26,7 +26,7 @@ func TestNewChannelKey(t *testing.T) {
 
 func TestNewMemberKey(t *testing.T) {
 	testPepper := "test-pepper"
-	got := NewMemberKey("user@example.com", "team-123", "chan-456", &testPepper)
+	got := NewChannelMemberKey("user@example.com", "team-123", "chan-456", &testPepper)
 	hashedEmail := util.HashWithPepper(testPepper, "user@example.com")
 	want := "$member$:team-123:chan-456:" + hashedEmail
 

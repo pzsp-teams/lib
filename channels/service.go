@@ -17,6 +17,7 @@ type service struct {
 	channelAPI      api.ChannelAPI
 	teamResolver    resolver.TeamResolver
 	channelResolver resolver.ChannelResolver
+	memberResolver  resolver.MemberResolver
 }
 
 // NewService will be used later
@@ -213,7 +214,8 @@ func (s *service) UpdateMemberRole(ctx context.Context, teamRef, channelRef, use
 		return nil, err
 	}
 
-	memberID, err := s.channelResolver.ResolveUserRefToMemberID(ctx, teamID, channelID, userRef)
+	channelMemberCtx := s.memberResolver.NewChannelMemberContext(teamID, channelID, userRef)
+	memberID, err := s.memberResolver.ResolveUserRefToMemberID(ctx, channelMemberCtx)
 	if err != nil {
 		return nil, err
 	}
@@ -234,7 +236,8 @@ func (s *service) RemoveMember(ctx context.Context, teamRef, channelRef, userRef
 		return err
 	}
 
-	memberID, err := s.channelResolver.ResolveUserRefToMemberID(ctx, teamID, channelID, userRef)
+	channelMemberCtx := s.memberResolver.NewChannelMemberContext(teamID, channelID, userRef)
+	memberID, err := s.memberResolver.ResolveUserRefToMemberID(ctx, channelMemberCtx)
 	if err != nil {
 		return err
 	}
