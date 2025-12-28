@@ -11,9 +11,12 @@ import (
 type KeyType string
 
 const (
-	Team    KeyType = "team"
-	Channel KeyType = "channel"
-	Member  KeyType = "member"
+	Team            KeyType = "team"
+	Channel         KeyType = "channel"
+	ChannelMember   KeyType = "channel-member"
+	GroupChat       KeyType = "group-chat"
+	DirectChat      KeyType = "direct-chat"
+	GroupChatMember KeyType = "group-chat-member"
 )
 
 func formatKey(t KeyType, parts ...string) string {
@@ -31,7 +34,23 @@ func NewChannelKey(teamID, name string) string {
 	return formatKey(Channel, teamID, name)
 }
 
-func NewMemberKey(ref, teamID, channelID string, pep *string) string {
+func NewOneOnOneChatKey(userRef string, pep *string) string {
+	return formatKey(DirectChat, hashRef(userRef, pep))
+}
+
+func NewGroupChatKey(topic string) string {
+	return formatKey(GroupChat, topic)
+}
+
+func NewGroupChatMemberKey(chatID, userRef string, pep *string) string {
+	return formatKey(GroupChatMember, chatID, hashRef(userRef, pep))
+}
+
+func NewChannelMemberKey(teamID, channelID, userRef string, pep *string) string {
+	return formatKey(ChannelMember, teamID, channelID, hashRef(userRef, pep))
+}
+
+func hashRef(ref string, pep *string) string {
 	if pep == nil {
 		p, err := pepper.GetOrAskPepper()
 		if err != nil {
@@ -39,6 +58,5 @@ func NewMemberKey(ref, teamID, channelID string, pep *string) string {
 		}
 		pep = &p
 	}
-	hashedRef := util.HashWithPepper(*pep, ref)
-	return formatKey(Member, teamID, channelID, hashedRef)
+	return util.HashWithPepper(*pep, strings.TrimSpace(ref))
 }

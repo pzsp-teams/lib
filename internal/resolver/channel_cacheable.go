@@ -13,7 +13,6 @@ import (
 
 type ChannelResolver interface {
 	ResolveChannelRefToID(ctx context.Context, teamID, channelName string) (string, error)
-	ResolveUserRefToMemberID(ctx context.Context, teamID, channelID, userRef string) (string, error)
 }
 type ChannelResolverCacheable struct {
 	cacher       cacher.Cacher
@@ -59,75 +58,6 @@ func (res *ChannelResolverCacheable) ResolveChannelRefToID(ctx context.Context, 
 		_ = res.cacher.Set(key, idResolved)
 	}
 	return idResolved, nil
-}
-
-func (res *ChannelResolverCacheable) ResolveUserRefToMemberID(ctx context.Context, teamID, channelID, userRef string) (string, error) {
-	ref := strings.TrimSpace(userRef)
-	if ref == "" {
-		return "", fmt.Errorf("empty user reference")
-	}
-	if res.cacheEnabled {
-		key := cacher.NewMemberKey(ref, teamID, channelID, nil)
-		value, found, err := res.cacher.Get(key)
-		if err == nil && found {
-			if ids, ok := value.([]string); ok && len(ids) == 1 {
-				return ids[0], nil
-			}
-		}
-	}
-	resp, apiErr := res.channelsAPI.ListMembers(ctx, teamID, channelID)
-	if apiErr != nil {
-		return "", apiErr
-	}
-	if resp == nil || resp.GetValue() == nil || len(resp.GetValue()) == 0 {
-		return "", fmt.Errorf("no members found in channel %q", channelID)
-	}
-	id := findMemberID(resp.GetValue(), ref)
-	if id == "" {
-		return "", fmt.Errorf("user %q not found in channel %q", ref, channelID)
-	}
-	if res.cacheEnabled {
-		key := cacher.NewMemberKey(ref, teamID, channelID, nil)
-		_ = res.cacher.Set(key, id)
-	}
-	return id, nil
-}
-
-func findMemberID(members []msmodels.ConversationMemberable, ref string) string {
-	for _, member := range members {
-		if member == nil {
-			continue
-		}
-		um, ok := member.(msmodels.AadUserConversationMemberable)
-		if !ok {
-			continue
-		}
-		if matchesUserRef(um, ref) {
-			return util.Deref(member.GetId())
-		}
-	}
-	return ""
-}
-
-func matchesUserRef(um msmodels.AadUserConversationMemberable, userRef string) bool {
-	if userRef == "" {
-		return false
-	}
-	if util.Deref(um.GetUserId()) == userRef {
-		return true
-	}
-	if util.Deref(um.GetDisplayName()) == userRef {
-		return true
-	}
-	email, err := um.GetBackingStore().Get("email")
-	if err == nil {
-		if emailStr, ok := email.(*string); ok {
-			if util.Deref(emailStr) == userRef {
-				return true
-			}
-		}
-	}
-	return false
 }
 
 func resolveChannelIDByName(teamID, ref string, chans msmodels.ChannelCollectionResponseable) (string, error) {
