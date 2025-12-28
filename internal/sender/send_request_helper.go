@@ -35,7 +35,7 @@ func retry(ctx context.Context, attempts int, delay time.Duration, call GraphCal
 		if err == nil {
 			return res, nil
 		}
-		if !shouldRetry(err) || i < attempts-1 {
+		if !shouldRetry(err) || i >= attempts-1 {
 			break
 		}
 		time.Sleep(delay)
