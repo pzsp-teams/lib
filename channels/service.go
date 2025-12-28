@@ -109,10 +109,7 @@ func (s *service) SendMessage(ctx context.Context, teamRef, channelRef string, b
 		return nil, err
 	}
 
-	message := msmodels.NewChatMessage()
-	message.SetBody(body.ToGraphItemBody())
-
-	resp, requestErr := s.channelAPI.SendMessage(ctx, teamID, channelID, message)
+	resp, requestErr := s.channelAPI.SendMessage(ctx, teamID, channelID, body.Content, string(body.ContentType))
 	if requestErr != nil {
 		return nil, snd.MapError(requestErr, snd.WithResource(snd.Team, teamRef), snd.WithResource(snd.Channel, channelRef))
 	}
