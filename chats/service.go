@@ -11,37 +11,33 @@ import (
 )
 
 type Service struct {
-	chatAPI api.ChatsAPI
+	chatAPI api.ChatAPI
 }
 
-func NewService(chatAPI api.ChatsAPI) *Service {
+func NewService(chatAPI api.ChatAPI) *Service {
 	return &Service{chatAPI: chatAPI}
 }
 
-func (s *Service) CreateOneToOne(ctx context.Context, ownerEmail, recipientEmail string) (*models.Chat, error) {
-	allEmails := []string{ownerEmail, recipientEmail}
-
-	resp, requestErr := s.chatAPI.Create(ctx, allEmails, "")
+func (s *Service) CreateOneToOne(ctx context.Context, recipientRef string) (*models.Chat, error) {
+	resp, requestErr := s.chatAPI.CreateOneOnOneChat(ctx, recipientRef)
 	if requestErr != nil {
-		return nil, snd.MapError(requestErr, snd.WithResources(snd.User, allEmails))
+		return nil, snd.MapError(requestErr, snd.WithResource(snd.User, recipientRef))
 	}
 
 	return adapter.MapGraphChat(resp), nil
 }
 
-func (s *Service) CreateGroup(ctx context.Context, ownerEmail string, recipientEmails []string, topic string) (*models.Chat, error) {
-	allEmails := append([]string{ownerEmail}, recipientEmails...)
-
-	resp, requestErr := s.chatAPI.Create(ctx, allEmails, topic)
+func (s *Service) CreateGroup(ctx context.Context, recipientRefs []string, topic string, includeMe bool) (*models.Chat, error) {
+	resp, requestErr := s.chatAPI.CreateGroupChat(ctx, recipientRefs, topic, includeMe)
 	if requestErr != nil {
-		return nil, snd.MapError(requestErr, snd.WithResources(snd.User, allEmails))
+		return nil, snd.MapError(requestErr, snd.WithResources(snd.User, recipientRefs))
 	}
 
 	return adapter.MapGraphChat(resp), nil
 }
 
-func (s *Service) SendMessage(ctx context.Context, chatID, content string) (*models.Message, error) {
-	resp, requestErr := s.chatAPI.SendMessage(ctx, chatID, content)
+func (s *Service) SendMessage(ctx context.Context, chatID, content string, contetType models.MessageContentType) (*models.Message, error) {
+	resp, requestErr := s.chatAPI.SendMessage(ctx, chatID, content, string(contetType))
 	if requestErr != nil {
 		return nil, snd.MapError(requestErr, snd.WithResource(snd.Chat, chatID))
 	}
@@ -58,7 +54,7 @@ func (s *Service) ListMyJoined(ctx context.Context) ([]*models.Chat, error) {
 }
 
 func (s *Service) ListMembers(ctx context.Context, chatID string) ([]*models.Member, error) {
-	resp, requestErr := s.chatAPI.ListMembers(ctx, chatID)
+	resp, requestErr := s.chatAPI.ListGroupChatMembers(ctx, chatID)
 	if requestErr != nil {
 		return nil, snd.MapError(requestErr, snd.WithResource(snd.Chat, chatID))
 	}
@@ -66,7 +62,7 @@ func (s *Service) ListMembers(ctx context.Context, chatID string) ([]*models.Mem
 }
 
 func (s *Service) AddMember(ctx context.Context, chatID, email string) (*models.Member, error) {
-	resp, requestErr := s.chatAPI.AddMember(ctx, chatID, email)
+	resp, requestErr := s.chatAPI.AddMemberToGroupChat(ctx, chatID, email)
 	if requestErr != nil {
 		return nil, snd.MapError(requestErr, snd.WithResource(snd.Chat, chatID), snd.WithResource(snd.User, email))
 	}
