@@ -26,14 +26,15 @@ type GroupChatAPI interface {
 type ChatAPI interface {
 	OneOnOneChatAPI
 	GroupChatAPI
+	ListMessages(ctx context.Context, chatID string) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError)
 	SendMessage(ctx context.Context, chatID, content, contentType string) (msmodels.ChatMessageable, *sender.RequestError)
 	DeleteMessage(ctx context.Context, chatID, messageID string) *sender.RequestError
 	GetMessage(ctx context.Context, chatID, messageID string) (msmodels.ChatMessageable, *sender.RequestError)
 	ListMyJoined(ctx context.Context) (msmodels.ChatCollectionResponseable, *sender.RequestError)
 	ListAllMessages(ctx context.Context, startTime, endTime *time.Time, top *int32) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError)
 	ListPinnedMessages(ctx context.Context, chatID string) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError)
-	PinMessage(ctx context.Context, chatID, messageID string) (msmodels.PinnedChatMessageInfoable, *sender.RequestError)
-	UnpinMessage(ctx context.Context, chatID, messageID string) *sender.RequestError
+	PinMessage(ctx context.Context, chatID, messageID string) *sender.RequestError
+	UnpinMessage(ctx context.Context, chatID, pinnedID string) *sender.RequestError
 }
 
 type chatsAPI struct {
@@ -90,7 +91,7 @@ func (c *chatsAPI) CreateGroupChat(ctx context.Context, userRefs []string, topic
 		userRefs = append(userRefs, *me.GetId())
 	}
 
-	members := make([]msmodels.ConversationMemberable, len(userRefs))
+	members := make([]msmodels.ConversationMemberable, 0, len(userRefs))
 	addToMembers(&members, userRefs, "owner")
 	body.SetMembers(members)
 
@@ -184,6 +185,24 @@ func (c *chatsAPI) UpdateGroupChatTopic(ctx context.Context, chatID, topic strin
 	return out, nil
 }
 
+func (c *chatsAPI) ListMessages(ctx context.Context, chatID string) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError) {
+	call := func(ctx context.Context) (sender.Response, error) {
+		return c.client.Chats().ByChatId(chatID).Messages().Get(ctx, nil)
+	}
+
+	resp, err := sender.SendRequest(ctx, call, c.techParams)
+	if err != nil {
+		return nil, err
+	}
+
+	out, ok := resp.(msmodels.ChatMessageCollectionResponseable)
+	if !ok {
+		return nil, newTypeError("ChatCollectionResponseable")
+	}
+
+	return out, nil
+}
+
 func (c *chatsAPI) SendMessage(ctx context.Context, chatID, content, contentType string) (msmodels.ChatMessageable, *sender.RequestError) {
 	requestBody := msmodels.NewChatMessage()
 	body := msmodels.NewItemBody()
@@ -211,11 +230,13 @@ func (c *chatsAPI) SendMessage(ctx context.Context, chatID, content, contentType
 func (c *chatsAPI) DeleteMessage(ctx context.Context, chatID, messageID string) *sender.RequestError {
 	call := func(ctx context.Context) (sender.Response, error) {
 		return nil, c.client.
+			Me().
 			Chats().
 			ByChatId(chatID).
 			Messages().
 			ByChatMessageId(messageID).
-			Delete(ctx, nil)
+			SoftDelete().
+			Post(ctx, nil)
 	}
 
 	_, err := sender.SendRequest(ctx, call, c.techParams)
@@ -322,7 +343,7 @@ func (c *chatsAPI) ListPinnedMessages(ctx context.Context, chatID string) (msmod
 	return out, nil
 }
 
-func (c *chatsAPI) PinMessage(ctx context.Context, chatID, messageID string) (msmodels.PinnedChatMessageInfoable, *sender.RequestError) {
+func (c *chatsAPI) PinMessage(ctx context.Context, chatID, messageID string) *sender.RequestError {
 	pinned := msmodels.NewPinnedChatMessageInfo()
 	body := map[string]any{
 		graphMessageBindKey: fmt.Sprintf(graphMessageBindFmt, chatID, messageID),
@@ -337,17 +358,12 @@ func (c *chatsAPI) PinMessage(ctx context.Context, chatID, messageID string) (ms
 			Post(ctx, pinned, nil)
 	}
 
-	resp, err := sender.SendRequest(ctx, call, c.techParams)
+	_, err := sender.SendRequest(ctx, call, c.techParams)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	out, ok := resp.(msmodels.PinnedChatMessageInfoable)
-	if !ok {
-		return nil, newTypeError("PinnedChatMessageInfoable")
-	}
-
-	return out, nil
+	return nil
 }
 
 func (c *chatsAPI) UnpinMessage(ctx context.Context, chatID, pinnedID string) *sender.RequestError {
