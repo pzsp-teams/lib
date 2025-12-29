@@ -3,7 +3,6 @@ package resolver
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
 	"github.com/pzsp-teams/lib/cacher"
@@ -73,7 +72,7 @@ func (res *MemberResolverCacheable) ResolveUserRefToMemberID(ctx context.Context
 func (res *MemberResolverCacheable) NewGroupChatMemberContext(chatID string, userRef string) *MemberContext {
 	return &MemberContext{
 		cacheKey:      cacher.NewGroupChatMemberKey(chatID, userRef, nil),
-		userRef:       strings.TrimSpace(userRef),
+		userRef:       userRef,
 		containerID:   chatID,
 		containerName: "group-chat",
 		fetchMembersFunc: func(ctx context.Context) (msmodels.ConversationMemberCollectionResponseable, error) {
@@ -85,7 +84,7 @@ func (res *MemberResolverCacheable) NewGroupChatMemberContext(chatID string, use
 func (res *MemberResolverCacheable) NewChannelMemberContext(teamID, channelID, userRef string) *MemberContext {
 	return &MemberContext{
 		cacheKey:      cacher.NewChannelMemberKey(teamID, channelID, userRef, nil),
-		userRef:       strings.TrimSpace(userRef),
+		userRef:       userRef,
 		containerID:   channelID,
 		containerName: "channel",
 		fetchMembersFunc: func(ctx context.Context) (msmodels.ConversationMemberCollectionResponseable, error) {
