@@ -231,16 +231,10 @@ func (s *Service) UnpinMessage(ctx context.Context, chatRef ChatRef, pinnedMessa
 func (s *Service) resolveChatIDFromRef(ctx context.Context, chatRef ChatRef) (string, error) {
 	switch ref := chatRef.(type) {
 	case GroupChatRef:
-		if ref.ChatID != nil && (util.IsLikelyThreadConversationID(*ref.ChatID)) {
-			return *ref.ChatID, nil
-		}
-		return s.chatResolver.ResolveGroupChatRefToID(ctx, ref.Topic)
+		return s.chatResolver.ResolveGroupChatRefToID(ctx, ref.Ref)
 
 	case OneOnOneChatRef:
-		if ref.ChatID != nil && (util.IsLikelyChatID(*ref.ChatID)) {
-			return *ref.ChatID, nil
-		}
-		return s.chatResolver.ResolveOneOnOneChatRefToID(ctx, ref.UserRef)
+		return s.chatResolver.ResolveOneOnOneChatRefToID(ctx, ref.Ref)
 
 	default:
 		return "", fmt.Errorf("unknown chat reference type")

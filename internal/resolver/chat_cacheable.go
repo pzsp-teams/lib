@@ -2,7 +2,6 @@ package resolver
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
@@ -91,58 +90,5 @@ func (m *ChatResolverCacheable) newChatMemberResolveContext(chatID, userRef stri
 		extract: func(data msmodels.ConversationMemberCollectionResponseable) (string, error) {
 			return resolveMemberID(data, ref)
 		},
-	}
-}
-
-func resolveOneOnOneChatIDByUserRef(chats msmodels.ChatCollectionResponseable, userRef string) (string, error) {
-	if chats == nil || chats.GetValue() == nil || len(chats.GetValue()) == 0 {
-		return "", fmt.Errorf("no one-on-one chats avaliable")
-	}
-
-	for _, chat := range chats.GetValue() {
-		if chat == nil {
-			continue
-		}
-		members := chat.GetMembers()
-		for _, member := range members {
-			um, ok := member.(msmodels.AadUserConversationMemberable)
-			if !ok {
-				continue
-			}
-			if matchesUserRef(um, userRef) {
-				return util.Deref(chat.GetId()), nil
-			}
-		}
-	}
-	return "", fmt.Errorf("chat with given user %q not found", userRef)
-}
-
-func resolveGroupChatIDByTopic(chats msmodels.ChatCollectionResponseable, topic string) (string, error) {
-	if chats == nil || chats.GetValue() == nil || len(chats.GetValue()) == 0 {
-		return "", fmt.Errorf("no group chats avaliable")
-	}
-
-	matches := make([]msmodels.Chatable, 0, len(chats.GetValue()))
-	for _, chat := range chats.GetValue() {
-		if chat == nil {
-			continue
-		}
-		if util.Deref(chat.GetTopic()) == topic {
-			matches = append(matches, chat)
-		}
-	}
-	switch len(matches) {
-	case 0:
-		return "", fmt.Errorf("chat with given topic %q not found", topic)
-	case 1:
-		return util.Deref(matches[0].GetId()), nil
-	default:
-		var options []string
-		for _, c := range matches {
-			options = append(options,
-				fmt.Sprintf("%s (ID: %s)", util.Deref(c.GetTopic()), util.Deref(c.GetId())))
-		}
-		return "", fmt.Errorf("multiple chats with given topic %q found: \n%s. \nPlease use one of the IDs to resolve the chat",
-			topic, strings.Join(options, ";\n"))
 	}
 }
