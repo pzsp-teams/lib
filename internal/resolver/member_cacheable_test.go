@@ -68,7 +68,7 @@ func (f *fakeChatAPI) UpdateGroupChatTopic(ctx context.Context, chatID, topic st
 	return nil, nil
 }
 
-func TestMemberResolverCacheable_ResolveUserRefToMemberID_EmptyRef(t *testing.T) {
+func TestMemberResolverCacheable_ResolveUserRefToMemberID_EmptyRef_Channel(t *testing.T) {
 	ctx := context.Background()
 	fc := &fakeCacher{}
 	apiFake := &fakeChannelAPI{}
@@ -82,7 +82,7 @@ func TestMemberResolverCacheable_ResolveUserRefToMemberID_EmptyRef(t *testing.T)
 	}
 }
 
-func TestMemberResolverCacheable_ResolveUserRefToMemberID_CacheHitSingleID(t *testing.T) {
+func TestMemberResolverCacheable_ResolveUserRefToMemberID_CacheHitSingleID_Channel(t *testing.T) {
 	ctx := context.Background()
 	fc := &fakeCacher{
 		getValue: []string{"member-id-123"},
@@ -114,7 +114,7 @@ func TestMemberResolverCacheable_ResolveUserRefToMemberID_CacheHitSingleID(t *te
 	}
 }
 
-func TestMemberResolverCacheable_ResolveUserRefToMemberID_CacheMiss_UsesAPIAndCaches(t *testing.T) {
+func TestMemberResolverCacheable_ResolveUserRefToMemberID_CacheMiss_UsesAPIAndCaches_Channel(t *testing.T) {
 	ctx := context.Background()
 	fc := &fakeCacher{
 		getFound: false,
@@ -159,10 +159,9 @@ func TestMemberResolverCacheable_ResolveUserRefToMemberID_CacheMiss_UsesAPIAndCa
 	}
 }
 
-func TestMemberResolverCacheable_ResolveUserRefToMemberID_CacheDisabled_SkipsCache(t *testing.T) {
+func TestMemberResolverCacheable_ResolveUserRefToMemberID_CacheDisabled_SkipsCache_Channel(t *testing.T) {
 	ctx := context.Background()
 	fc := &fakeCacher{
-		getValue: []string{"member-id-cache"},
 		getFound: true,
 	}
 	member := newAadUserMember("m-api", "u-1", "Alice")
@@ -188,7 +187,7 @@ func TestMemberResolverCacheable_ResolveUserRefToMemberID_CacheDisabled_SkipsCac
 	}
 }
 
-func TestMemberResolverCacheable_ResolveUserRefToMemberID_ResolverErrorPropagated(t *testing.T) {
+func TestMemberResolverCacheable_ResolveUserRefToMemberID_ResolverErrorPropagated_Channel(t *testing.T) {
 	ctx := context.Background()
 	fc := &fakeCacher{
 		getFound: false,
@@ -202,6 +201,149 @@ func TestMemberResolverCacheable_ResolveUserRefToMemberID_ResolverErrorPropagate
 	res := NewMemberResolverCacheable(apiFake, &fakeChatAPI{}, fc, true)
 
 	memberCtx := res.NewChannelMemberContext("team-1", "chan-1", "user-ref")
+	_, err := res.ResolveUserRefToMemberID(ctx, memberCtx)
+	if err == nil {
+		t.Fatalf("expected error, got nil")
+	}
+	var reqErr *sender.RequestError
+	if !errors.As(err, &reqErr) {
+		t.Fatalf("expected RequestError, got %T %v", err, err)
+	}
+}
+
+func TestMemberResolverCacheable_ResolveUserRefToMemberID_EmptyRef_Chat(t *testing.T) {
+	ctx := context.Background()
+	fc := &fakeCacher{}
+	apiFake := &fakeChannelAPI{}
+	chatFake := &fakeChatAPI{}
+	res := NewMemberResolverCacheable(apiFake, chatFake, fc, true)
+
+	memberCtx := res.NewGroupChatMemberContext("chat-1", "   ")
+	_, err := res.ResolveUserRefToMemberID(ctx, memberCtx)
+	if err == nil {
+		t.Fatalf("expected error for empty user reference, got nil")
+	}
+}
+
+func TestMemberResolverCacheable_ResolveUserRefToMemberID_CacheHitSingleID_Chat(t *testing.T) {
+	ctx := context.Background()
+	fc := &fakeCacher{
+		getValue: []string{"member-id-123"},
+		getFound: true,
+	}
+	chatFake := &fakeChatAPI{}
+	res := NewMemberResolverCacheable(&fakeChannelAPI{}, chatFake, fc, true)
+
+	memberCtx := res.NewGroupChatMemberContext("chat-1", "user-ref")
+	id, err := res.ResolveUserRefToMemberID(ctx, memberCtx)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if id != "member-id-123" {
+		t.Fatalf("expected member-id-123 from cache, got %q", id)
+	}
+
+	if fc.getCalls != 1 {
+		t.Errorf("expected 1 Get call, got %d", fc.getCalls)
+	}
+	if fc.lastGetKey != cacher.NewGroupChatMemberKey("chat-1", "user-ref", nil) {
+		t.Errorf("unexpected cache key, got %q", fc.lastGetKey)
+	}
+	if fc.setCalls != 0 {
+		t.Errorf("expected no Set on cache hit, got %d", fc.setCalls)
+	}
+	if chatFake.listGroupCalls != 0 {
+		t.Errorf("expected no ListGroupChatMembers on cache hit, got %d", chatFake.listGroupCalls)
+	}
+}
+
+func TestMemberResolverCacheable_ResolveUserRefToMemberID_CacheMiss_UsesAPIAndCaches_Chat(t *testing.T) {
+	ctx := context.Background()
+	fc := &fakeCacher{
+		getFound: false,
+	}
+	member := newAadUserMember("m-1", "u-1", "Alice")
+	chatFake := &fakeChatAPI{
+		membersResp: newMemberCollection(member),
+	}
+	res := NewMemberResolverCacheable(&fakeChannelAPI{}, chatFake, fc, true)
+
+	memberCtx := res.NewGroupChatMemberContext("chat-42", " u-1 ")
+	id, err := res.ResolveUserRefToMemberID(ctx, memberCtx)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if id != "m-1" {
+		t.Fatalf("expected m-1 from API, got %q", id)
+	}
+
+	if fc.getCalls != 1 {
+		t.Errorf("expected 1 Get call, got %d", fc.getCalls)
+	}
+	if fc.lastGetKey != cacher.NewGroupChatMemberKey("chat-42", "u-1", nil) {
+		t.Errorf("unexpected cache key, got %q", fc.lastGetKey)
+	}
+
+	if chatFake.listGroupCalls != 1 {
+		t.Errorf("expected 1 ListGroupChatMembers call, got %d", chatFake.listGroupCalls)
+	}
+	if chatFake.lastChatID != "chat-42" {
+		t.Errorf("expected ListGroupChatMembers for chat-42, got chat=%q", chatFake.lastChatID)
+	}
+
+	if fc.setCalls != 1 {
+		t.Errorf("expected 1 Set call, got %d", fc.setCalls)
+	}
+	if fc.lastSetKey != cacher.NewGroupChatMemberKey("chat-42", "u-1", nil) {
+		t.Errorf("unexpected Set key, got %q", fc.lastSetKey)
+	}
+	if v, ok := fc.lastSetValue.(string); !ok || v != "m-1" {
+		t.Errorf("expected cached value 'm-1', got %#v", fc.lastSetValue)
+	}
+}
+
+func TestMemberResolverCacheable_ResolveUserRefToMemberID_CacheDisabled_SkipsCache_Chat(t *testing.T) {
+	ctx := context.Background()
+	fc := &fakeCacher{
+		getFound: true,
+	}
+	member := newAadUserMember("m-api", "u-1", "Alice")
+	chatFake := &fakeChatAPI{
+		membersResp: newMemberCollection(member),
+	}
+	res := NewMemberResolverCacheable(&fakeChannelAPI{}, chatFake, fc, false)
+
+	memberCtx := res.NewGroupChatMemberContext("chat-1", "u-1")
+	id, err := res.ResolveUserRefToMemberID(ctx, memberCtx)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if id != "m-api" {
+		t.Fatalf("expected m-api from API, got %q", id)
+	}
+
+	if fc.getCalls != 0 && fc.setCalls != 0 {
+		t.Errorf("expected no cache calls when cache disabled, got get=%d set=%d", fc.getCalls, fc.setCalls)
+	}
+	if chatFake.listGroupCalls != 1 {
+		t.Errorf("expected 1 ListGroupChatMembers call, got %d", chatFake.listGroupCalls)
+	}
+}
+
+func TestMemberResolverCacheable_ResolveUserRefToMemberID_ResolverErrorPropagated_Chat(t *testing.T) {
+	ctx := context.Background()
+	fc := &fakeCacher{
+		getFound: false,
+	}
+	wantErr := &sender.RequestError{
+		Message: "nope",
+	}
+	chatFake := &fakeChatAPI{
+		membersErr: wantErr,
+	}
+	res := NewMemberResolverCacheable(&fakeChannelAPI{}, chatFake, fc, true)
+
+	memberCtx := res.NewGroupChatMemberContext("chat-1", "user-ref")
 	_, err := res.ResolveUserRefToMemberID(ctx, memberCtx)
 	if err == nil {
 		t.Fatalf("expected error, got nil")
