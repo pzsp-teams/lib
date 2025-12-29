@@ -3,10 +3,12 @@ package resolver
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
 	"github.com/pzsp-teams/lib/cacher"
 	"github.com/pzsp-teams/lib/internal/api"
+	"github.com/pzsp-teams/lib/internal/sender"
 	"github.com/pzsp-teams/lib/internal/util"
 )
 
@@ -21,7 +23,7 @@ type MemberContext struct {
 	userRef          string
 	containerID      string
 	containerName    string
-	fetchMembersFunc func(ctx context.Context) (msmodels.ConversationMemberCollectionResponseable, error)
+	fetchMembersFunc func(ctx context.Context) (msmodels.ConversationMemberCollectionResponseable, *sender.RequestError)
 }
 
 type MemberResolverCacheable struct {
@@ -70,24 +72,26 @@ func (res *MemberResolverCacheable) ResolveUserRefToMemberID(ctx context.Context
 }
 
 func (res *MemberResolverCacheable) NewGroupChatMemberContext(chatID string, userRef string) *MemberContext {
+	ref := strings.TrimSpace(userRef)
 	return &MemberContext{
-		cacheKey:      cacher.NewGroupChatMemberKey(chatID, userRef, nil),
-		userRef:       userRef,
+		cacheKey:      cacher.NewGroupChatMemberKey(chatID, ref, nil),
+		userRef:       ref,
 		containerID:   chatID,
 		containerName: "group-chat",
-		fetchMembersFunc: func(ctx context.Context) (msmodels.ConversationMemberCollectionResponseable, error) {
+		fetchMembersFunc: func(ctx context.Context) (msmodels.ConversationMemberCollectionResponseable, *sender.RequestError) {
 			return res.chatsAPI.ListGroupChatMembers(ctx, chatID)
 		},
 	}
 }
 
 func (res *MemberResolverCacheable) NewChannelMemberContext(teamID, channelID, userRef string) *MemberContext {
+	ref := strings.TrimSpace(userRef)
 	return &MemberContext{
-		cacheKey:      cacher.NewChannelMemberKey(teamID, channelID, userRef, nil),
-		userRef:       userRef,
+		cacheKey:      cacher.NewChannelMemberKey(teamID, channelID, ref, nil),
+		userRef:       ref,
 		containerID:   channelID,
 		containerName: "channel",
-		fetchMembersFunc: func(ctx context.Context) (msmodels.ConversationMemberCollectionResponseable, error) {
+		fetchMembersFunc: func(ctx context.Context) (msmodels.ConversationMemberCollectionResponseable, *sender.RequestError) {
 			return res.channelsAPI.ListMembers(ctx, teamID, channelID)
 		},
 	}

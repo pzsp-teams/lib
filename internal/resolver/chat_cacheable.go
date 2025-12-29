@@ -46,14 +46,14 @@ func (m *ChatResolverCacheable) ResolveOneOnOneChatRefToID(ctx context.Context, 
 		}
 	}
 
-	chats, err := m.chatsAPI.ListChats(ctx, "oneOnOne")
-	if err != nil {
-		return "", err
+	chats, apiErr := m.chatsAPI.ListChats(ctx, "oneOnOne")
+	if apiErr != nil {
+		return "", apiErr
 	}
 
-	idResolved, resolveErr := m.resolveOneOnOneChatIDByUserRef(ref, chats)
-	if resolveErr != nil {
-		return "", resolveErr
+	idResolved, err := m.resolveOneOnOneChatIDByUserRef(ref, chats)
+	if err != nil {
+		return "", err
 	}
 
 	if m.cacheEnabled && m.cacher != nil {
@@ -78,16 +78,13 @@ func (m *ChatResolverCacheable) resolveOneOnOneChatIDByUserRef(userRef string, c
 			continue
 		}
 		members := chat.GetMembers()
-
-		if members != nil {
-			for _, member := range members {
-				um, ok := member.(msmodels.AadUserConversationMemberable)
-				if !ok {
-					continue
-				}
-				if matchesUserRef(um, userRef) {
-					return util.Deref(chat.GetId()), nil
-				}
+		for _, member := range members {
+			um, ok := member.(msmodels.AadUserConversationMemberable)
+			if !ok {
+				continue
+			}
+			if matchesUserRef(um, userRef) {
+				return util.Deref(chat.GetId()), nil
 			}
 		}
 	}
