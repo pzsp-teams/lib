@@ -14,12 +14,13 @@ import (
 )
 
 type Service struct {
-	chatAPI      api.ChatAPI
-	chatResolver resolver.ChatResolver
+	chatAPI        api.ChatAPI
+	chatResolver   resolver.ChatResolver
+	memberResolver resolver.MemberResolver
 }
 
-func NewService(chatAPI api.ChatAPI, chatResolver resolver.ChatResolver) *Service {
-	return &Service{chatAPI: chatAPI, chatResolver: chatResolver}
+func NewService(chatAPI api.ChatAPI, cr resolver.ChatResolver, mr resolver.MemberResolver) *Service {
+	return &Service{chatAPI: chatAPI, chatResolver: cr, memberResolver: mr}
 }
 
 func (s *Service) CreateOneOneOne(ctx context.Context, recipientRef string) (*models.Chat, error) {
@@ -60,7 +61,13 @@ func (s *Service) RemoveMemberFromGroupChat(ctx context.Context, chatRef GroupCh
 		return err
 	}
 
-	requestErr := s.chatAPI.RemoveMemberFromGroupChat(ctx, chatID, userRef)
+	memberCtx := s.memberResolver.NewGroupChatMemberContext(chatID, userRef)
+	memberID, err := s.memberResolver.ResolveUserRefToMemberID(ctx, memberCtx)
+	if err != nil {
+		return err
+	}
+
+	requestErr := s.chatAPI.RemoveMemberFromGroupChat(ctx, chatID, memberID)
 	if requestErr != nil {
 		return snd.MapError(requestErr, snd.WithResource(snd.Chat, chatID), snd.WithResource(snd.User, userRef))
 	}
@@ -226,16 +233,16 @@ func (s *Service) UnpinMessage(ctx context.Context, chatRef ChatRef, pinnedMessa
 func (s *Service) resolveChatIDFromRef(ctx context.Context, chatRef ChatRef) (string, error) {
 	switch ref := chatRef.(type) {
 	case GroupChatRef:
+		if ref.ChatID != nil && (util.IsLikelyThreadConversationID(*ref.ChatID)) {
+			return *ref.ChatID, nil
+		}
 		return s.chatResolver.ResolveGroupChatRefToID(ctx, ref.Topic)
 
 	case OneOnOneChatRef:
-		return s.chatResolver.ResolveOneOnOneChatRefToID(ctx, ref.UserRef)
-
-	case ChatIDRef:
-		if ref.ChatID != "" && (util.IsLikelyThreadConversationID(ref.ChatID) || util.IsLikelyChatID(ref.ChatID)) {
-			return ref.ChatID, nil
+		if ref.ChatID != nil && (util.IsLikelyChatID(*ref.ChatID)) {
+			return *ref.ChatID, nil
 		}
-		return "", fmt.Errorf("chat ID %q is not a valid chat identifier", ref.ChatID)
+		return s.chatResolver.ResolveOneOnOneChatRefToID(ctx, ref.UserRef)
 
 	default:
 		return "", fmt.Errorf("unknown chat reference type")
