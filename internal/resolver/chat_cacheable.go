@@ -39,7 +39,7 @@ func (m *ChatResolverCacheable) ResolveOneOnOneChatRefToID(ctx context.Context, 
 	if m.cacheEnabled && m.cacher != nil {
 		key := cacher.NewOneOnOneChatKey(ref, nil)
 		value, found, err := m.cacher.Get(key)
-		if err != nil && found {
+		if err == nil && found {
 			if ids, ok := value.([]string); ok && len(ids) == 1 && ids[0] != "" {
 				return ids[0], nil
 			}
