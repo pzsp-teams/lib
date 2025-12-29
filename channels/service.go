@@ -21,8 +21,8 @@ type service struct {
 }
 
 // NewService will be used later
-func NewService(channelsAPI api.ChannelAPI, tr resolver.TeamResolver, cr resolver.ChannelResolver) Service {
-	return &service{channelAPI: channelsAPI, teamResolver: tr, channelResolver: cr}
+func NewService(channelsAPI api.ChannelAPI, tr resolver.TeamResolver, cr resolver.ChannelResolver, mr resolver.MemberResolver) Service {
+	return &service{channelAPI: channelsAPI, teamResolver: tr, channelResolver: cr, memberResolver: mr}
 }
 
 // ListChannels will be used later

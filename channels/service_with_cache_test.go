@@ -7,6 +7,7 @@ import (
 
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
 	"github.com/pzsp-teams/lib/cacher"
+	"github.com/pzsp-teams/lib/internal/resolver"
 	snd "github.com/pzsp-teams/lib/internal/sender"
 	"github.com/pzsp-teams/lib/internal/util"
 )
@@ -58,12 +59,47 @@ func (f *fakeTeamResolver) ResolveTeamRefToID(ctx context.Context, teamRef strin
 
 type fakeChannelResolver struct {
 	resolveChannelFunc func(ctx context.Context, teamID, channelRef string) (string, error)
-	resolveUserFunc    func(ctx context.Context, teamID, channelID, userRef string) (string, error)
 
 	lastTeamID     string
 	lastChannelID  string
 	lastChannelRef string
 	lastUserRef    string
+}
+
+type fakeMemberResolver struct {
+	resolveFunc func(ctx context.Context, memberCtx *resolver.MemberContext) (string, error)
+
+	lastTeamIDForUser    string
+	lastChannelIDForUser string
+	lastUserRef          string
+	resUserRefErr        error
+}
+
+func (f *fakeMemberResolver) ResolveUserRefToMemberID(ctx context.Context, memberCtx *resolver.MemberContext) (string, error) {
+	if f.resolveFunc != nil {
+		return f.resolveFunc(ctx, memberCtx)
+	}
+	if f.resUserRefErr != nil {
+		return "", f.resUserRefErr
+	}
+	if f.lastUserRef == "" {
+		return "", nil
+	}
+	return f.lastUserRef, nil
+}
+
+func (f *fakeMemberResolver) NewChannelMemberContext(teamID, channelID, userRef string) *resolver.MemberContext {
+	f.lastTeamIDForUser = teamID
+	f.lastChannelIDForUser = channelID
+	f.lastUserRef = userRef
+	return &resolver.MemberContext{}
+}
+
+func (f *fakeMemberResolver) NewGroupChatMemberContext(chatID string, userRef string) *resolver.MemberContext {
+	f.lastTeamIDForUser = ""
+	f.lastChannelIDForUser = chatID
+	f.lastUserRef = userRef
+	return &resolver.MemberContext{}
 }
 
 func (f *fakeChannelResolver) ResolveChannelRefToID(ctx context.Context, teamID, channelRef string) (string, error) {
@@ -73,16 +109,6 @@ func (f *fakeChannelResolver) ResolveChannelRefToID(ctx context.Context, teamID,
 		return f.resolveChannelFunc(ctx, teamID, channelRef)
 	}
 	return "channel-id-default", nil
-}
-
-func (f *fakeChannelResolver) ResolveUserRefToMemberID(ctx context.Context, teamID, channelID, userRef string) (string, error) {
-	f.lastTeamID = teamID
-	f.lastChannelID = channelID
-	f.lastUserRef = userRef
-	if f.resolveUserFunc != nil {
-		return f.resolveUserFunc(ctx, teamID, channelID, userRef)
-	}
-	return "member-id-default", nil
 }
 
 type fakeChannelAPI struct {
@@ -212,10 +238,12 @@ func TestServiceWithCache_ListChannels_WarmsCache(t *testing.T) {
 		},
 	}
 
+	fm := &fakeMemberResolver{}
 	svc := &service{
 		channelAPI:      fapi,
 		teamResolver:    fr,
 		channelResolver: cr,
+		memberResolver:  fm,
 	}
 	decor := &serviceWithCache{
 		svc:             svc,
@@ -292,10 +320,12 @@ func TestServiceWithCache_Get_WarmsCache(t *testing.T) {
 		},
 	}
 
+	fm := &fakeMemberResolver{}
 	svc := &service{
 		channelAPI:      fapi,
 		teamResolver:    fr,
 		channelResolver: cr,
+		memberResolver:  fm,
 	}
 	decor := &serviceWithCache{
 		svc:             svc,
@@ -347,10 +377,12 @@ func TestServiceWithCache_CreateStandardChannel_InvalidatesAndCaches(t *testing.
 		},
 	}
 
+	fm := &fakeMemberResolver{}
 	svc := &service{
 		channelAPI:      fapi,
 		teamResolver:    fr,
 		channelResolver: cr,
+		memberResolver:  fm,
 	}
 	decor := &serviceWithCache{
 		svc:             svc,
@@ -423,10 +455,12 @@ func TestServiceWithCache_Delete_InvalidatesCache(t *testing.T) {
 		},
 	}
 
+	fm := &fakeMemberResolver{}
 	svc := &service{
 		channelAPI:      fapi,
 		teamResolver:    fr,
 		channelResolver: cr,
+		memberResolver:  fm,
 	}
 	decor := &serviceWithCache{
 		svc:             svc,
@@ -495,10 +529,12 @@ func TestServiceWithCache_AddMember_CachesMemberMapping(t *testing.T) {
 		},
 	}
 
+	fm := &fakeMemberResolver{}
 	svc := &service{
 		channelAPI:      fapi,
 		teamResolver:    fr,
 		channelResolver: cr,
+		memberResolver:  fm,
 	}
 	decor := &serviceWithCache{
 		svc:             svc,
@@ -541,9 +577,6 @@ func TestServiceWithCache_RemoveMember_InvalidatesMemberMapping(t *testing.T) {
 		resolveChannelFunc: func(ctx context.Context, teamID, channelRef string) (string, error) {
 			return "channel-id-1", nil
 		},
-		resolveUserFunc: func(ctx context.Context, teamID, channelID, userRef string) (string, error) {
-			return "member-id-1", nil
-		},
 	}
 	fapi := &fakeChannelAPI{
 		removeMemberFunc: func(ctx context.Context, teamID, channelID, memberID string) *snd.RequestError {
@@ -554,10 +587,16 @@ func TestServiceWithCache_RemoveMember_InvalidatesMemberMapping(t *testing.T) {
 		},
 	}
 
+	fm := &fakeMemberResolver{
+		resolveFunc: func(ctx context.Context, memberCtx *resolver.MemberContext) (string, error) {
+			return "member-id-1", nil
+		},
+	}
 	svc := &service{
 		channelAPI:      fapi,
 		teamResolver:    fr,
 		channelResolver: cr,
+		memberResolver:  fm,
 	}
 	decor := &serviceWithCache{
 		svc:             svc,
