@@ -109,11 +109,23 @@ func (s *Service) GetMessage(ctx context.Context, chatID, messageID string) (*mo
 	return adapter.MapGraphMessage(resp), nil
 }
 
-func (s *Service) ListMyJoined(ctx context.Context) ([]*models.Chat, error) {
-	resp, requestErr := s.chatAPI.ListMyJoined(ctx)
+func (s *Service) ListChats(ctx context.Context, chatType *models.ChatType) ([]*models.Chat, error) {
+	var apiType string
+
+	if chatType != nil {
+		switch *chatType {
+		case models.ChatTypeGroup:
+			apiType = "group"
+		default:
+			apiType = "oneOnOne"
+		}
+	}
+
+	resp, requestErr := s.chatAPI.ListChats(ctx, apiType)
 	if requestErr != nil {
 		return nil, snd.MapError(requestErr)
 	}
+
 	return util.MapSlices(resp.GetValue(), adapter.MapGraphChat), nil
 }
 
