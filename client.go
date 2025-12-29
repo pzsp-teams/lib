@@ -53,10 +53,11 @@ func NewClientFromGraphClient(graphClient *graph.GraphServiceClient, senderConfi
 
 	teamResolver := resolver.NewTeamResolverCacheable(teamsAPI, cache, cacheEnabled)
 	channelResolver := resolver.NewChannelResolverCacheable(channelsAPI, cache, cacheEnabled)
+	chatResolver := resolver.NewChatResolverCacheable(chatAPI, cache, cacheEnabled)
 
 	teamSvc := teams.NewService(teamsAPI, teamResolver)
 	channelSvc := channels.NewService(channelsAPI, teamResolver, channelResolver)
-	chatSvc := chats.NewService(chatAPI)
+	chatSvc := chats.NewService(chatAPI, chatResolver)
 	waitFns := make([]func(), 0, 2)
 	if cacheEnabled {
 		teamSvc = teams.NewAsyncServiceWithCache(teamSvc, cache)

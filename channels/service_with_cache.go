@@ -240,7 +240,7 @@ func (s *serviceWithCache) addChannelsToCache(teamRef string, chans ...models.Ch
 	}
 	for _, ch := range chans {
 		name := strings.TrimSpace(ch.Name)
-		if name == "" || util.IsLikelyChannelID(name) {
+		if name == "" || util.IsLikelyThreadConversationID(name) {
 			continue
 		}
 		key := cacher.NewChannelKey(teamID, name)
@@ -253,7 +253,7 @@ func (s *serviceWithCache) removeChannelFromCache(teamRef, channelRef string) {
 		return
 	}
 	ref := strings.TrimSpace(channelRef)
-	if ref == "" || util.IsLikelyChannelID(ref) {
+	if ref == "" || util.IsLikelyThreadConversationID(ref) {
 		return
 	}
 	ctx := context.Background()

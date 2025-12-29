@@ -21,7 +21,7 @@ func TestIsLikelyGUID_Negative(t *testing.T) {
 
 func TestIsLikelyChannelID_Positive(t *testing.T) {
 	s := "19:xxx@thread."
-	if !IsLikelyChannelID(s) {
+	if !IsLikelyThreadConversationID(s) {
 		t.Fatalf("expected IsLikelyChannelID(%q)=true, got false", s)
 	}
 }
@@ -30,7 +30,7 @@ func TestIsLikelyChannelID_Negative(t *testing.T) {
 	for _, s := range []string{
 		"", "not-a-channel-id", "20:xxx@thread", "19:xxx@notthread",
 	} {
-		if IsLikelyChannelID(s) {
+		if IsLikelyThreadConversationID(s) {
 			t.Fatalf("expected IsLikelyChannelID(%q)=false, got true", s)
 		}
 	}

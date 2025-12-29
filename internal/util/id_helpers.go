@@ -5,9 +5,14 @@ import (
 	"strings"
 )
 
-func IsLikelyChannelID(s string) bool {
+func IsLikelyThreadConversationID(s string) bool {
 	s = strings.TrimSpace(s)
 	return strings.HasPrefix(s, "19:") && strings.Contains(s, "@thread.")
+}
+
+func IsLikelyChatID(s string) bool {
+	s = strings.TrimSpace(s)
+	return strings.HasPrefix(s, "19:") && strings.Contains(s, "@unq.")
 }
 
 func IsLikelyGUID(s string) bool {
