@@ -5,17 +5,14 @@ type ChatRef interface {
 }
 
 type GroupChatRef struct {
-	Topic string
+	Topic  string
+	ChatID *string
 }
 
 type OneOnOneChatRef struct {
 	UserRef string
-}
-
-type ChatIDRef struct {
-	ChatID string
+	ChatID  *string
 }
 
 func (GroupChatRef) chatRef()    {}
 func (OneOnOneChatRef) chatRef() {}
-func (ChatIDRef) chatRef()       {}

@@ -18,7 +18,7 @@ type OneOnOneChatAPI interface {
 type GroupChatAPI interface {
 	CreateGroupChat(ctx context.Context, recipientRefs []string, topic string, includeMe bool) (msmodels.Chatable, *sender.RequestError)
 	AddMemberToGroupChat(ctx context.Context, chatID, userRef string) (msmodels.ConversationMemberable, *sender.RequestError)
-	RemoveMemberFromGroupChat(ctx context.Context, chatID, userRef string) *sender.RequestError
+	RemoveMemberFromGroupChat(ctx context.Context, chatID, memberID string) *sender.RequestError
 	ListGroupChatMembers(ctx context.Context, chatID string) (msmodels.ConversationMemberCollectionResponseable, *sender.RequestError)
 	UpdateGroupChatTopic(ctx context.Context, chatID, topic string) (msmodels.Chatable, *sender.RequestError)
 }
@@ -143,8 +143,6 @@ func (c *chatsAPI) CreateGroupChat(ctx context.Context, userRefs []string, topic
 	return out, nil
 }
 
-// ListGroupChats removed; use ListChats with "group" as chatType instead.
-
 func (c *chatsAPI) AddMemberToGroupChat(ctx context.Context, chatID, userRef string) (msmodels.ConversationMemberable, *sender.RequestError) {
 	chatMember := msmodels.NewAadUserConversationMember()
 	chatMember.SetRoles([]string{"owner"})
@@ -169,12 +167,12 @@ func (c *chatsAPI) AddMemberToGroupChat(ctx context.Context, chatID, userRef str
 	return out, nil
 }
 
-func (c *chatsAPI) RemoveMemberFromGroupChat(ctx context.Context, chatID, userRef string) *sender.RequestError {
+func (c *chatsAPI) RemoveMemberFromGroupChat(ctx context.Context, chatID, memberID string) *sender.RequestError {
 	call := func(ctx context.Context) (sender.Response, error) {
 		return nil, c.client.Chats().
 			ByChatId(chatID).
 			Members().
-			ByConversationMemberId(userRef).
+			ByConversationMemberId(memberID).
 			Delete(ctx, nil)
 	}
 
