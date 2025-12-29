@@ -2,31 +2,97 @@ package resolver
 
 import (
 	"context"
+	"errors"
 	"testing"
+	"time"
+
+	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
+	"github.com/pzsp-teams/lib/cacher"
+	sender "github.com/pzsp-teams/lib/internal/sender"
 )
 
-func TestChannelResolverCacheable_ResolveUserRefToMemberID_EmptyRef(t *testing.T) {
+type fakeChatAPI struct {
+	membersResp msmodels.ConversationMemberCollectionResponseable
+	membersErr  *sender.RequestError
+
+	listGroupCalls int
+	lastChatID     string
+}
+
+func (f *fakeChatAPI) ListGroupChatMembers(ctx context.Context, chatID string) (msmodels.ConversationMemberCollectionResponseable, *sender.RequestError) {
+	f.listGroupCalls++
+	f.lastChatID = chatID
+	return f.membersResp, f.membersErr
+}
+
+func (f *fakeChatAPI) ListChats(ctx context.Context, chatType string) (msmodels.ChatCollectionResponseable, *sender.RequestError) {
+	return nil, nil
+}
+func (f *fakeChatAPI) ListMessages(ctx context.Context, chatID string) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError) {
+	return nil, nil
+}
+func (f *fakeChatAPI) SendMessage(ctx context.Context, chatID, content, contentType string) (msmodels.ChatMessageable, *sender.RequestError) {
+	return nil, nil
+}
+func (f *fakeChatAPI) DeleteMessage(ctx context.Context, chatID, messageID string) *sender.RequestError {
+	return nil
+}
+func (f *fakeChatAPI) GetMessage(ctx context.Context, chatID, messageID string) (msmodels.ChatMessageable, *sender.RequestError) {
+	return nil, nil
+}
+func (f *fakeChatAPI) ListAllMessages(ctx context.Context, startTime, endTime *time.Time, top *int32) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError) {
+	return nil, nil
+}
+func (f *fakeChatAPI) ListPinnedMessages(ctx context.Context, chatID string) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError) {
+	return nil, nil
+}
+func (f *fakeChatAPI) PinMessage(ctx context.Context, chatID, messageID string) *sender.RequestError {
+	return nil
+}
+func (f *fakeChatAPI) UnpinMessage(ctx context.Context, chatID, pinnedID string) *sender.RequestError {
+	return nil
+}
+func (f *fakeChatAPI) CreateOneOnOneChat(ctx context.Context, recipientRef string) (msmodels.Chatable, *sender.RequestError) {
+	return nil, nil
+}
+func (f *fakeChatAPI) CreateGroupChat(ctx context.Context, recipientRefs []string, topic string, includeMe bool) (msmodels.Chatable, *sender.RequestError) {
+	return nil, nil
+}
+func (f *fakeChatAPI) AddMemberToGroupChat(ctx context.Context, chatID, userRef string) (msmodels.ConversationMemberable, *sender.RequestError) {
+	return nil, nil
+}
+func (f *fakeChatAPI) RemoveMemberFromGroupChat(ctx context.Context, chatID, userRef string) *sender.RequestError {
+	return nil
+}
+func (f *fakeChatAPI) UpdateGroupChatTopic(ctx context.Context, chatID, topic string) (msmodels.Chatable, *sender.RequestError) {
+	return nil, nil
+}
+
+func TestMemberResolverCacheable_ResolveUserRefToMemberID_EmptyRef(t *testing.T) {
 	ctx := context.Background()
 	fc := &fakeCacher{}
 	apiFake := &fakeChannelAPI{}
-	res := NewMemberResolverCacheable(apiFake, fc, true)
+	chatFake := &fakeChatAPI{}
+	res := NewMemberResolverCacheable(apiFake, chatFake, fc, true)
 
-	_, err := res.ResolveUserRefToMemberID(ctx, "team-1", "chan-1", "   ")
+	memberCtx := res.NewChannelMemberContext("team-1", "chan-1", "   ")
+	_, err := res.ResolveUserRefToMemberID(ctx, memberCtx)
 	if err == nil {
 		t.Fatalf("expected error for empty user reference, got nil")
 	}
 }
 
-func TestChannelResolverCacheable_ResolveUserRefToMemberID_CacheHitSingleID(t *testing.T) {
+func TestMemberResolverCacheable_ResolveUserRefToMemberID_CacheHitSingleID(t *testing.T) {
 	ctx := context.Background()
 	fc := &fakeCacher{
 		getValue: []string{"member-id-123"},
 		getFound: true,
 	}
 	apiFake := &fakeChannelAPI{}
-	res := NewChannelResolverCacheable(apiFake, fc, true)
+	res := NewMemberResolverCacheable(apiFake, &fakeChatAPI{}, fc, true)
 
-	id, err := res.ResolveUserRefToMemberID(ctx, "team-1", "chan-1", "user-ref")
+	memberCtx := res.NewChannelMemberContext("team-1", "chan-1", "user-ref")
+	id, err := res.ResolveUserRefToMemberID(ctx, memberCtx)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -37,7 +103,7 @@ func TestChannelResolverCacheable_ResolveUserRefToMemberID_CacheHitSingleID(t *t
 	if fc.getCalls != 1 {
 		t.Errorf("expected 1 Get call, got %d", fc.getCalls)
 	}
-	if fc.lastGetKey != cacher.NewMemberKey("user-ref", "team-1", "chan-1", nil) {
+	if fc.lastGetKey != cacher.NewChannelMemberKey("team-1", "chan-1", "user-ref", nil) {
 		t.Errorf("unexpected cache key, got %q", fc.lastGetKey)
 	}
 	if fc.setCalls != 0 {
@@ -48,7 +114,7 @@ func TestChannelResolverCacheable_ResolveUserRefToMemberID_CacheHitSingleID(t *t
 	}
 }
 
-func TestChannelResolverCacheable_ResolveUserRefToMemberID_CacheMiss_UsesAPIAndCaches(t *testing.T) {
+func TestMemberResolverCacheable_ResolveUserRefToMemberID_CacheMiss_UsesAPIAndCaches(t *testing.T) {
 	ctx := context.Background()
 	fc := &fakeCacher{
 		getFound: false,
@@ -57,9 +123,10 @@ func TestChannelResolverCacheable_ResolveUserRefToMemberID_CacheMiss_UsesAPIAndC
 	apiFake := &fakeChannelAPI{
 		membersResp: newMemberCollection(member),
 	}
-	res := NewChannelResolverCacheable(apiFake, fc, true)
+	res := NewMemberResolverCacheable(apiFake, &fakeChatAPI{}, fc, true)
 
-	id, err := res.ResolveUserRefToMemberID(ctx, "team-42", "chan-7", " u-1 ")
+	memberCtx := res.NewChannelMemberContext("team-42", "chan-7", " u-1 ")
+	id, err := res.ResolveUserRefToMemberID(ctx, memberCtx)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -70,7 +137,7 @@ func TestChannelResolverCacheable_ResolveUserRefToMemberID_CacheMiss_UsesAPIAndC
 	if fc.getCalls != 1 {
 		t.Errorf("expected 1 Get call, got %d", fc.getCalls)
 	}
-	if fc.lastGetKey != cacher.NewMemberKey("u-1", "team-42", "chan-7", nil) {
+	if fc.lastGetKey != cacher.NewChannelMemberKey("team-42", "chan-7", "u-1", nil) {
 		t.Errorf("unexpected cache key, got %q", fc.lastGetKey)
 	}
 
@@ -84,7 +151,7 @@ func TestChannelResolverCacheable_ResolveUserRefToMemberID_CacheMiss_UsesAPIAndC
 	if fc.setCalls != 1 {
 		t.Errorf("expected 1 Set call, got %d", fc.setCalls)
 	}
-	if fc.lastSetKey != cacher.NewMemberKey("u-1", "team-42", "chan-7", nil) {
+	if fc.lastSetKey != cacher.NewChannelMemberKey("team-42", "chan-7", "u-1", nil) {
 		t.Errorf("unexpected Set key, got %q", fc.lastSetKey)
 	}
 	if v, ok := fc.lastSetValue.(string); !ok || v != "m-1" {
@@ -92,7 +159,7 @@ func TestChannelResolverCacheable_ResolveUserRefToMemberID_CacheMiss_UsesAPIAndC
 	}
 }
 
-func TestChannelResolverCacheable_ResolveUserRefToMemberID_CacheDisabled_SkipsCache(t *testing.T) {
+func TestMemberResolverCacheable_ResolveUserRefToMemberID_CacheDisabled_SkipsCache(t *testing.T) {
 	ctx := context.Background()
 	fc := &fakeCacher{
 		getValue: []string{"member-id-cache"},
@@ -102,10 +169,10 @@ func TestChannelResolverCacheable_ResolveUserRefToMemberID_CacheDisabled_SkipsCa
 	apiFake := &fakeChannelAPI{
 		membersResp: newMemberCollection(member),
 	}
+	res := NewMemberResolverCacheable(apiFake, &fakeChatAPI{}, fc, false)
 
-	res := NewChannelResolverCacheable(apiFake, fc, false)
-
-	id, err := res.ResolveUserRefToMemberID(ctx, "team-1", "chan-1", "u-1")
+	memberCtx := res.NewChannelMemberContext("team-1", "chan-1", "u-1")
+	id, err := res.ResolveUserRefToMemberID(ctx, memberCtx)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -121,7 +188,7 @@ func TestChannelResolverCacheable_ResolveUserRefToMemberID_CacheDisabled_SkipsCa
 	}
 }
 
-func TestChannelResolverCacheable_ResolveUserRefToMemberID_ResolverErrorPropagated(t *testing.T) {
+func TestMemberResolverCacheable_ResolveUserRefToMemberID_ResolverErrorPropagated(t *testing.T) {
 	ctx := context.Background()
 	fc := &fakeCacher{
 		getFound: false,
@@ -132,9 +199,10 @@ func TestChannelResolverCacheable_ResolveUserRefToMemberID_ResolverErrorPropagat
 	apiFake := &fakeChannelAPI{
 		membersErr: wantErr,
 	}
-	res := NewChannelResolverCacheable(apiFake, fc, true)
+	res := NewMemberResolverCacheable(apiFake, &fakeChatAPI{}, fc, true)
 
-	_, err := res.ResolveUserRefToMemberID(ctx, "team-1", "chan-1", "user-ref")
+	memberCtx := res.NewChannelMemberContext("team-1", "chan-1", "user-ref")
+	_, err := res.ResolveUserRefToMemberID(ctx, memberCtx)
 	if err == nil {
 		t.Fatalf("expected error, got nil")
 	}
