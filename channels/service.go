@@ -17,12 +17,11 @@ type service struct {
 	channelAPI      api.ChannelAPI
 	teamResolver    resolver.TeamResolver
 	channelResolver resolver.ChannelResolver
-	memberResolver  resolver.MemberResolver
 }
 
 // NewService will be used later
-func NewService(channelsAPI api.ChannelAPI, tr resolver.TeamResolver, cr resolver.ChannelResolver, mr resolver.MemberResolver) Service {
-	return &service{channelAPI: channelsAPI, teamResolver: tr, channelResolver: cr, memberResolver: mr}
+func NewService(channelsAPI api.ChannelAPI, tr resolver.TeamResolver, cr resolver.ChannelResolver) Service {
+	return &service{channelAPI: channelsAPI, teamResolver: tr, channelResolver: cr}
 }
 
 // ListChannels will be used later
@@ -211,8 +210,7 @@ func (s *service) UpdateMemberRole(ctx context.Context, teamRef, channelRef, use
 		return nil, err
 	}
 
-	channelMemberCtx := s.memberResolver.NewChannelMemberContext(teamID, channelID, userRef)
-	memberID, err := s.memberResolver.ResolveUserRefToMemberID(ctx, channelMemberCtx)
+	memberID, err := s.channelResolver.ResolveChannelMemberRefToID(ctx, teamID, channelID, userRef)
 	if err != nil {
 		return nil, err
 	}
@@ -233,8 +231,7 @@ func (s *service) RemoveMember(ctx context.Context, teamRef, channelRef, userRef
 		return err
 	}
 
-	channelMemberCtx := s.memberResolver.NewChannelMemberContext(teamID, channelID, userRef)
-	memberID, err := s.memberResolver.ResolveUserRefToMemberID(ctx, channelMemberCtx)
+	memberID, err := s.channelResolver.ResolveChannelMemberRefToID(ctx, teamID, channelID, userRef)
 	if err != nil {
 		return err
 	}

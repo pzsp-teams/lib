@@ -8,6 +8,7 @@ import (
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
 	"github.com/pzsp-teams/lib/cacher"
 	"github.com/pzsp-teams/lib/internal/api"
+	"github.com/pzsp-teams/lib/internal/sender"
 	"github.com/pzsp-teams/lib/internal/util"
 )
 
@@ -21,48 +22,36 @@ type TeamResolverCacheable struct {
 	cacheEnabled bool
 }
 
-func NewTeamResolverCacheable(teamsAPI api.TeamAPI, c cacher.Cacher, cacheEnabled bool) TeamResolver {
+func NewTeamResolverCacheable(teamsAPI api.TeamAPI, cacher cacher.Cacher, cacheEnabled bool) TeamResolver {
 	return &TeamResolverCacheable{
 		teamsAPI:     teamsAPI,
-		cacher:       c,
+		cacher:       cacher,
 		cacheEnabled: cacheEnabled,
 	}
 }
 
-func (m *TeamResolverCacheable) ResolveTeamRefToID(ctx context.Context, teamRef string) (string, error) {
-	ref := strings.TrimSpace(teamRef)
-	if ref == "" {
-		return "", fmt.Errorf("empty team reference")
-	}
-	if util.IsLikelyGUID(ref) {
-		return ref, nil
-	}
-	if m.cacheEnabled && m.cacher != nil {
-		key := cacher.NewTeamKey(ref)
-		value, found, err := m.cacher.Get(key)
-		if err == nil && found {
-			if ids, ok := value.([]string); ok && len(ids) == 1 && ids[0] != "" {
-				return ids[0], nil
-			}
-		}
-	}
-	listOfTeams, sndErr := m.teamsAPI.ListMyJoined(ctx)
-	if sndErr != nil {
-		return "", sndErr
-	}
-	id, err := resolveTeamIDByName(ref, listOfTeams)
-	if err != nil {
-		return "", err
-	}
-	if m.cacheEnabled && m.cacher != nil {
-		key := cacher.NewTeamKey(ref)
-		_ = m.cacher.Set(key, id)
-	}
-
-	return id, nil
+func (r *TeamResolverCacheable) ResolveTeamRefToID(ctx context.Context, teamRef string) (string, error) {
+	rCtx := r.newTeamResolveContext(teamRef)
+	return rCtx.resolveWithCache(ctx, r.cacher, r.cacheEnabled)
 }
 
-func resolveTeamIDByName(ref string, list msmodels.TeamCollectionResponseable) (string, error) {
+func (r *TeamResolverCacheable) newTeamResolveContext(teamRef string) ResolverContext[msmodels.TeamCollectionResponseable] {
+	ref := strings.TrimSpace(teamRef)
+	return ResolverContext[msmodels.TeamCollectionResponseable]{
+		cacheKey:    cacher.NewTeamKey(ref),
+		keyType:     cacher.Team,
+		ref:         ref,
+		isAlreadyID: func() bool { return util.IsLikelyGUID(ref) },
+		fetch: func(ctx context.Context) (msmodels.TeamCollectionResponseable, *sender.RequestError) {
+			return r.teamsAPI.ListMyJoined(ctx)
+		},
+		extract: func(data msmodels.TeamCollectionResponseable) (string, error) {
+			return resolveTeamIDByName(data, ref)
+		},
+	}
+}
+
+func resolveTeamIDByName(list msmodels.TeamCollectionResponseable, ref string) (string, error) {
 	if list == nil || list.GetValue() == nil || len(list.GetValue()) == 0 {
 		return "", fmt.Errorf("no teams available")
 	}

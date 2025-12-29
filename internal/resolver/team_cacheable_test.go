@@ -247,7 +247,7 @@ func TestResolveTeamIDByName_NoTeamsAvailable(t *testing.T) {
 	col := msmodels.NewTeamCollectionResponse()
 	col.SetValue(nil)
 
-	_, err := resolveTeamIDByName("X", col)
+	_, err := resolveTeamIDByName(col, "X")
 	if err == nil {
 		t.Fatalf("expected error for no teams, got nil")
 	}
@@ -260,7 +260,7 @@ func TestResolveTeamIDByName_NoMatch(t *testing.T) {
 	t1 := newGraphTeam("1", "Alpha")
 	col := newTeamCollection(t1)
 
-	_, err := resolveTeamIDByName("Beta", col)
+	_, err := resolveTeamIDByName(col, "Beta")
 	if err == nil {
 		t.Fatalf("expected error for missing team, got nil")
 	}
@@ -274,7 +274,7 @@ func TestResolveTeamIDByName_SingleMatch(t *testing.T) {
 	t2 := newGraphTeam("2", "Beta")
 	col := newTeamCollection(t1, t2)
 
-	id, err := resolveTeamIDByName("Beta", col)
+	id, err := resolveTeamIDByName(col, "Beta")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -288,7 +288,7 @@ func TestResolveTeamIDByName_MultipleMatches(t *testing.T) {
 	t2 := newGraphTeam("2", "Alpha")
 	col := newTeamCollection(t1, t2)
 
-	_, err := resolveTeamIDByName("Alpha", col)
+	_, err := resolveTeamIDByName(col, "Alpha")
 	if err == nil {
 		t.Fatalf("expected error for multiple matches, got nil")
 	}
