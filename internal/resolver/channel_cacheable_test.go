@@ -2,6 +2,7 @@ package resolver
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
@@ -183,10 +184,9 @@ func TestChannelResolverCacheable_ResolveChannelRefToID_DirectID_ShortCircuit(t 
 func TestChannelResolverCacheable_ResolveChannelRefToID_CacheHitSingleID(t *testing.T) {
 	ctx := context.Background()
 	fc := &fakeCacher{
-		getValue: []any{"chan-id-123"},
+		getValue: []string{"chan-id-123"},
 		getFound: true,
 	}
-	fc.getValue = []string{"chan-id-123"}
 
 	apiFake := &fakeChannelAPI{}
 	res := NewChannelResolverCacheable(apiFake, fc, true)
@@ -302,5 +302,141 @@ func TestChannelResolverCacheable_ResolveChannelRefToID_ResolverErrorPropagated(
 	_, err := res.ResolveChannelRefToID(ctx, "team-1", "General")
 	if err == nil {
 		t.Fatalf("expected error, got nil")
+	}
+}
+
+func TestMemberResolverCacheable_ResolveUserRefToMemberID_EmptyRef_Channel(t *testing.T) {
+	ctx := context.Background()
+	fc := &fakeCacher{}
+	apiFake := &fakeChannelAPI{}
+	res := NewChannelResolverCacheable(apiFake, fc, true)
+
+	_, err := res.ResolveChannelMemberRefToID(ctx, "team-1", "chan-1", " ")
+	if err == nil {
+		t.Fatalf("expected error for empty user reference, got nil")
+	}
+}
+
+func TestMemberResolverCacheable_ResolveUserRefToMemberID_CacheHitSingleID_Channel(t *testing.T) {
+	ctx := context.Background()
+	fc := &fakeCacher{
+		getValue: []string{"member-id-123"},
+		getFound: true,
+	}
+	apiFake := &fakeChannelAPI{}
+	res := NewChannelResolverCacheable(apiFake, fc, true)
+
+	id, err := res.ResolveChannelMemberRefToID(ctx, "team-1", "chan-1", "user-ref")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if id != "member-id-123" {
+		t.Fatalf("expected member-id-123 from cache, got %q", id)
+	}
+
+	if fc.getCalls != 1 {
+		t.Errorf("expected 1 Get call, got %d", fc.getCalls)
+	}
+	if fc.lastGetKey != cacher.NewChannelMemberKey("team-1", "chan-1", "user-ref", nil) {
+		t.Errorf("unexpected cache key, got %q", fc.lastGetKey)
+	}
+	if fc.setCalls != 0 {
+		t.Errorf("expected no Set on cache hit, got %d", fc.setCalls)
+	}
+	if apiFake.listMembersCalls != 0 {
+		t.Errorf("expected no ListMembers on cache hit, got %d", apiFake.listMembersCalls)
+	}
+}
+
+func TestMemberResolverCacheable_ResolveUserRefToMemberID_CacheMiss_UsesAPIAndCaches_Channel(t *testing.T) {
+	ctx := context.Background()
+	fc := &fakeCacher{
+		getFound: false,
+	}
+	member := newAadUserMember("m-1", "u-1", "Alice")
+	apiFake := &fakeChannelAPI{
+		membersResp: newMemberCollection(member),
+	}
+	res := NewChannelResolverCacheable(apiFake, fc, true)
+	id, err := res.ResolveChannelMemberRefToID(ctx, "team-42", "chan-7", " u-1 ")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if id != "m-1" {
+		t.Fatalf("expected m-1 from API, got %q", id)
+	}
+
+	if fc.getCalls != 1 {
+		t.Errorf("expected 1 Get call, got %d", fc.getCalls)
+	}
+	if fc.lastGetKey != cacher.NewChannelMemberKey("team-42", "chan-7", "u-1", nil) {
+		t.Errorf("unexpected cache key, got %q", fc.lastGetKey)
+	}
+
+	if apiFake.listMembersCalls != 1 {
+		t.Errorf("expected 1 ListMembers call, got %d", apiFake.listMembersCalls)
+	}
+	if apiFake.lastMembersTeamID != "team-42" || apiFake.lastMembersChanID != "chan-7" {
+		t.Errorf("expected ListMembers for team-42/chan-7, got team=%q chan=%q", apiFake.lastMembersTeamID, apiFake.lastMembersChanID)
+	}
+
+	if fc.setCalls != 1 {
+		t.Errorf("expected 1 Set call, got %d", fc.setCalls)
+	}
+	if fc.lastSetKey != cacher.NewChannelMemberKey("team-42", "chan-7", "u-1", nil) {
+		t.Errorf("unexpected Set key, got %q", fc.lastSetKey)
+	}
+	if v, ok := fc.lastSetValue.(string); !ok || v != "m-1" {
+		t.Errorf("expected cached value 'm-1', got %#v", fc.lastSetValue)
+	}
+}
+
+func TestMemberResolverCacheable_ResolveUserRefToMemberID_CacheDisabled_SkipsCache_Channel(t *testing.T) {
+	ctx := context.Background()
+	fc := &fakeCacher{
+		getFound: true,
+	}
+	member := newAadUserMember("m-api", "u-1", "Alice")
+	apiFake := &fakeChannelAPI{
+		membersResp: newMemberCollection(member),
+	}
+	res := NewChannelResolverCacheable(apiFake, fc, false)
+
+	id, err := res.ResolveChannelMemberRefToID(ctx, "team-1", "chan-1", "u-1")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if id != "m-api" {
+		t.Fatalf("expected m-api from API, got %q", id)
+	}
+
+	if fc.getCalls != 0 && fc.setCalls != 0 {
+		t.Errorf("expected no cache calls when cache disabled, got get=%d set=%d", fc.getCalls, fc.setCalls)
+	}
+	if apiFake.listMembersCalls != 1 {
+		t.Errorf("expected 1 ListMembers call, got %d", apiFake.listMembersCalls)
+	}
+}
+
+func TestMemberResolverCacheable_ResolveUserRefToMemberID_ResolverErrorPropagated_Channel(t *testing.T) {
+	ctx := context.Background()
+	fc := &fakeCacher{
+		getFound: false,
+	}
+	wantErr := &sender.RequestError{
+		Message: "nope",
+	}
+	apiFake := &fakeChannelAPI{
+		membersErr: wantErr,
+	}
+	res := NewChannelResolverCacheable(apiFake, fc, true)
+
+	_, err := res.ResolveChannelMemberRefToID(ctx, "team-1", "chan-1", "user-ref")
+	if err == nil {
+		t.Fatalf("expected error, got nil")
+	}
+	var reqErr *sender.RequestError
+	if !errors.As(err, &reqErr) {
+		t.Fatalf("expected RequestError, got %T %v", err, err)
 	}
 }

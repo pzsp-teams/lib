@@ -14,13 +14,12 @@ import (
 )
 
 type Service struct {
-	chatAPI        api.ChatAPI
-	chatResolver   resolver.ChatResolver
-	memberResolver resolver.MemberResolver
+	chatAPI      api.ChatAPI
+	chatResolver resolver.ChatResolver
 }
 
-func NewService(chatAPI api.ChatAPI, cr resolver.ChatResolver, mr resolver.MemberResolver) *Service {
-	return &Service{chatAPI: chatAPI, chatResolver: cr, memberResolver: mr}
+func NewService(chatAPI api.ChatAPI, cr resolver.ChatResolver) *Service {
+	return &Service{chatAPI: chatAPI, chatResolver: cr}
 }
 
 func (s *Service) CreateOneOneOne(ctx context.Context, recipientRef string) (*models.Chat, error) {
@@ -61,8 +60,7 @@ func (s *Service) RemoveMemberFromGroupChat(ctx context.Context, chatRef GroupCh
 		return err
 	}
 
-	memberCtx := s.memberResolver.NewGroupChatMemberContext(chatID, userRef)
-	memberID, err := s.memberResolver.ResolveUserRefToMemberID(ctx, memberCtx)
+	memberID, err := s.chatResolver.ResolveChatMemberRefToID(ctx, chatID, userRef)
 	if err != nil {
 		return err
 	}
