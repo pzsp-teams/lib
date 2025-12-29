@@ -33,7 +33,7 @@ func (res *ChannelResolverCacheable) ResolveChannelRefToID(ctx context.Context, 
 	if ref == "" {
 		return "", fmt.Errorf("empty channel reference")
 	}
-	if util.IsLikelyChannelID(ref) {
+	if util.IsLikelyThreadConversationID(ref) {
 		return ref, nil
 	}
 	if res.cacheEnabled {

@@ -27,12 +27,12 @@ type MemberContext struct {
 
 type MemberResolverCacheable struct {
 	channelsAPI  api.ChannelAPI
-	chatsAPI     api.ChatsAPI
+	chatsAPI     api.ChatAPI
 	cacher       cacher.Cacher
 	cacheEnabled bool
 }
 
-func NewMemberResolverCacheable(channelsAPI api.ChannelAPI, chatsAPI api.ChatsAPI, cacher cacher.Cacher, cacheEnabled bool) *MemberResolverCacheable {
+func NewMemberResolverCacheable(channelsAPI api.ChannelAPI, chatsAPI api.ChatAPI, cacher cacher.Cacher, cacheEnabled bool) *MemberResolverCacheable {
 	return &MemberResolverCacheable{
 		channelsAPI:  channelsAPI,
 		chatsAPI:     chatsAPI,
@@ -77,7 +77,7 @@ func (res *MemberResolverCacheable) NewGroupChatMemberContext(chatID string, use
 		containerID:   chatID,
 		containerName: "group-chat",
 		fetchMembersFunc: func(ctx context.Context) (msmodels.ConversationMemberCollectionResponseable, error) {
-			return res.chatsAPI.ListMembers(ctx, chatID)
+			return res.chatsAPI.ListGroupChatMembers(ctx, chatID)
 		},
 	}
 }
