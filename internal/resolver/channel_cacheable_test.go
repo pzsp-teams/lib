@@ -117,33 +117,6 @@ func (f *fakeChannelAPI) UpdateMemberRole(ctx context.Context, teamID, channelID
 	return nil, nil
 }
 
-func newGraphChannel(id, name string) msmodels.Channelable {
-	ch := msmodels.NewChannel()
-	ch.SetId(&id)
-	ch.SetDisplayName(&name)
-	return ch
-}
-
-func newChannelCollection(channels ...msmodels.Channelable) msmodels.ChannelCollectionResponseable {
-	col := msmodels.NewChannelCollectionResponse()
-	col.SetValue(channels)
-	return col
-}
-
-func newAadUserMember(id, userID, displayName string) msmodels.ConversationMemberable {
-	m := msmodels.NewAadUserConversationMember()
-	m.SetId(&id)
-	m.SetUserId(&userID)
-	m.SetDisplayName(&displayName)
-	return m
-}
-
-func newMemberCollection(members ...msmodels.ConversationMemberable) msmodels.ConversationMemberCollectionResponseable {
-	col := msmodels.NewConversationMemberCollectionResponse()
-	col.SetValue(members)
-	return col
-}
-
 func TestChannelResolverCacheable_ResolveChannelRefToID_EmptyRef(t *testing.T) {
 	ctx := context.Background()
 	fc := &fakeCacher{}
@@ -305,7 +278,7 @@ func TestChannelResolverCacheable_ResolveChannelRefToID_ResolverErrorPropagated(
 	}
 }
 
-func TestMemberResolverCacheable_ResolveUserRefToMemberID_EmptyRef_Channel(t *testing.T) {
+func TestChannelResolverCacheable_ResolveUserRefToMemberID_EmptyRef(t *testing.T) {
 	ctx := context.Background()
 	fc := &fakeCacher{}
 	apiFake := &fakeChannelAPI{}
@@ -317,7 +290,7 @@ func TestMemberResolverCacheable_ResolveUserRefToMemberID_EmptyRef_Channel(t *te
 	}
 }
 
-func TestMemberResolverCacheable_ResolveUserRefToMemberID_CacheHitSingleID_Channel(t *testing.T) {
+func TestChannelResolverCacheable_ResolveUserRefToMemberID_CacheHitSingleID(t *testing.T) {
 	ctx := context.Background()
 	fc := &fakeCacher{
 		getValue: []string{"member-id-123"},
@@ -348,7 +321,7 @@ func TestMemberResolverCacheable_ResolveUserRefToMemberID_CacheHitSingleID_Chann
 	}
 }
 
-func TestMemberResolverCacheable_ResolveUserRefToMemberID_CacheMiss_UsesAPIAndCaches_Channel(t *testing.T) {
+func TestChannelResolverCacheable_ResolveUserRefToMemberID_CacheMiss_UsesAPIAndCaches(t *testing.T) {
 	ctx := context.Background()
 	fc := &fakeCacher{
 		getFound: false,
@@ -391,7 +364,7 @@ func TestMemberResolverCacheable_ResolveUserRefToMemberID_CacheMiss_UsesAPIAndCa
 	}
 }
 
-func TestMemberResolverCacheable_ResolveUserRefToMemberID_CacheDisabled_SkipsCache_Channel(t *testing.T) {
+func TestChannelResolverCacheable_ResolveUserRefToMemberID_CacheDisabled_SkipsCache(t *testing.T) {
 	ctx := context.Background()
 	fc := &fakeCacher{
 		getFound: true,
@@ -418,7 +391,7 @@ func TestMemberResolverCacheable_ResolveUserRefToMemberID_CacheDisabled_SkipsCac
 	}
 }
 
-func TestMemberResolverCacheable_ResolveUserRefToMemberID_ResolverErrorPropagated_Channel(t *testing.T) {
+func TestChannelResolverCacheable_ResolveUserRefToMemberID_ResolverErrorPropagated(t *testing.T) {
 	ctx := context.Background()
 	fc := &fakeCacher{
 		getFound: false,

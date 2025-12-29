@@ -53,19 +53,6 @@ func (f *fakeTeamAPI) RestoreDeleted(ctx context.Context, deletedGroupID string)
 	return nil, nil
 }
 
-func newGraphTeam(id, name string) msmodels.Teamable {
-	t := msmodels.NewTeam()
-	t.SetId(&id)
-	t.SetDisplayName(&name)
-	return t
-}
-
-func newTeamCollection(teams ...msmodels.Teamable) msmodels.TeamCollectionResponseable {
-	col := msmodels.NewTeamCollectionResponse()
-	col.SetValue(teams)
-	return col
-}
-
 func TestTeamResolverCacheable_ResolveTeamRefToID_EmptyRef(t *testing.T) {
 	ctx := context.Background()
 	apiFake := &fakeTeamAPI{}
@@ -240,59 +227,5 @@ func TestTeamResolverCacheable_ResolveTeamRefToID_ListMyJoinedErrorPropagated(t 
 	}
 	if fc.setCalls != 0 {
 		t.Errorf("expected no cache Set when API fails, got %d", fc.setCalls)
-	}
-}
-
-func TestResolveTeamIDByName_NoTeamsAvailable(t *testing.T) {
-	col := msmodels.NewTeamCollectionResponse()
-	col.SetValue(nil)
-
-	_, err := resolveTeamIDByName(col, "X")
-	if err == nil {
-		t.Fatalf("expected error for no teams, got nil")
-	}
-	if !strings.Contains(err.Error(), "no teams available") {
-		t.Errorf("unexpected error: %v", err)
-	}
-}
-
-func TestResolveTeamIDByName_NoMatch(t *testing.T) {
-	t1 := newGraphTeam("1", "Alpha")
-	col := newTeamCollection(t1)
-
-	_, err := resolveTeamIDByName(col, "Beta")
-	if err == nil {
-		t.Fatalf("expected error for missing team, got nil")
-	}
-	if !strings.Contains(err.Error(), "team with name") {
-		t.Errorf("unexpected error: %v", err)
-	}
-}
-
-func TestResolveTeamIDByName_SingleMatch(t *testing.T) {
-	t1 := newGraphTeam("1", "Alpha")
-	t2 := newGraphTeam("2", "Beta")
-	col := newTeamCollection(t1, t2)
-
-	id, err := resolveTeamIDByName(col, "Beta")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if id != "2" {
-		t.Fatalf("expected id=2, got %q", id)
-	}
-}
-
-func TestResolveTeamIDByName_MultipleMatches(t *testing.T) {
-	t1 := newGraphTeam("1", "Alpha")
-	t2 := newGraphTeam("2", "Alpha")
-	col := newTeamCollection(t1, t2)
-
-	_, err := resolveTeamIDByName(col, "Alpha")
-	if err == nil {
-		t.Fatalf("expected error for multiple matches, got nil")
-	}
-	if !strings.Contains(err.Error(), "multiple teams named") {
-		t.Errorf("unexpected error: %v", err)
 	}
 }
