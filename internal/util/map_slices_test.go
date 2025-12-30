@@ -3,37 +3,50 @@ package util
 import (
 	"strconv"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func TestMapSlices_Basic(t *testing.T) {
-	in := []int{1, 2, 3}
-	out := MapSlices(in, func(v int) string {
-		return "v=" + strconv.Itoa(v)
-	})
-
-	want := []string{"v=1", "v=2", "v=3"}
-	if len(out) != len(want) {
-		t.Fatalf("expected len=%d, got %d (out=%v)", len(want), len(out), out)
+func TestMapSlices(t *testing.T) {
+	tests := []struct {
+		name string
+		in   []int
+		fn   func(int) string
+		want []string
+	}{
+		{
+			name: "basic",
+			in:   []int{1, 2, 3},
+			fn: func(v int) string {
+				return "v=" + strconv.Itoa(v)
+			},
+			want: []string{"v=1", "v=2", "v=3"},
+		},
+		{
+			name: "nil slice",
+			in:   nil,
+			fn:   func(v int) string { return strconv.Itoa(v) },
+			want: []string{},
+		},
+		{
+			name: "empty slice",
+			in:   []int{},
+			fn:   func(v int) string { return strconv.Itoa(v) },
+			want: []string{},
+		},
 	}
-	for i := range want {
-		if out[i] != want[i] {
-			t.Errorf("at %d expected %q, got %q", i, want[i], out[i])
-		}
-	}
-}
 
-func TestMapSlices_EmptyAndNil(t *testing.T) {
-	var nilSlice []int
-	emptySlice := []int{}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			out := MapSlices(tt.in, tt.fn)
 
-	outNil := MapSlices(nilSlice, strconv.Itoa)
-	outEmpty := MapSlices(emptySlice, strconv.Itoa)
+			require.Equal(t, len(tt.want), len(out))
 
-	if len(outNil) != 0 {
-		t.Errorf("expected len=0 for nil slice, got %d", len(outNil))
-	}
-	if len(outEmpty) != 0 {
-		t.Errorf("expected len=0 for empty slice, got %d", len(outEmpty))
+			for i := range tt.want {
+				assert.Equal(t, tt.want[i], out[i])
+			}
+		})
 	}
 }
 
@@ -46,10 +59,9 @@ func TestMapSlices_MapperCalledForEachElement(t *testing.T) {
 		return v * 2
 	})
 
-	if calls != len(in) {
-		t.Errorf("expected mapper to be called %d times, got %d", len(in), calls)
-	}
-	if out[0] != 20 || out[1] != 40 || out[2] != 60 {
-		t.Errorf("unexpected output: %v", out)
+	assert.Equal(t, len(in), calls, "mapper should be called for each element")
+	for i, elem := range in {
+		expected := elem * 2
+		assert.Equal(t, expected, out[i], "mapped value should be correct")
 	}
 }
