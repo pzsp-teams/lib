@@ -11,17 +11,30 @@ import (
 	"github.com/pzsp-teams/lib/internal/util"
 )
 
+// ChannelResolver defines methods for resolving channel and channel-member references
+// into their corresponding Microsoft Graph IDs.
 type ChannelResolver interface {
-	ResolveChannelRefToID(ctx context.Context, teamID, channelName string) (string, error)
+	// ResolveChannelRefToID resolves a channel reference (name or ID)
+	// to a channel ID within the specified team.
+
+	// If the reference already appears to be an channel ID,
+	// it may be returned directly.
+	ResolveChannelRefToID(ctx context.Context, teamID, channelRef string) (string, error)
+
+	// ResolveChannelMemberRefToID resolves a user reference (email or ID)
+	// to a channel member ID within the specified channel.
 	ResolveChannelMemberRefToID(ctx context.Context, teamID, channelID, userRef string) (string, error)
 }
 
+// ChannelResolverCacheable resolves channel references using the graph API
+// and optionally caches successful resolutions.
 type ChannelResolverCacheable struct {
 	channelsAPI  api.ChannelAPI
 	cacher       cacher.Cacher
 	cacheEnabled bool
 }
 
+// NewChannelResolverCacheable creates a new ChannelResolverCacheable.
 func NewChannelResolverCacheable(channelAPI api.ChannelAPI, cacher cacher.Cacher, cacheEnabled bool) ChannelResolver {
 	return &ChannelResolverCacheable{
 		channelsAPI:  channelAPI,
@@ -30,11 +43,13 @@ func NewChannelResolverCacheable(channelAPI api.ChannelAPI, cacher cacher.Cacher
 	}
 }
 
+// ResolveChannelRefToID implements ChannelResolver.
 func (res *ChannelResolverCacheable) ResolveChannelRefToID(ctx context.Context, teamID, channelRef string) (string, error) {
 	rCtx := res.newChannelResolveContext(teamID, channelRef)
 	return rCtx.resolveWithCache(ctx, res.cacher, res.cacheEnabled)
 }
 
+// ResolveChannelMemberRefToID implements ChannelResolver.
 func (res *ChannelResolverCacheable) ResolveChannelMemberRefToID(ctx context.Context, teamID, channelID, userRef string) (string, error) {
 	rCtx := res.newChannelMemberResolveContext(teamID, channelID, userRef)
 	return rCtx.resolveWithCache(ctx, res.cacher, res.cacheEnabled)
