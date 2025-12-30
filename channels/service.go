@@ -285,18 +285,14 @@ func (s *service) RemoveMember(ctx context.Context, teamRef, channelRef, userRef
 	return nil
 }
 
-func (s *service) GetMentions(
-	ctx context.Context,
-	teamRef, channelRef string,
-	rawMentions []string,
-) ([]models.Mention, error) {
+func (s *service) GetMentions(ctx context.Context,teamRef, channelRef string,rawMentions []string) ([]models.Mention, error) {
 	teamID, channelID, err := s.resolveTeamAndChannelID(ctx, teamRef, channelRef)
 	if err != nil {
 		return nil, err
 	}
 
 	out := make([]models.Mention, 0, len(rawMentions))
-	adder := util.NewMentionAdder(&out)
+	adder := mentions.NewMentionAdder(&out)
 
 	for _, raw := range rawMentions {
 		raw = strings.TrimSpace(raw)
@@ -305,7 +301,7 @@ func (s *service) GetMentions(
 		}
 
 		if util.IsLikelyEmail(raw) {
-			if err := s.addUserMention(ctx, adder, raw); err != nil {
+			if err := adder.AddUserMention(ctx, raw, s.userAPI); err != nil {
 				return nil, err
 			}
 			continue
@@ -322,22 +318,8 @@ func (s *service) GetMentions(
 }
 
 
-func (s *service) addUserMention(ctx context.Context, a *util.MentionAdder, email string) error {
-	user, reqErr := s.userAPI.GetUserByEmailOrUPN(ctx, email)
-	if reqErr != nil {
-		return reqErr
-	}
 
-	id, dn, err := util.ExtractUserIDAndDisplayName(user, email)
-	if err != nil {
-		return err
-	}
-
-	a.Add(models.MentionUser, id, dn, "user:"+id)
-	return nil
-}
-
-func (s *service) tryAddTeamOrChannelMention(a *util.MentionAdder, raw, teamRef, teamID, channelRef, channelID string) bool {
+func (s *service) tryAddTeamOrChannelMention(a *mentions.MentionAdder, raw, teamRef, teamID, channelRef, channelID string) bool {
 	low := strings.ToLower(raw)
 
 	if isTeamRef(low, raw, teamRef, teamID) {
@@ -358,7 +340,6 @@ func isTeamRef(low, raw, teamRef, teamID string) bool {
 func isChannelRef(low, raw, channelRef, channelID string) bool {
 	return low == "channel" || raw == channelRef || raw == channelID
 }
-
 
 func (s *service) resolveTeamAndChannelID(ctx context.Context, teamRef, channelRef string) (teamID, channelID string, err error) {
 	teamID, err = s.teamResolver.ResolveTeamRefToID(ctx, teamRef)
