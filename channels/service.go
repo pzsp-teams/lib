@@ -108,7 +108,7 @@ func (s *service) SendMessage(ctx context.Context, teamRef, channelRef string, b
 		return nil, err
 	}
 
-	resp, requestErr := s.channelAPI.SendMessage(ctx, teamID, channelID, body.Content, string(body.ContentType))
+	resp, requestErr := s.channelAPI.SendMessage(ctx, teamID, channelID, body.Content, string(body.ContentType), nil)
 	if requestErr != nil {
 		return nil, snd.MapError(requestErr, snd.WithResource(snd.Team, teamRef), snd.WithResource(snd.Channel, channelRef))
 	}
