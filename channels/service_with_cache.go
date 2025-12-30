@@ -4,7 +4,7 @@ import (
 	"context"
 	"strings"
 
-	"github.com/pzsp-teams/lib/cacher"
+	"github.com/pzsp-teams/lib/internal/cacher"
 	"github.com/pzsp-teams/lib/internal/resolver"
 	"github.com/pzsp-teams/lib/internal/util"
 	"github.com/pzsp-teams/lib/models"
