@@ -285,7 +285,7 @@ func (s *service) RemoveMember(ctx context.Context, teamRef, channelRef, userRef
 	return nil
 }
 
-func (s *service) GetMentions(ctx context.Context,teamRef, channelRef string,rawMentions []string) ([]models.Mention, error) {
+func (s *service) GetMentions(ctx context.Context, teamRef, channelRef string, rawMentions []string) ([]models.Mention, error) {
 	teamID, channelID, err := s.resolveTeamAndChannelID(ctx, teamRef, channelRef)
 	if err != nil {
 		return nil, err
@@ -316,8 +316,6 @@ func (s *service) GetMentions(ctx context.Context,teamRef, channelRef string,raw
 
 	return out, nil
 }
-
-
 
 func (s *service) tryAddTeamOrChannelMention(a *mentions.MentionAdder, raw, teamRef, teamID, channelRef, channelID string) bool {
 	low := strings.ToLower(raw)

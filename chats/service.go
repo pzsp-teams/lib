@@ -309,8 +309,6 @@ func (s *service) tryAddEveryoneMention(adder *mentions.MentionAdder, chatID str
 	return true, nil
 }
 
-
-
 func (s *service) resolveChatIDFromRef(ctx context.Context, chatRef ChatRef) (string, error) {
 	switch ref := chatRef.(type) {
 	case GroupChatRef:
