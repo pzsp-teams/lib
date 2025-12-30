@@ -20,12 +20,12 @@ type service struct {
 	channelAPI      api.ChannelAPI
 	teamResolver    resolver.TeamResolver
 	channelResolver resolver.ChannelResolver
-	userResolver    resolver.UserResolver
+	userAPI 	  api.UsersAPI
 }
 
 // NewService will be used later
-func NewService(channelsAPI api.ChannelAPI, tr resolver.TeamResolver, cr resolver.ChannelResolver, ur resolver.UserResolver) Service {
-	return &service{channelAPI: channelsAPI, teamResolver: tr, channelResolver: cr, userResolver: ur}
+func NewService(channelsAPI api.ChannelAPI, tr resolver.TeamResolver, cr resolver.ChannelResolver, userAPI api.UsersAPI) Service {
+	return &service{channelAPI: channelsAPI, teamResolver: tr, channelResolver: cr, userAPI: userAPI}
 }
 
 // ListChannels will be used later
@@ -313,11 +313,17 @@ func (s *service) GetMentions(ctx context.Context, teamRef, channelRef string, r
 		}
 		low := strings.ToLower(raw)
 		if util.IsLikelyEmail(raw) {
-			userID, err := s.userResolver.ResolveUserRefToID(ctx, raw)
+			user, err := s.userAPI.GetUserByEmailOrUPN(ctx, raw)
 			if err != nil {
 				return nil, err
 			}
-			add(models.MentionUser, userID, raw, "user:"+userID)
+			if user.GetId() == nil || strings.TrimSpace(*user.GetId()) == "" {
+				return nil, fmt.Errorf("resolved user has empty id for mention reference: %s", raw)
+			}
+			if user.GetDisplayName() == nil || strings.TrimSpace(*user.GetDisplayName()) == "" {
+				return nil, fmt.Errorf("resolved user has empty display name for mention reference: %s", raw)
+			}
+			add(models.MentionUser, *user.GetId(), *user.GetDisplayName(), "user:"+*user.GetId())
 			continue
 		}
 			
