@@ -267,7 +267,7 @@ func (s *service) GetMentions(ctx context.Context, chatRef ChatRef, rawMentions 
 			continue
 		}
 
-		if ok, err := s.tryAddEveryoneMention(adder, chatID, isGroup, raw); err != nil {
+		if ok, err := tryAddEveryoneMention(adder, chatID, isGroup, raw); err != nil {
 			return nil, err
 		} else if ok {
 			continue
@@ -284,29 +284,6 @@ func (s *service) GetMentions(ctx context.Context, chatRef ChatRef, rawMentions 
 	}
 
 	return out, nil
-}
-
-func isGroupChatRef(chatRef ChatRef) (bool, error) {
-	switch chatRef.(type) {
-	case GroupChatRef:
-		return true, nil
-	case OneOnOneChatRef:
-		return false, nil
-	default:
-		return false, fmt.Errorf("unknown chatRef type")
-	}
-}
-
-func (s *service) tryAddEveryoneMention(adder *mentions.MentionAdder, chatID string, isGroup bool, raw string) (bool, error) {
-	low := strings.ToLower(strings.TrimSpace(raw))
-	if low != "everyone" && low != "@everyone" {
-		return false, nil
-	}
-	if !isGroup {
-		return false, fmt.Errorf("cannot mention everyone in one-on-one chat")
-	}
-	adder.Add(models.MentionEveryone, chatID, "Everyone", "everyone:"+chatID)
-	return true, nil
 }
 
 func (s *service) resolveChatIDFromRef(ctx context.Context, chatRef ChatRef) (string, error) {
