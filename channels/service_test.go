@@ -987,3 +987,59 @@ func TestService_GetMentions_UserMissingDisplayNameReturnsError(t *testing.T) {
 		t.Fatalf("expected error, got nil")
 	}
 }
+
+func TestService_SendReply_Success(t *testing.T) {
+	ctx := context.Background()
+	replyID := "reply-99"
+	content := "Reply content"
+
+	respMsg := newChatMessage(replyID, content)
+	api := &fakeChanAPI{sendMsgResp: respMsg}
+
+	svc := NewService(api, &fakeTeamRes{}, &fakeChannelRes{}, nil)
+
+	body := models.MessageBody{Content: content, ContentType: models.MessageContentTypeText}
+
+	got, err := svc.SendReply(ctx, "team-1", "chan-1", "msg-parent", body)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if got.ID != replyID {
+		t.Errorf("expected ID %q, got %q", replyID, got.ID)
+	}
+	if api.lastMessageID != "msg-parent" {
+		t.Errorf("expected parent message ID 'msg-parent', got %q", api.lastMessageID)
+	}
+	if api.lastContent != content {
+		t.Errorf("expected content %q, got %q", content, api.lastContent)
+	}
+}
+
+func TestService_Delete_Success(t *testing.T) {
+	ctx := context.Background()
+	api := &fakeChanAPI{}
+	svc := NewService(api, &fakeTeamRes{}, &fakeChannelRes{}, nil)
+
+	err := svc.Delete(ctx, "team-1", "chan-1")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if api.lastTeamID != "team-1" || api.lastChanID != "chan-1" {
+		t.Errorf("expected delete called with team-1/chan-1, got %q/%q", api.lastTeamID, api.lastChanID)
+	}
+}
+
+func TestService_Get_MapsError(t *testing.T) {
+	ctx := context.Background()
+	api := &fakeChanAPI{
+		getErr: &sender.RequestError{Code: 404, Message: "Not Found"},
+	}
+	svc := NewService(api, &fakeTeamRes{}, &fakeChannelRes{}, nil)
+
+	_, err := svc.Get(ctx, "team-1", "chan-1")
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+}
