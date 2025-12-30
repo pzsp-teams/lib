@@ -10,10 +10,11 @@ import (
 	graphusers "github.com/microsoftgraph/msgraph-sdk-go/users"
 
 	"github.com/pzsp-teams/lib/internal/sender"
+	"github.com/pzsp-teams/lib/internal/util"
 )
 
 type UsersAPI interface {
-	GetUserIDByEmailOrUPN(ctx context.Context, emailOrUPN string) (string, *sender.RequestError)
+	GetUserByEmailOrUPN(ctx context.Context, emailOrUPN string) (msmodels.Userable, *sender.RequestError)
 }
 
 type usersAPI struct {
@@ -25,50 +26,50 @@ func NewUsers(client *graph.GraphServiceClient, techParams sender.RequestTechPar
 	return &usersAPI{client: client, techParams: techParams}
 }
 
-func (u *usersAPI) GetUserIDByEmailOrUPN(ctx context.Context, emailOrUPN string) (string, *sender.RequestError) {
+func (u *usersAPI) GetUserByEmailOrUPN(ctx context.Context, emailOrUPN string) (msmodels.Userable, *sender.RequestError) {
 	key := strings.TrimSpace(emailOrUPN)
 	if key == "" {
-		return "", &sender.RequestError{Message: "emailOrUPN is empty"}
+		return nil, &sender.RequestError{Message: "emailOrUPN is empty"}
 	}
-	id, reqErr := u.getUserIDByKey(ctx, key)
+	id, reqErr := u.getUserByKey(ctx, key)
 	if reqErr == nil {
 		return id, nil
 	}
-	if strings.Contains(key, "@") {
-		id2, reqErr2 := u.findUserIDByEmail(ctx, key)
+	if util.IsLikelyEmail(key) {
+		id2, reqErr2 := u.findUserByEmail(ctx, key)
 		if reqErr2 == nil {
 			return id2, nil
 		}
-		return "", reqErr2
+		return nil, reqErr2
 	}
 
-	return "", reqErr
+	return nil, reqErr
 }
 
-func (u *usersAPI) getUserIDByKey(ctx context.Context, key string) (string, *sender.RequestError) {
+func (u *usersAPI) getUserByKey(ctx context.Context, key string) (msmodels.Userable, *sender.RequestError) {
 	call := func(ctx context.Context) (sender.Response, error) {
 		return u.client.Users().ByUserId(key).Get(ctx, nil)
 	}
 
 	resp, err := sender.SendRequest(ctx, call, u.techParams)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	userResp, ok := resp.(msmodels.Userable)
 	if !ok {
-		return "", newTypeError("Userable")
+		return nil, newTypeError("Userable")
 	}
 
 	userIDPtr := userResp.GetId()
 	if userIDPtr == nil || strings.TrimSpace(*userIDPtr) == "" {
-		return "", &sender.RequestError{Message: fmt.Sprintf("user id is empty for key=%q", key)}
+		return nil, &sender.RequestError{Message: fmt.Sprintf("user id is empty for key=%q", key)}
 	}
 
-	return *userIDPtr, nil
+	return userResp, nil
 }
 
-func (u *usersAPI) findUserIDByEmail(ctx context.Context, email string) (string, *sender.RequestError) {
+func (u *usersAPI) findUserByEmail(ctx context.Context, email string) (msmodels.Userable, *sender.RequestError) {
 	escaped := strings.ReplaceAll(strings.TrimSpace(email), "'", "''")
 	filter := fmt.Sprintf(
 		"mail eq '%[1]s' or userPrincipalName eq '%[1]s' or otherMails/any(x:x eq '%[1]s') or "+
@@ -88,24 +89,24 @@ func (u *usersAPI) findUserIDByEmail(ctx context.Context, email string) (string,
 	}
 	resp, err := sender.SendRequest(ctx, call, u.techParams)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	col, ok := resp.(msmodels.UserCollectionResponseable)
 	if !ok {
-		return "", newTypeError("UserCollectionResponseable")
+		return nil, newTypeError("UserCollectionResponseable")
 	}
 	values := col.GetValue()
 	if len(values) == 0 {
-		return "", &sender.RequestError{Message: fmt.Sprintf("user not found by email=%q", email)}
+		return nil, &sender.RequestError{Message: fmt.Sprintf("user not found by email=%q", email)}
 	}
 	if len(values) > 1 {
-		return "", &sender.RequestError{Message: fmt.Sprintf("email=%q is ambiguous (multiple users matched)", email)}
+		return nil, &sender.RequestError{Message: fmt.Sprintf("email=%q is ambiguous (multiple users matched)", email)}
 	}
 
 	idPtr := values[0].GetId()
 	if idPtr == nil || strings.TrimSpace(*idPtr) == "" {
-		return "", &sender.RequestError{Message: fmt.Sprintf("matched user has empty id for email=%q", email)}
+		return nil, &sender.RequestError{Message: fmt.Sprintf("matched user has empty id for email=%q", email)}
 	}
 
-	return *idPtr, nil
+	return values[0], nil
 }

@@ -55,11 +55,10 @@ func NewClientFromGraphClient(graphClient *graph.GraphServiceClient, senderConfi
 	teamResolver := resolver.NewTeamResolverCacheable(teamsAPI, cache, cacheEnabled)
 	channelResolver := resolver.NewChannelResolverCacheable(channelsAPI, cache, cacheEnabled)
 	chatResolver := resolver.NewChatResolverCacheable(chatAPI, cache, cacheEnabled)
-	userResolver := resolver.NewUserResolverCacheable(userAPI, cache, cacheEnabled)
 
 	teamSvc := teams.NewService(teamsAPI, teamResolver)
-	channelSvc := channels.NewService(channelsAPI, teamResolver, channelResolver, userResolver)
-	chatSvc := chats.NewService(chatAPI, chatResolver, userResolver)
+	channelSvc := channels.NewService(channelsAPI, teamResolver, channelResolver, userAPI)
+	chatSvc := chats.NewService(chatAPI, chatResolver, userAPI)
 	waitFns := make([]func(), 0, 2)
 	if cacheEnabled {
 		teamSvc = teams.NewAsyncServiceWithCache(teamSvc, cache)
