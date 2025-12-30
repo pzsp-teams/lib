@@ -3,6 +3,7 @@ package chats
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/pzsp-teams/lib/internal/adapter"
@@ -17,11 +18,12 @@ import (
 type service struct {
 	chatAPI      api.ChatAPI
 	chatResolver resolver.ChatResolver
+	userResolver resolver.UserResolver
 }
 
 // NewService creates a new instance of the chat service.
-func NewService(chatAPI api.ChatAPI, cr resolver.ChatResolver) Service {
-	return &service{chatAPI: chatAPI, chatResolver: cr}
+func NewService(chatAPI api.ChatAPI, cr resolver.ChatResolver, ur resolver.UserResolver) Service {
+	return &service{chatAPI: chatAPI, chatResolver: cr, userResolver: ur}
 }
 
 func (s *service) CreateOneOneOne(ctx context.Context, recipientRef string) (*models.Chat, error) {
@@ -243,6 +245,60 @@ func (s *service) UnpinMessage(ctx context.Context, chatRef ChatRef, pinnedMessa
 	}
 
 	return nil
+}
+
+func (s *service) GetMentions(ctx context.Context, chatRef ChatRef, rawMentions []string) ([]models.Mention, error) {
+	chatID, err := s.resolveChatIDFromRef(ctx, chatRef)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]models.Mention, 0, len(rawMentions))
+	nextAtID := int32(0)
+	isGroup := false
+    switch chatRef.(type) {
+    case GroupChatRef:
+        isGroup = true
+    case OneOnOneChatRef:
+        isGroup = false
+    default:
+        return nil, fmt.Errorf("unknown chatRef type")
+    }
+	for _, raw := range rawMentions {
+		raw = strings.TrimSpace(raw)
+		if raw == "" {
+			continue
+		}
+		if util.IsLikelyEmail(raw) {
+			userID, err := s.userResolver.ResolveUserRefToID(ctx, raw)
+			if err != nil {
+				return nil, err
+			}
+			out = append(out, models.Mention{
+				TargetID: userID, 
+				Kind: models.MentionUser,
+				AtID: nextAtID,
+				Text: raw,
+			})
+			nextAtID++
+			continue
+		}
+		if raw == "everyone" || raw == chatID {
+			if !isGroup {
+				return nil, fmt.Errorf("cannot mention everyone in one-on-one chat")
+			}
+			out = append(out, models.Mention{
+				TargetID: chatID, 
+				Kind: models.MentionEveryone,
+				AtID: nextAtID,
+				Text: raw,
+			})
+			nextAtID++
+			continue
+		} 
+		return nil, fmt.Errorf("cannot resolve mention reference: %s", raw)
+	}
+
+	return out, nil
 }
 
 func (s *service) resolveChatIDFromRef(ctx context.Context, chatRef ChatRef) (string, error) {

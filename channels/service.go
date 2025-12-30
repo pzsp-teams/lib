@@ -3,6 +3,7 @@ package channels
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
 	"github.com/pzsp-teams/lib/internal/adapter"
@@ -19,11 +20,12 @@ type service struct {
 	channelAPI      api.ChannelAPI
 	teamResolver    resolver.TeamResolver
 	channelResolver resolver.ChannelResolver
+	userResolver    resolver.UserResolver
 }
 
 // NewService will be used later
-func NewService(channelsAPI api.ChannelAPI, tr resolver.TeamResolver, cr resolver.ChannelResolver) Service {
-	return &service{channelAPI: channelsAPI, teamResolver: tr, channelResolver: cr}
+func NewService(channelsAPI api.ChannelAPI, tr resolver.TeamResolver, cr resolver.ChannelResolver, ur resolver.UserResolver) Service {
+	return &service{channelAPI: channelsAPI, teamResolver: tr, channelResolver: cr, userResolver: ur}
 }
 
 // ListChannels will be used later
@@ -281,6 +283,60 @@ func (s *service) RemoveMember(ctx context.Context, teamRef, channelRef, userRef
 	}
 
 	return nil
+}
+
+func (s *service) GetMentions(ctx context.Context, teamRef, channelRef string, rawMentions []string) ([]models.Mention, error) {
+	teamID, channelID, err := s.resolveTeamAndChannelID(ctx, teamRef, channelRef)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]models.Mention, 0, len(rawMentions))
+	nextAtID := int32(0)
+	for _, raw := range rawMentions {
+		raw = strings.TrimSpace(raw)
+		if raw == "" {
+			continue
+		}
+		if util.IsLikelyEmail(raw) {
+			userID, err := s.userResolver.ResolveUserRefToID(ctx, raw)
+			if err != nil {
+				return nil, err
+			}
+			out = append(out, models.Mention{
+				TargetID: userID, 
+				Kind: models.MentionUser,
+				AtID: nextAtID,
+				Text: raw,
+			})
+			nextAtID++
+			continue
+		}
+			
+		if teamRef == raw || teamID == raw || raw == "team" {
+			out = append(out, models.Mention{
+				TargetID: teamID, 
+				Kind: models.MentionTeam,
+				AtID: nextAtID,
+				Text: raw,
+			})
+			nextAtID++
+			continue
+		}
+		if channelRef == raw || channelID == raw || raw == "channel" {
+			out = append(out, models.Mention{
+				TargetID: channelID, 
+				Kind: models.MentionChannel,
+				AtID: nextAtID,
+				Text: raw,
+			})
+			nextAtID++
+			continue
+		}
+		
+		return nil, fmt.Errorf("cannot resolve mention reference: %s", raw)
+	}
+
+	return out, nil
 }
 
 func (s *service) resolveTeamAndChannelID(ctx context.Context, teamRef, channelRef string) (teamID, channelID string, err error) {
