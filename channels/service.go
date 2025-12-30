@@ -292,47 +292,43 @@ func (s *service) GetMentions(ctx context.Context, teamRef, channelRef string, r
 	}
 	out := make([]models.Mention, 0, len(rawMentions))
 	nextAtID := int32(0)
+	seen := map[string]struct{}{}
+	add := func(kind models.MentionKind, targetID, text, dedupKey string) {
+		if _, exists := seen[dedupKey]; exists {
+			return
+		}
+		seen[dedupKey] = struct{}{}
+		out = append(out, models.Mention{
+			TargetID: targetID, 
+			Kind: kind,
+			AtID: nextAtID,
+			Text: text,
+		})
+		nextAtID++
+	}
 	for _, raw := range rawMentions {
 		raw = strings.TrimSpace(raw)
 		if raw == "" {
 			continue
 		}
+		low := strings.ToLower(raw)
 		if util.IsLikelyEmail(raw) {
 			userID, err := s.userResolver.ResolveUserRefToID(ctx, raw)
 			if err != nil {
 				return nil, err
 			}
-			out = append(out, models.Mention{
-				TargetID: userID, 
-				Kind: models.MentionUser,
-				AtID: nextAtID,
-				Text: raw,
-			})
-			nextAtID++
+			add(models.MentionUser, userID, raw, "user:"+userID)
 			continue
 		}
 			
-		if teamRef == raw || teamID == raw || raw == "team" {
-			out = append(out, models.Mention{
-				TargetID: teamID, 
-				Kind: models.MentionTeam,
-				AtID: nextAtID,
-				Text: raw,
-			})
-			nextAtID++
+		if low == "team" || raw == teamRef || raw == teamID {
+			add(models.MentionTeam, teamID, teamRef, "team:"+teamID)
 			continue
 		}
-		if channelRef == raw || channelID == raw || raw == "channel" {
-			out = append(out, models.Mention{
-				TargetID: channelID, 
-				Kind: models.MentionChannel,
-				AtID: nextAtID,
-				Text: raw,
-			})
-			nextAtID++
+		if low == "channel" || channelRef == raw || channelID == raw {
+			add(models.MentionChannel, channelID, channelRef, "channel:"+channelID)
 			continue
 		}
-		
 		return nil, fmt.Errorf("cannot resolve mention reference: %s", raw)
 	}
 
