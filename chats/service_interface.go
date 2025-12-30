@@ -6,7 +6,7 @@
 //   - Users are identified by userID or email.
 //   - Some operations require messageID - these can be obtained via ListMessages.
 //   - ChatRef and GroupChatRef are references to chats used in method parameters.
-//   - The authenticated user (derieved from MSAL) is the one making the API calls (appropriate scopes must be granted).
+//   - The authenticated user (derived from MSAL) is the one making the API calls (appropriate scopes must be granted).
 package chats
 
 import (
@@ -16,7 +16,7 @@ import (
 	"github.com/pzsp-teams/lib/models"
 )
 
-// Service defines the interface for chat-relaated operations.
+// Service defines the interface for chat-related operations.
 // It includes methods for creating chats, managing members, sending messages, and more.
 type Service interface {
 	// CreateOneOneOne creates a one-on-one chat with the given recipient.
