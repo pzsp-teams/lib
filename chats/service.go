@@ -159,14 +159,16 @@ func (s *service) GetMessage(ctx context.Context, chatRef ChatRef, messageID str
 }
 
 func (s *service) ListChats(ctx context.Context, chatType *models.ChatType) ([]*models.Chat, error) {
-	var apiType string
+	var apiType *string
 
 	if chatType != nil {
 		switch *chatType {
 		case models.ChatTypeGroup:
-			apiType = "group"
-		default:
-			apiType = "oneOnOne"
+			groupChat := "group"
+			apiType = &groupChat
+		case models.ChatTypeOneOnOne:
+			oneOnOneChat := "oneOnOne"
+			apiType = &oneOnOneChat
 		}
 	}
 
