@@ -70,7 +70,7 @@ func TestMentionAdder_Add_DeduplicatesByKey(t *testing.T) {
 	a := NewMentionAdder(&out)
 
 	a.Add(models.MentionUser, "u-1", "Alice", "user:u-1")
-	a.Add(models.MentionUser, "u-1", "Alice (dup)", "user:u-1") 
+	a.Add(models.MentionUser, "u-1", "Alice (dup)", "user:u-1")
 
 	if len(out) != 1 {
 		t.Fatalf("expected 1 mention after dedup, got %d", len(out))
