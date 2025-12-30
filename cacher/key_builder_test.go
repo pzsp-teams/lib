@@ -65,3 +65,14 @@ func TestNewTeamMemberKey(t *testing.T) {
 		t.Fatalf("MemberKeyBuilder.ToString() = %q, want %q", got, want)
 	}
 }
+
+func TestNewUserKey(t *testing.T) {
+	testPepper := "test-pepper"
+	got := NewUserKey("user@example.com", &testPepper)
+	hashedEmail := util.HashWithPepper(testPepper, "user@example.com")
+	want := "$user$:" + hashedEmail
+
+	if got != want {
+		t.Fatalf("UserKeyBuilder.ToString() = %q, want %q", got, want)
+	}
+}
