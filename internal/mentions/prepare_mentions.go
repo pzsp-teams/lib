@@ -135,3 +135,13 @@ func buildConversationMentioned(
 	conv.SetConversationIdentityType(&typ)
 	return conv, nil
 }
+
+func PrepareMentions(body *models.MessageBody) ([]msmodels.ChatMessageMentionable, error) {
+	if len(body.Mentions) > 0 && body.ContentType != models.MessageContentTypeHTML {
+		return nil, fmt.Errorf("mentions can only be used with HTML content type")
+	}
+	if err := ValidateAtTags(body); err != nil {
+		return nil, err
+	}
+	return MapMentions(body.Mentions)
+}
