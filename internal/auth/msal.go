@@ -1,3 +1,6 @@
+// Package auth provides an Azure AD (MSAL) token provider implementation
+// backed by a persistent MSAL cache. It supports silent authentication with
+// fallback to interactive or device-code flows.
 package auth
 
 import (
@@ -20,7 +23,7 @@ const (
 
 var errUserNotFound = errors.New("user not found in MSAL cache")
 
-// Method will be used later by other packages
+// Method defines the authentication flow used when	acquiring tokens.
 type Method string
 
 const (
@@ -28,7 +31,8 @@ const (
 	deviceCode  Method = "DEVICE_CODE"
 )
 
-// MSALCredentials will be used later by other packages
+// MSALCredentials contains the configuration required to initialize
+// an MSAL-based token provider.
 type MSALCredentials struct {
 	ClientID   string
 	Tenant     string
@@ -37,6 +41,10 @@ type MSALCredentials struct {
 	AuthMethod Method
 }
 
+// MSALTokenProvider implements azcore.TokenCredential using
+// the Microsoft Authentication Library (MSAL).
+// Tokens are acquired silently from cache when possible and
+// fall back to the configured interactive or device-code flow.
 type MSALTokenProvider struct {
 	client     *public.Client
 	email      string
@@ -44,7 +52,8 @@ type MSALTokenProvider struct {
 	authMethod Method
 }
 
-// NewMSALTokenProvider will be used later by other packages
+// NewMSALTokenProvider creates a token provider backed by a persistent
+// MSAL cache stored in the user's cache directory.
 func NewMSALTokenProvider(config *MSALCredentials) (*MSALTokenProvider, error) {
 	storage, err := accessor.New(config.ClientID)
 	if err != nil {
@@ -79,7 +88,11 @@ func NewMSALTokenProvider(config *MSALCredentials) (*MSALTokenProvider, error) {
 	}, nil
 }
 
-// GetToken will be used later by other packages
+// GetToken implements azcore.TokenCredential.
+//
+// It attempts to acquire a token silently using cached accounts.
+// If no matching account is found or silent acquisition fails,
+// it falls back to the configured authentication flow.
 func (p *MSALTokenProvider) GetToken(ctx context.Context, _ policy.TokenRequestOptions) (azcore.AccessToken, error) {
 	var result public.AuthResult
 	var userFound bool
