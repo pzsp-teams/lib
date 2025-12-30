@@ -297,14 +297,14 @@ func (s *service) GetMentions(ctx context.Context, teamRef, channelRef string, r
 			continue
 		}
 
+		if tryAddTeamOrChannelMention(adder, raw, teamRef, teamID, channelRef, channelID) {
+			continue
+		}
+
 		if util.IsLikelyEmail(raw) {
 			if err := adder.AddUserMention(ctx, raw, s.userAPI); err != nil {
 				return nil, err
 			}
-			continue
-		}
-
-		if tryAddTeamOrChannelMention(adder, raw, teamRef, teamID, channelRef, channelID) {
 			continue
 		}
 
