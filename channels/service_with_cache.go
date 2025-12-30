@@ -132,6 +132,16 @@ func (s *serviceWithCache) SendMessage(
 	}, s)
 }
 
+func (s *serviceWithCache) SendReply(
+	ctx context.Context,
+	teamRef, channelRef, messageID string,
+	body models.MessageBody,
+) (*models.Message, error) {
+	return withErrorClear(func() (*models.Message, error) {
+		return s.svc.SendReply(ctx, teamRef, channelRef, messageID, body)
+	}, s)
+}
+
 func (s *serviceWithCache) ListMessages(
 	ctx context.Context,
 	teamRef, channelRef string,

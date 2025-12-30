@@ -2,10 +2,12 @@ package channels
 
 import (
 	"context"
+	"fmt"
 
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
 	"github.com/pzsp-teams/lib/internal/adapter"
 	"github.com/pzsp-teams/lib/internal/api"
+	"github.com/pzsp-teams/lib/internal/mentions"
 	"github.com/pzsp-teams/lib/internal/resolver"
 	snd "github.com/pzsp-teams/lib/internal/sender"
 	"github.com/pzsp-teams/lib/internal/util"
@@ -108,9 +110,46 @@ func (s *service) SendMessage(ctx context.Context, teamRef, channelRef string, b
 		return nil, err
 	}
 
-	resp, requestErr := s.channelAPI.SendMessage(ctx, teamID, channelID, body.Content, string(body.ContentType), nil)
+	if len(body.Mentions) > 0 && body.ContentType != models.MessageContentTypeHTML {
+		return nil, fmt.Errorf("mentions can only be used with HTML content type")
+	}
+
+	if err := mentions.ValidateAtTags(&body); err != nil {
+		return nil, err
+	}
+	ments, err := mentions.MapMentions(body.Mentions)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, requestErr := s.channelAPI.SendMessage(ctx, teamID, channelID, body.Content, string(body.ContentType), ments)
 	if requestErr != nil {
 		return nil, snd.MapError(requestErr, snd.WithResource(snd.Team, teamRef), snd.WithResource(snd.Channel, channelRef))
+	}
+
+	return adapter.MapGraphMessage(resp), nil
+}
+
+func (s *service) SendReply(ctx context.Context, teamRef, channelRef, messageID string, body models.MessageBody) (*models.Message, error) {
+	teamID, channelID, err := s.resolveTeamAndChannelID(ctx, teamRef, channelRef)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(body.Mentions) > 0 && body.ContentType != models.MessageContentTypeHTML {
+		return nil, fmt.Errorf("mentions can only be used with HTML content type")
+	}
+	if err := mentions.ValidateAtTags(&body); err != nil {
+		return nil, err
+	}
+	ments, err := mentions.MapMentions(body.Mentions)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, requestErr := s.channelAPI.SendReply(ctx, teamID, channelID, messageID, body.Content, string(body.ContentType), ments)
+	if requestErr != nil {
+		return nil, snd.MapError(requestErr, snd.WithResource(snd.Team, teamRef), snd.WithResource(snd.Channel, channelRef), snd.WithResource(snd.Message, messageID))
 	}
 
 	return adapter.MapGraphMessage(resp), nil
