@@ -11,24 +11,34 @@ import (
 	"github.com/pzsp-teams/lib/internal/util"
 )
 
+// TeamResolver defines methods to resolve team references
+// into their corresponding Microsoft Graph IDs.
 type TeamResolver interface {
+	// ResolveTeamRefToID resolves  a team reference (name or ID) to a team ID.
+	//
+	// If the reference already appears to be an team ID,
+	// it may be returned directly.
 	ResolveTeamRefToID(ctx context.Context, teamRef string) (string, error)
 }
 
+// TeamResolverCacheable resolves team references using the graph API
+// and optionally caches successful resolutions.
 type TeamResolverCacheable struct {
 	teamsAPI     api.TeamAPI
 	cacher       cacher.Cacher
 	cacheEnabled bool
 }
 
-func NewTeamResolverCacheable(teamsAPI api.TeamAPI, cacher cacher.Cacher, cacheEnabled bool) TeamResolver {
+// NewTeamResolverCacheable creates a new TeamResolverCacheable.
+func NewTeamResolverCacheable(teamsAPI api.TeamAPI, c cacher.Cacher, cacheEnabled bool) TeamResolver {
 	return &TeamResolverCacheable{
 		teamsAPI:     teamsAPI,
-		cacher:       cacher,
+		cacher:       c,
 		cacheEnabled: cacheEnabled,
 	}
 }
 
+// ResolveTeamRefToID implements TeamResolver.
 func (r *TeamResolverCacheable) ResolveTeamRefToID(ctx context.Context, teamRef string) (string, error) {
 	rCtx := r.newTeamResolveContext(teamRef)
 	return rCtx.resolveWithCache(ctx, r.cacher, r.cacheEnabled)
