@@ -51,10 +51,6 @@ func NewChannelMemberKey(teamID, channelID, userRef string, pep *string) string 
 	return formatKey(ChannelMember, teamID, channelID, hashRef(userRef, pep))
 }
 
-func NewUserKey(userRef string, pep *string) string {
-	return formatKey(User, hashRef(userRef, pep))
-}
-
 func hashRef(ref string, pep *string) string {
 	if pep == nil {
 		p, err := pepper.GetOrAskPepper()
