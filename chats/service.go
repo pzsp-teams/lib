@@ -124,16 +124,10 @@ func (s *service) SendMessage(ctx context.Context, chatRef ChatRef, body models.
 	if err != nil {
 		return nil, err
 	}
-	if len(body.Mentions) > 0 && body.ContentType != models.MessageContentTypeHTML {
-		return nil, fmt.Errorf("mentions can only be used with HTML content type")
-	}
 	if err := validateChatMentions(chatRef, body.Mentions); err != nil {
 		return nil, err
 	}
-	if err := mentions.ValidateAtTags(&body); err != nil {
-		return nil, err
-	}
-	ments, err := mentions.MapMentions(body.Mentions)
+	ments, err := mentions.PrepareMentions(&body)
 	if err != nil {
 		return nil, err
 	}
