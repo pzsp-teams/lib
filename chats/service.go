@@ -7,6 +7,7 @@ import (
 
 	"github.com/pzsp-teams/lib/internal/adapter"
 	"github.com/pzsp-teams/lib/internal/api"
+	"github.com/pzsp-teams/lib/internal/mentions"
 	"github.com/pzsp-teams/lib/internal/resolver"
 	snd "github.com/pzsp-teams/lib/internal/sender"
 	"github.com/pzsp-teams/lib/internal/util"
@@ -116,13 +117,23 @@ func (s *service) ListMessages(ctx context.Context, chatRef ChatRef) ([]*models.
 	return util.MapSlices(resp.GetValue(), adapter.MapGraphMessage), nil
 }
 
-func (s *service) SendMessage(ctx context.Context, chatRef ChatRef, content string, contentType models.MessageContentType) (*models.Message, error) {
+func (s *service) SendMessage(ctx context.Context, chatRef ChatRef, body models.MessageBody) (*models.Message, error) {
 	chatID, err := s.resolveChatIDFromRef(ctx, chatRef)
 	if err != nil {
 		return nil, err
 	}
-
-	resp, requestErr := s.chatAPI.SendMessage(ctx, chatID, content, string(contentType))
+	if len(body.Mentions) > 0 && body.ContentType != models.MessageContentTypeHTML {
+		return nil, fmt.Errorf("mentions can only be used with HTML content type")
+	}
+	if err := mentions.ValidateAtTags(&body); err != nil {
+		return nil, err
+	}
+	ments, err := mentions.MapMentions(body.Mentions)
+	if err != nil {
+		return nil, err
+	}
+	
+	resp, requestErr := s.chatAPI.SendMessage(ctx, chatID, body.Content, string(body.ContentType), ments)
 	if requestErr != nil {
 		return nil, snd.MapError(requestErr, snd.WithResource(snd.Chat, chatID))
 	}

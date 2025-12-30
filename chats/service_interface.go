@@ -43,7 +43,7 @@ type Service interface {
 	ListMessages(ctx context.Context, chatRef ChatRef) ([]*models.Message, error)
 
 	// SendMessage sends a message to a chat. ContentType specifies the format of the message content.
-	SendMessage(ctx context.Context, chatRef ChatRef, content string, contentType models.MessageContentType) (*models.Message, error)
+	SendMessage(ctx context.Context, chatRef ChatRef, body models.MessageBody) (*models.Message, error)
 
 	// DeleteMessage deletes a message from a chat. Action is reversible - soft delete is performed.
 	DeleteMessage(ctx context.Context, chatRef ChatRef, messageID string) error
