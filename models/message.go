@@ -4,6 +4,21 @@ import (
 	"time"
 )
 
+type MentionKind string
+
+const (
+	MentionUser MentionKind = "user"
+	MentionChannel MentionKind = "channel"
+	MentionTeam MentionKind = "team"
+)
+
+type Mention struct {
+	Kind 	  MentionKind
+	ID        string
+	Text 	string
+	Placeholder string
+}
+
 /*
 MessageContentType represents the type of content in a Microsoft Teams message.
 It can be either text or HTML.
@@ -37,6 +52,7 @@ type MessageFrom struct {
 type MessageBody struct {
 	Content     string
 	ContentType MessageContentType
+	Mentions	[]Mention
 }
 
 // ListMessagesOptions contains options for listing messages.
