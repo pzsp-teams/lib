@@ -5,39 +5,16 @@ import (
 	"time"
 
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
+	"github.com/pzsp-teams/lib/internal/testutil"
+	"github.com/pzsp-teams/lib/internal/util"
 	"github.com/pzsp-teams/lib/models"
 	"github.com/stretchr/testify/assert"
 )
 
-func ptr[T any](v T) *T { return &v }
-
-type newTeamParams struct {
-	ID          *string
-	DisplayName *string
-	Description *string
-	IsArchived  *bool
-	Visibilitiy *msmodels.TeamVisibilityType
-}
-
-func newGraphTeam(params *newTeamParams) msmodels.Teamable {
-	if params == nil {
-		return nil
-	}
-	graphTeam := msmodels.NewTeam()
-
-	graphTeam.SetId(params.ID)
-	graphTeam.SetDisplayName(params.DisplayName)
-	graphTeam.SetDescription(params.Description)
-	graphTeam.SetIsArchived(params.IsArchived)
-	graphTeam.SetVisibility(params.Visibilitiy)
-
-	return graphTeam
-}
-
 func TestMapGraphTeam(t *testing.T) {
 	type testCase struct {
 		name   string
-		params *newTeamParams
+		params *testutil.NewTeamParams
 		result *models.Team
 	}
 
@@ -49,23 +26,53 @@ func TestMapGraphTeam(t *testing.T) {
 		},
 		{
 			"Private team",
-			&newTeamParams{ptr("team-id"), ptr("Team name"), ptr("A sample team"), ptr(true), ptr(msmodels.PRIVATE_TEAMVISIBILITYTYPE)},
-			&models.Team{ID: "team-id", DisplayName: "Team name", Description: "A sample team", IsArchived: true, Visibility: ptr("private")},
+			&testutil.NewTeamParams{
+				ID:          util.Ptr("team-id"),
+				DisplayName: util.Ptr("Team name"),
+				Description: util.Ptr("A sample team"),
+				IsArchived:  util.Ptr(true),
+				Visibility:  util.Ptr(msmodels.PRIVATE_TEAMVISIBILITYTYPE),
+			},
+			&models.Team{
+				ID:          "team-id",
+				DisplayName: "Team name",
+				Description: "A sample team",
+				IsArchived:  true,
+				Visibility:  util.Ptr("private"),
+			},
 		},
 		{
 			"Public team",
-			&newTeamParams{ptr("team-id"), ptr("Team name"), ptr("A sample team"), ptr(false), ptr(msmodels.PUBLIC_TEAMVISIBILITYTYPE)},
-			&models.Team{ID: "team-id", DisplayName: "Team name", Description: "A sample team", IsArchived: false, Visibility: ptr("public")},
+			&testutil.NewTeamParams{
+				ID:          util.Ptr("team-id"),
+				DisplayName: util.Ptr("Team name"),
+				Description: util.Ptr("A sample team"),
+				IsArchived:  util.Ptr(false),
+				Visibility:  util.Ptr(msmodels.PUBLIC_TEAMVISIBILITYTYPE),
+			},
+			&models.Team{
+				ID:          "team-id",
+				DisplayName: "Team name",
+				Description: "A sample team",
+				IsArchived:  false,
+				Visibility:  util.Ptr("public"),
+			},
 		},
 		{
 			"Missing fields",
-			&newTeamParams{},
-			&models.Team{ID: "", DisplayName: "", Description: "", IsArchived: false, Visibility: nil},
+			&testutil.NewTeamParams{},
+			&models.Team{
+				ID:          "",
+				DisplayName: "",
+				Description: "",
+				IsArchived:  false,
+				Visibility:  nil,
+			},
 		},
 	}
 
 	for _, tc := range testCases {
-		graphTeam := newGraphTeam(tc.params)
+		graphTeam := testutil.NewGraphTeam(tc.params)
 		team := MapGraphTeam(graphTeam)
 
 		if team == nil || tc.result == nil {
@@ -86,25 +93,10 @@ func TestMapGraphTeam(t *testing.T) {
 	}
 }
 
-type newChannelParams struct {
-	ID   *string
-	Name *string
-}
-
-func newGraphChannel(params *newChannelParams) msmodels.Channelable {
-	if params == nil {
-		return nil
-	}
-	graphChannel := msmodels.NewChannel()
-	graphChannel.SetId(params.ID)
-	graphChannel.SetDisplayName(params.Name)
-	return graphChannel
-}
-
 func TestMapGraphChannel(t *testing.T) {
 	type testCase struct {
 		name   string
-		params *newChannelParams
+		params *testutil.NewChannelParams
 		result *models.Channel
 	}
 
@@ -116,23 +108,26 @@ func TestMapGraphChannel(t *testing.T) {
 		},
 		{
 			"General channel",
-			&newChannelParams{ptr("channel-id"), ptr("General")},
+			&testutil.NewChannelParams{ID: util.Ptr("channel-id"), Name: util.Ptr("General")},
 			&models.Channel{ID: "channel-id", Name: "General", IsGeneral: true},
 		},
 		{
 			"Standard channel",
-			&newChannelParams{ptr("channel-id"), ptr("channel-name")},
+			&testutil.NewChannelParams{
+				ID:   util.Ptr("channel-id"),
+				Name: util.Ptr("channel-name"),
+			},
 			&models.Channel{ID: "channel-id", Name: "channel-name", IsGeneral: false},
 		},
 		{
 			"Missing fields",
-			&newChannelParams{},
+			&testutil.NewChannelParams{},
 			&models.Channel{ID: "", Name: "", IsGeneral: false},
 		},
 	}
 
 	for _, tc := range testCases {
-		graphChannel := newGraphChannel(tc.params)
+		graphChannel := testutil.NewGraphChannel(tc.params)
 		channel := MapGraphChannel(graphChannel)
 
 		if channel == nil || tc.result == nil {
@@ -146,58 +141,10 @@ func TestMapGraphChannel(t *testing.T) {
 	}
 }
 
-type newMessageParams struct {
-	ID              *string
-	Content         *string
-	ContentType     *msmodels.BodyType
-	CreatedDateTime *time.Time
-	FromUserID      *string
-	FromDisplayName *string
-	ReplyCount      *int
-}
-
-func newGraphMessage(params *newMessageParams) msmodels.ChatMessageable {
-	if params == nil {
-		return nil
-	}
-	graphMessage := msmodels.NewChatMessage()
-	graphMessage.SetId(params.ID)
-
-	if params.Content != nil || params.ContentType != nil {
-		body := msmodels.NewItemBody()
-		body.SetContent(params.Content)
-		body.SetContentType(params.ContentType)
-		graphMessage.SetBody(body)
-	}
-
-	graphMessage.SetCreatedDateTime(params.CreatedDateTime)
-
-	if params.FromUserID != nil || params.FromDisplayName != nil {
-		from := msmodels.NewChatMessageFromIdentitySet()
-
-		user := msmodels.NewUser()
-		user.SetId(params.FromUserID)
-		user.SetDisplayName(params.FromDisplayName)
-
-		from.SetUser(user)
-		graphMessage.SetFrom(from)
-	}
-
-	if params.ReplyCount != nil {
-		messages := make([]msmodels.ChatMessageable, *params.ReplyCount)
-		for i := range messages {
-			messages[i] = msmodels.NewChatMessage()
-		}
-		graphMessage.SetReplies(messages)
-	}
-
-	return graphMessage
-}
-
 func TestMapGraphMessage(t *testing.T) {
 	type testCase struct {
 		name   string
-		params *newMessageParams
+		params *testutil.NewMessageParams
 		result *models.Message
 	}
 
@@ -209,14 +156,14 @@ func TestMapGraphMessage(t *testing.T) {
 		},
 		{
 			"Text content message",
-			&newMessageParams{
-				ptr("message-id"),
-				ptr("Hello, world!"),
-				ptr(msmodels.TEXT_BODYTYPE),
-				ptr(time.Date(2024, 1, 2, 15, 4, 5, 0, time.UTC)),
-				ptr("user-id"),
-				ptr("John Doe"),
-				ptr(3),
+			&testutil.NewMessageParams{
+				ID:              util.Ptr("message-id"),
+				Content:         util.Ptr("Hello, world!"),
+				ContentType:     util.Ptr(msmodels.TEXT_BODYTYPE),
+				CreatedDateTime: util.Ptr(time.Date(2024, 1, 2, 15, 4, 5, 0, time.UTC)),
+				FromUserID:      util.Ptr("user-id"),
+				FromDisplayName: util.Ptr("John Doe"),
+				ReplyCount:      util.Ptr(3),
 			},
 			&models.Message{
 				ID:              "message-id",
@@ -229,14 +176,14 @@ func TestMapGraphMessage(t *testing.T) {
 		},
 		{
 			"HTML content message",
-			&newMessageParams{
-				ptr("message-id"),
-				ptr("<p>Hello, <b>world</b>!</p>"),
-				ptr(msmodels.HTML_BODYTYPE),
-				ptr(time.Date(2024, 1, 2, 15, 4, 5, 0, time.UTC)),
-				ptr("user-id"),
-				ptr("John Doe"),
-				ptr(0),
+			&testutil.NewMessageParams{
+				ID:              util.Ptr("message-id"),
+				Content:         util.Ptr("<p>Hello, <b>world</b>!</p>"),
+				ContentType:     util.Ptr(msmodels.HTML_BODYTYPE),
+				CreatedDateTime: util.Ptr(time.Date(2024, 1, 2, 15, 4, 5, 0, time.UTC)),
+				FromUserID:      util.Ptr("user-id"),
+				FromDisplayName: util.Ptr("John Doe"),
+				ReplyCount:      util.Ptr(0),
 			},
 			&models.Message{
 				ID:              "message-id",
@@ -249,7 +196,7 @@ func TestMapGraphMessage(t *testing.T) {
 		},
 		{
 			"Missing fields",
-			&newMessageParams{},
+			&testutil.NewMessageParams{},
 			&models.Message{
 				ID:              "",
 				Content:         "",
@@ -262,7 +209,7 @@ func TestMapGraphMessage(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		graphMessage := newGraphMessage(tc.params)
+		graphMessage := testutil.NewGraphMessage(tc.params)
 		message := MapGraphMessage(graphMessage)
 
 		if message == nil || tc.result == nil {
@@ -286,36 +233,10 @@ func TestMapGraphMessage(t *testing.T) {
 	}
 }
 
-type newMemberParams struct {
-	ID          *string
-	UserID      *string
-	DisplayName *string
-	Role        *string
-	Email       *string
-}
-
-func newGraphMember(params *newMemberParams) msmodels.ConversationMemberable {
-	if params == nil {
-		return nil
-	}
-	member := msmodels.NewAadUserConversationMember()
-
-	member.SetId(params.ID)
-
-	member.SetUserId(params.UserID)
-	member.SetDisplayName(params.DisplayName)
-
-	if params.Role != nil {
-		member.SetRoles([]string{*params.Role})
-	}
-
-	return member
-}
-
 func TestMapGraphMember(t *testing.T) {
 	type testCase struct {
 		name   string
-		params *newMemberParams
+		params *testutil.NewMemberParams
 		result *models.Member
 	}
 
@@ -327,18 +248,30 @@ func TestMapGraphMember(t *testing.T) {
 		},
 		{
 			"Complete member",
-			&newMemberParams{ptr("member-id"), ptr("user-id"), ptr("Jane Smith"), ptr("owner"), ptr("jane.smith@example.com")},
-			&models.Member{ID: "member-id", UserID: "user-id", DisplayName: "Jane Smith", Role: "owner", Email: "jane.smith@example.com"},
+			&testutil.NewMemberParams{
+				ID:          util.Ptr("member-id"),
+				UserID:      util.Ptr("user-id"),
+				DisplayName: util.Ptr("Jane Smith"),
+				Role:        util.Ptr("owner"),
+				Email:       util.Ptr("jane.smith@example.com"),
+			},
+			&models.Member{
+				ID:          "member-id",
+				UserID:      "user-id",
+				DisplayName: "Jane Smith",
+				Role:        "owner",
+				Email:       "jane.smith@example.com",
+			},
 		},
 		{
 			"Missing fields",
-			&newMemberParams{},
+			&testutil.NewMemberParams{},
 			&models.Member{ID: "", UserID: "", DisplayName: "", Role: "", Email: ""},
 		},
 	}
 
 	for _, tc := range testCases {
-		graphMember := newGraphMember(tc.params)
+		graphMember := testutil.NewGraphMember(tc.params)
 		member := MapGraphMember(graphMember)
 
 		if member == nil || tc.result == nil {
@@ -353,31 +286,10 @@ func TestMapGraphMember(t *testing.T) {
 	}
 }
 
-type newChatParams struct {
-	ID       *string
-	Type     *msmodels.ChatType
-	IsHidden *bool
-	Topic    *string
-}
-
-func newGraphChat(params *newChatParams) msmodels.Chatable {
-	if params == nil {
-		return nil
-	}
-	chat := msmodels.NewChat()
-
-	chat.SetId(params.ID)
-	chat.SetChatType(params.Type)
-	chat.SetIsHiddenForAllMembers(params.IsHidden)
-	chat.SetTopic(params.Topic)
-
-	return chat
-}
-
 func TestMapGraphChat(t *testing.T) {
 	type testCase struct {
 		name   string
-		params *newChatParams
+		params *testutil.NewChatParams
 		result *models.Chat
 	}
 
@@ -389,23 +301,38 @@ func TestMapGraphChat(t *testing.T) {
 		},
 		{
 			"One-on-one chat",
-			&newChatParams{ptr("chat-id"), ptr(msmodels.ONEONONE_CHATTYPE), ptr(false), nil},
+			&testutil.NewChatParams{
+				ID:       util.Ptr("chat-id"),
+				Type:     util.Ptr(msmodels.ONEONONE_CHATTYPE),
+				IsHidden: util.Ptr(false),
+				Topic:    nil,
+			},
 			&models.Chat{ID: "chat-id", Type: models.ChatTypeOneOnOne, IsHidden: false, Topic: nil},
 		},
 		{
 			"Group chat with topic",
-			&newChatParams{ptr("chat-id"), ptr(msmodels.GROUP_CHATTYPE), ptr(true), ptr("Project Discussion")},
-			&models.Chat{ID: "chat-id", Type: models.ChatTypeGroup, IsHidden: true, Topic: ptr("Project Discussion")},
+			&testutil.NewChatParams{
+				ID:       util.Ptr("chat-id"),
+				Type:     util.Ptr(msmodels.GROUP_CHATTYPE),
+				IsHidden: util.Ptr(true),
+				Topic:    util.Ptr("Project Discussion"),
+			},
+			&models.Chat{
+				ID:       "chat-id",
+				Type:     models.ChatTypeGroup,
+				IsHidden: true,
+				Topic:    util.Ptr("Project Discussion"),
+			},
 		},
 		{
 			"Missing fields",
-			&newChatParams{},
+			&testutil.NewChatParams{},
 			&models.Chat{ID: "", Type: "", IsHidden: false, Topic: nil},
 		},
 	}
 
 	for _, tc := range testCases {
-		graphChat := newGraphChat(tc.params)
+		graphChat := testutil.NewGraphChat(tc.params)
 		chat := MapGraphChat(graphChat)
 
 		if chat == nil || tc.result == nil {
