@@ -2,23 +2,25 @@ package sender
 
 import (
 	"net/http"
+
+	"github.com/pzsp-teams/lib/internal/resources"
 )
 
 type Option func(*ErrData)
 
-func WithResource(resType Resource, resRef string) Option {
+func WithResource(resType resources.Resource, resRef string) Option {
 	return func(data *ErrData) {
 		if data.ResourceRefs == nil {
-			data.ResourceRefs = make(map[Resource]string)
+			data.ResourceRefs = make(map[resources.Resource]string)
 		}
 		data.ResourceRefs[resType] = resRef
 	}
 }
 
-func WithResources(resType Resource, resRefs []string) Option {
+func WithResources(resType resources.Resource, resRefs []string) Option {
 	return func(data *ErrData) {
 		if data.ResourceRefs == nil {
-			data.ResourceRefs = make(map[Resource]string)
+			data.ResourceRefs = make(map[resources.Resource]string)
 		}
 		for _, ref := range resRefs {
 			data.ResourceRefs[resType] = ref

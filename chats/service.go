@@ -10,6 +10,7 @@ import (
 	"github.com/pzsp-teams/lib/internal/api"
 	"github.com/pzsp-teams/lib/internal/mentions"
 	"github.com/pzsp-teams/lib/internal/resolver"
+	"github.com/pzsp-teams/lib/internal/resources"
 	snd "github.com/pzsp-teams/lib/internal/sender"
 	"github.com/pzsp-teams/lib/internal/util"
 	"github.com/pzsp-teams/lib/models"
@@ -29,7 +30,7 @@ func NewService(chatAPI api.ChatAPI, cr resolver.ChatResolver, userAPI api.Users
 func (s *service) CreateOneOneOne(ctx context.Context, recipientRef string) (*models.Chat, error) {
 	resp, requestErr := s.chatAPI.CreateOneOnOneChat(ctx, recipientRef)
 	if requestErr != nil {
-		return nil, snd.MapError(requestErr, snd.WithResource(snd.User, recipientRef))
+		return nil, snd.MapError(requestErr, snd.WithResource(resources.User, recipientRef))
 	}
 
 	return adapter.MapGraphChat(resp), nil
@@ -38,7 +39,7 @@ func (s *service) CreateOneOneOne(ctx context.Context, recipientRef string) (*mo
 func (s *service) CreateGroup(ctx context.Context, recipientRefs []string, topic string, includeMe bool) (*models.Chat, error) {
 	resp, requestErr := s.chatAPI.CreateGroupChat(ctx, recipientRefs, topic, includeMe)
 	if requestErr != nil {
-		return nil, snd.MapError(requestErr, snd.WithResources(snd.User, recipientRefs))
+		return nil, snd.MapError(requestErr, snd.WithResources(resources.User, recipientRefs))
 	}
 
 	return adapter.MapGraphChat(resp), nil
@@ -52,7 +53,7 @@ func (s *service) AddMemberToGroupChat(ctx context.Context, chatRef GroupChatRef
 
 	resp, requestErr := s.chatAPI.AddMemberToGroupChat(ctx, chatID, userRef)
 	if requestErr != nil {
-		return nil, snd.MapError(requestErr, snd.WithResource(snd.Chat, chatID), snd.WithResource(snd.User, userRef))
+		return nil, snd.MapError(requestErr, snd.WithResource(resources.GroupChat, chatID), snd.WithResource(resources.User, userRef))
 	}
 
 	return adapter.MapGraphMember(resp), nil
@@ -71,7 +72,7 @@ func (s *service) RemoveMemberFromGroupChat(ctx context.Context, chatRef GroupCh
 
 	requestErr := s.chatAPI.RemoveMemberFromGroupChat(ctx, chatID, memberID)
 	if requestErr != nil {
-		return snd.MapError(requestErr, snd.WithResource(snd.Chat, chatID), snd.WithResource(snd.User, userRef))
+		return snd.MapError(requestErr, snd.WithResource(resources.GroupChat, chatID), snd.WithResource(resources.User, userRef))
 	}
 
 	return nil
@@ -85,7 +86,7 @@ func (s *service) ListGroupChatMembers(ctx context.Context, chatRef GroupChatRef
 
 	resp, requestErr := s.chatAPI.ListGroupChatMembers(ctx, chatID)
 	if requestErr != nil {
-		return nil, snd.MapError(requestErr, snd.WithResource(snd.Chat, chatID))
+		return nil, snd.MapError(requestErr, snd.WithResource(resources.GroupChat, chatID))
 	}
 
 	return util.MapSlices(resp.GetValue(), adapter.MapGraphMember), nil
@@ -99,7 +100,7 @@ func (s *service) UpdateGroupChatTopic(ctx context.Context, chatRef GroupChatRef
 
 	resp, requestErr := s.chatAPI.UpdateGroupChatTopic(ctx, chatID, topic)
 	if requestErr != nil {
-		return nil, snd.MapError(requestErr, snd.WithResource(snd.Chat, chatID))
+		return nil, snd.MapError(requestErr, snd.WithResource(resources.GroupChat, chatID))
 	}
 
 	return adapter.MapGraphChat(resp), nil
@@ -113,7 +114,7 @@ func (s *service) ListMessages(ctx context.Context, chatRef ChatRef) ([]*models.
 
 	resp, requestErr := s.chatAPI.ListMessages(ctx, chatID)
 	if requestErr != nil {
-		return nil, snd.MapError(requestErr, snd.WithResource(snd.Chat, chatID))
+		return nil, snd.MapError(requestErr, snd.WithResource(resources.Chat, chatID))
 	}
 
 	return util.MapSlices(resp.GetValue(), adapter.MapGraphMessage), nil
@@ -134,7 +135,7 @@ func (s *service) SendMessage(ctx context.Context, chatRef ChatRef, body models.
 
 	resp, requestErr := s.chatAPI.SendMessage(ctx, chatID, body.Content, string(body.ContentType), ments)
 	if requestErr != nil {
-		return nil, snd.MapError(requestErr, snd.WithResource(snd.Chat, chatID))
+		return nil, snd.MapError(requestErr, snd.WithResource(resources.Chat, chatID))
 	}
 
 	return adapter.MapGraphMessage(resp), nil
@@ -148,7 +149,7 @@ func (s *service) DeleteMessage(ctx context.Context, chatRef ChatRef, messageID 
 
 	requestErr := s.chatAPI.DeleteMessage(ctx, chatID, messageID)
 	if requestErr != nil {
-		return snd.MapError(requestErr, snd.WithResource(snd.Chat, chatID), snd.WithResource(snd.Message, messageID))
+		return snd.MapError(requestErr, snd.WithResource(resources.Chat, chatID), snd.WithResource(resources.Message, messageID))
 	}
 
 	return nil
@@ -162,7 +163,7 @@ func (s *service) GetMessage(ctx context.Context, chatRef ChatRef, messageID str
 
 	resp, requestErr := s.chatAPI.GetMessage(ctx, chatID, messageID)
 	if requestErr != nil {
-		return nil, snd.MapError(requestErr, snd.WithResource(snd.Chat, chatID), snd.WithResource(snd.Message, messageID))
+		return nil, snd.MapError(requestErr, snd.WithResource(resources.Chat, chatID), snd.WithResource(resources.Message, messageID))
 	}
 
 	return adapter.MapGraphMessage(resp), nil
@@ -207,7 +208,7 @@ func (s *service) ListPinnedMessages(ctx context.Context, chatRef ChatRef) ([]*m
 
 	resp, requestErr := s.chatAPI.ListPinnedMessages(ctx, chatID)
 	if requestErr != nil {
-		return nil, snd.MapError(requestErr, snd.WithResource(snd.Chat, chatID))
+		return nil, snd.MapError(requestErr, snd.WithResource(resources.Chat, chatID))
 	}
 
 	return util.MapSlices(resp.GetValue(), adapter.MapGraphMessage), nil
@@ -221,7 +222,7 @@ func (s *service) PinMessage(ctx context.Context, chatRef ChatRef, messageID str
 
 	requestErr := s.chatAPI.PinMessage(ctx, chatID, messageID)
 	if requestErr != nil {
-		return snd.MapError(requestErr, snd.WithResource(snd.Chat, chatID), snd.WithResource(snd.Message, messageID))
+		return snd.MapError(requestErr, snd.WithResource(resources.Chat, chatID), snd.WithResource(resources.Message, messageID))
 	}
 
 	return nil
@@ -235,7 +236,7 @@ func (s *service) UnpinMessage(ctx context.Context, chatRef ChatRef, pinnedMessa
 
 	requestErr := s.chatAPI.UnpinMessage(ctx, chatID, pinnedMessageID)
 	if requestErr != nil {
-		return snd.MapError(requestErr, snd.WithResource(snd.Chat, chatID), snd.WithResource(snd.PinnedMessage, pinnedMessageID))
+		return snd.MapError(requestErr, snd.WithResource(resources.Chat, chatID), snd.WithResource(resources.PinnedMessage, pinnedMessageID))
 	}
 
 	return nil

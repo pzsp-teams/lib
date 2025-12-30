@@ -3,6 +3,8 @@ package sender
 import (
 	"fmt"
 	"strings"
+
+	"github.com/pzsp-teams/lib/internal/resources"
 )
 
 var errTemplate string = "[CODE: %d]: %s"
@@ -16,19 +18,8 @@ func (e RequestError) Error() string {
 	return fmt.Sprintf(errTemplate, e.Code, e.Message)
 }
 
-type Resource string
-
-const (
-	Team          Resource = "TEAM"
-	Channel       Resource = "CHANNEL"
-	Chat          Resource = "CHAT"
-	User          Resource = "USER"
-	Message       Resource = "MESSAGE"
-	PinnedMessage Resource = "PINNED_MESSAGE"
-)
-
 type ErrData struct {
-	ResourceRefs map[Resource]string
+	ResourceRefs map[resources.Resource]string
 }
 
 func (ed *ErrData) String() string {
