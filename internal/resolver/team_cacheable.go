@@ -30,7 +30,11 @@ type TeamResolverCacheable struct {
 }
 
 // NewTeamResolverCacheable creates a new TeamResolverCacheable.
-func NewTeamResolverCacheable(teamsAPI api.TeamAPI, c cacher.Cacher, cacheEnabled bool) TeamResolver {
+func NewTeamResolverCacheable(
+	teamsAPI api.TeamAPI,
+	c cacher.Cacher,
+	cacheEnabled bool,
+) TeamResolver {
 	return &TeamResolverCacheable{
 		teamsAPI:     teamsAPI,
 		cacher:       c,
@@ -39,12 +43,17 @@ func NewTeamResolverCacheable(teamsAPI api.TeamAPI, c cacher.Cacher, cacheEnable
 }
 
 // ResolveTeamRefToID implements TeamResolver.
-func (r *TeamResolverCacheable) ResolveTeamRefToID(ctx context.Context, teamRef string) (string, error) {
+func (r *TeamResolverCacheable) ResolveTeamRefToID(
+	ctx context.Context,
+	teamRef string,
+) (string, error) {
 	rCtx := r.newTeamResolveContext(teamRef)
 	return rCtx.resolveWithCache(ctx, r.cacher, r.cacheEnabled)
 }
 
-func (r *TeamResolverCacheable) newTeamResolveContext(teamRef string) resolverContext[msmodels.TeamCollectionResponseable] {
+func (r *TeamResolverCacheable) newTeamResolveContext(
+	teamRef string,
+) resolverContext[msmodels.TeamCollectionResponseable] {
 	ref := strings.TrimSpace(teamRef)
 	return resolverContext[msmodels.TeamCollectionResponseable]{
 		cacheKey:    cacher.NewTeamKey(ref),

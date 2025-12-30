@@ -23,7 +23,11 @@ type resolverContext[T any] struct {
 	extract     func(data T) (string, error)
 }
 
-func (r *resolverContext[T]) resolveWithCache(ctx context.Context, c cacher.Cacher, cacheEnabled bool) (string, error) {
+func (r *resolverContext[T]) resolveWithCache(
+	ctx context.Context,
+	c cacher.Cacher,
+	cacheEnabled bool,
+) (string, error) {
 	if r.ref == "" {
 		return "", fmt.Errorf("empty ref")
 	}
