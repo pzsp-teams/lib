@@ -37,7 +37,7 @@ func (f *fakeChatAPI) ListChats(ctx context.Context, chatType *string) (msmodels
 func (f *fakeChatAPI) ListMessages(ctx context.Context, chatID string) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError) {
 	return nil, nil
 }
-func (f *fakeChatAPI) SendMessage(ctx context.Context, chatID, content, contentType string) (msmodels.ChatMessageable, *sender.RequestError) {
+func (f *fakeChatAPI) SendMessage(ctx context.Context, chatID, content, contentType string, mentions []msmodels.ChatMessageMentionable) (msmodels.ChatMessageable, *sender.RequestError) {
 	return nil, nil
 }
 func (f *fakeChatAPI) DeleteMessage(ctx context.Context, chatID, messageID string) *sender.RequestError {
