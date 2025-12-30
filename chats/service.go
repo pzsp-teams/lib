@@ -135,7 +135,7 @@ func (s *service) SendMessage(ctx context.Context, chatRef ChatRef, body models.
 	if err != nil {
 		return nil, err
 	}
-	
+
 	resp, requestErr := s.chatAPI.SendMessage(ctx, chatID, body.Content, string(body.ContentType), ments)
 	if requestErr != nil {
 		return nil, snd.MapError(requestErr, snd.WithResource(snd.Chat, chatID))
@@ -258,14 +258,13 @@ func (s *service) resolveChatIDFromRef(ctx context.Context, chatRef ChatRef) (st
 	}
 }
 
-func validateChatMentions(chatRef ChatRef, mentions []models.Mention) error {
+func validateChatMentions(chatRef ChatRef, ments []models.Mention) error {
 	isOneOnOne := false
-	switch chatRef.(type) {
-	case OneOnOneChatRef:
+	if _, ok := chatRef.(OneOnOneChatRef); ok {
 		isOneOnOne = true
 	}
-	for i := range mentions {
-		m := mentions[i]
+	for i := range ments {
+		m := ments[i]
 		if m.Kind == models.MentionEveryone {
 			if isOneOnOne {
 				return fmt.Errorf("cannot mention everyone in one-on-one chat")

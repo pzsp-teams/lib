@@ -4,8 +4,6 @@ import (
 	"time"
 )
 
-
-
 /*
 MessageContentType represents the type of content in a Microsoft Teams message.
 It can be either text or HTML.
@@ -39,7 +37,7 @@ type MessageFrom struct {
 type MessageBody struct {
 	Content     string
 	ContentType MessageContentType
-	Mentions	[]Mention
+	Mentions    []Mention
 }
 
 // ListMessagesOptions contains options for listing messages.
