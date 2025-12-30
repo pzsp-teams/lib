@@ -132,6 +132,15 @@ func (f *fakeChanAPI) SendMessage(ctx context.Context, teamID, channelID, conten
 	return f.sendMsgResp, f.sendMsgErr
 }
 
+func (f *fakeChanAPI) SendReply(ctx context.Context, teamID, channelID, messageID, content, contentType string) (msmodels.ChatMessageable, *sender.RequestError) {
+	f.lastTeamID = teamID
+	f.lastChanID = channelID
+	f.lastMessageID = messageID
+	f.lastContent = content
+	f.lastContentType = contentType
+	return f.sendMsgResp, f.sendMsgErr
+}
+
 func (f *fakeChanAPI) ListMessages(ctx context.Context, teamID, channelID string, top *int32) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError) {
 	f.lastTeamID = teamID
 	f.lastChanID = channelID
