@@ -18,7 +18,7 @@ import (
 type service struct {
 	chatAPI      api.ChatAPI
 	chatResolver resolver.ChatResolver
-	userAPI api.UsersAPI
+	userAPI      api.UsersAPI
 }
 
 // NewService creates a new instance of the chat service.
@@ -252,64 +252,64 @@ func (s *service) GetMentions(ctx context.Context, chatRef ChatRef, rawMentions 
 	if err != nil {
 		return nil, err
 	}
-	
-	isGroup := false
-    switch chatRef.(type) {
-    case GroupChatRef:
-        isGroup = true
-    case OneOnOneChatRef:
-        isGroup = false
-    default:
-        return nil, fmt.Errorf("unknown chatRef type")
-    }
-	out := make([]models.Mention, 0, len(rawMentions))
-	nextAtID := int32(0)
-	seen := map[string]struct{}{}
-	add := func(kind models.MentionKind, targetID, text, dedupKey string) {
-		if _, ok := seen[dedupKey]; ok {
-			return
-		}
-		seen[dedupKey] = struct{}{}
-		out = append(out, models.Mention{
-			TargetID: targetID, 
-			Kind: kind,
-			AtID: nextAtID,
-			Text: text,
-		})
-		nextAtID++
+
+	isGroup, err := isGroupChatRef(chatRef)
+	if err != nil {
+		return nil, err
 	}
+
+	out := make([]models.Mention, 0, len(rawMentions))
+	adder := mentions.NewMentionAdder(&out)
+
 	for _, raw := range rawMentions {
 		raw = strings.TrimSpace(raw)
 		if raw == "" {
 			continue
 		}
-		low := strings.ToLower(raw)
-		if low == "everyone" {
-			if !isGroup {
-				return nil, fmt.Errorf("cannot mention everyone in one-on-one chat")
-			}
-			add(models.MentionEveryone, chatID, "Everyone", "everyone:"+chatID)
+
+		if ok, err := s.tryAddEveryoneMention(adder, chatID, isGroup, raw); err != nil {
+			return nil, err
+		} else if ok {
 			continue
 		}
+
 		if util.IsLikelyEmail(raw) {
-			user, err := s.userAPI.GetUserByEmailOrUPN(ctx, raw)
-			if err != nil {
+			if err := adder.AddUserMention(ctx, raw, s.userAPI); err != nil {
 				return nil, err
 			}
-			if user.GetId() == nil || strings.TrimSpace(*user.GetId()) == "" {
-				return nil, fmt.Errorf("resolved user has empty id for mention reference: %s", raw)
-			}
-			if user.GetDisplayName() == nil || strings.TrimSpace(*user.GetDisplayName()) == "" {
-				return nil, fmt.Errorf("resolved user has empty display name for mention reference: %s", raw)
-			}
-			add(models.MentionUser, *user.GetId(), *user.GetDisplayName(), "user:"+*user.GetId())
 			continue
 		}
+
 		return nil, fmt.Errorf("cannot resolve mention reference: %s", raw)
 	}
 
 	return out, nil
 }
+
+func isGroupChatRef(chatRef ChatRef) (bool, error) {
+	switch chatRef.(type) {
+	case GroupChatRef:
+		return true, nil
+	case OneOnOneChatRef:
+		return false, nil
+	default:
+		return false, fmt.Errorf("unknown chatRef type")
+	}
+}
+
+func (s *service) tryAddEveryoneMention(adder *mentions.MentionAdder, chatID string, isGroup bool, raw string) (bool, error) {
+	low := strings.ToLower(strings.TrimSpace(raw))
+	if low != "everyone" && low != "@everyone" {
+		return false, nil
+	}
+	if !isGroup {
+		return false, fmt.Errorf("cannot mention everyone in one-on-one chat")
+	}
+	adder.Add(models.MentionEveryone, chatID, "Everyone", "everyone:"+chatID)
+	return true, nil
+}
+
+
 
 func (s *service) resolveChatIDFromRef(ctx context.Context, chatRef ChatRef) (string, error) {
 	switch ref := chatRef.(type) {
