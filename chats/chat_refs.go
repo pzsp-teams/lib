@@ -24,7 +24,7 @@ type GroupChatRef struct {
 //
 //   - recipient's reference (userID, email)
 //
-// Note: Chat must be established between the logged-in user and the recipient for resolution to succeed.,
+// Note: Chat must be established between the logged-in user and the recipient for resolution to succeed.
 type OneOnOneChatRef struct {
 	Ref string
 }
