@@ -35,3 +35,20 @@ func TestIsLikelyChannelID_Negative(t *testing.T) {
 		}
 	}
 }
+
+func TestIsLikelyEmail_Positive(t *testing.T) {
+	s := "user@example.com"
+	if !IsLikelyEmail(s) {
+		t.Fatalf("expected IsLikelyEmail(%q)=true, got false", s)
+	}
+}
+
+func TestIsLikelyEmail_Negative(t *testing.T) {
+	for _, s := range []string{
+		"", "not-an-email", "user@.com", "user@com",
+	} {
+		if IsLikelyEmail(s) {
+			t.Fatalf("expected IsLikelyEmail(%q)=false, got true", s)
+		}
+	}
+}
