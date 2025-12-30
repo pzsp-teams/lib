@@ -9,6 +9,19 @@ import (
 	"github.com/pzsp-teams/lib/models"
 )
 
+type convCfg struct {
+	identityType      msmodels.TeamworkConversationIdentityType
+	validate func(string) bool
+	label    string
+}
+
+var convKinds = map[models.MentionKind]convCfg{
+	models.MentionChannel:  {msmodels.CHANNEL_TEAMWORKCONVERSATIONIDENTITYTYPE, util.IsLikelyThreadConversationID, "channel mention"},
+	models.MentionTeam:     {msmodels.TEAM_TEAMWORKCONVERSATIONIDENTITYTYPE, util.IsLikelyGUID, "team mention"},
+	models.MentionEveryone: {msmodels.CHAT_TEAMWORKCONVERSATIONIDENTITYTYPE, util.IsLikelyThreadConversationID, "everyone mention (chatID)"},
+}
+
+
 func MapMentions(in []models.Mention) (mentions []msmodels.ChatMessageMentionable, err error) {
 	if len(in) == 0 {
 		return nil, nil
@@ -50,71 +63,76 @@ func ValidateAtTags(body *models.MessageBody) error {
 	return nil
 }
 
-func mapToGraphMention(mention models.Mention) (msmodels.ChatMessageMentionable, error) {
-	if mention.Text == "" {
+func mapToGraphMention(m models.Mention) (msmodels.ChatMessageMentionable, error) {
+	if m.Text == "" {
 		return nil, fmt.Errorf("missing Text")
 	}
-	if mention.TargetID == "" {
+	if m.AtID < 0 {
+		return nil, fmt.Errorf("invalid AtID: %d", m.AtID)
+	}
+	if m.TargetID == "" {
 		return nil, fmt.Errorf("missing TargetID")
 	}
-	if mention.AtID < 0 {
-		return nil, fmt.Errorf("invalid AtID: %d", mention.AtID)
-	}
-	txt := mention.Text
-	atID := mention.AtID
-	targetID := mention.TargetID
+
+	txt, atID, targetID := m.Text, m.AtID, m.TargetID
+
 	graphMention := msmodels.NewChatMessageMention()
 	graphMention.SetId(&atID)
 	graphMention.SetMentionText(&txt)
 
 	mentioned := msmodels.NewChatMessageMentionedIdentitySet()
-	switch mention.Kind {
-	case models.MentionUser:
-		user := msmodels.NewIdentity()
-		if !util.IsLikelyGUID(targetID) {
-			return nil, fmt.Errorf("invalid TargetID for user mention: %s", targetID)
+
+	if m.Kind == models.MentionUser {
+		userMentioned, err := buildUserMentioned(targetID, txt)
+		if err != nil {
+			return nil, err
 		}
-		user.SetId(&targetID)
-		user.SetDisplayName(&txt)
-		user.SetAdditionalData(map[string]any{
-			"userIdentityType": "aadUser",
-		})
-		mentioned.SetUser(user)
-	case models.MentionChannel:
-		conv := msmodels.NewTeamworkConversationIdentity()
-		if !util.IsLikelyThreadConversationID(targetID) {
-			return nil, fmt.Errorf("invalid TargetID for channel mention: %s", targetID)
+		mentioned.SetUser(userMentioned)
+	} else if convCfg, ok := convKinds[m.Kind]; ok {
+		convMentioned, err := buildConversationMentioned(
+			targetID,
+			txt,
+			convCfg.identityType,
+			convCfg.validate,
+			convCfg.label,
+		)
+		if err != nil {
+			return nil, err
 		}
-		conv.SetId(&targetID)
-		conv.SetDisplayName(&txt)
-		t := msmodels.CHANNEL_TEAMWORKCONVERSATIONIDENTITYTYPE
-		conv.SetConversationIdentityType(&t)
-		mentioned.SetConversation(conv)
-	case models.MentionTeam:
-		conv := msmodels.NewTeamworkConversationIdentity()
-		if !util.IsLikelyGUID(targetID) {
-			return nil, fmt.Errorf("invalid TargetID for team mention: %s", targetID)
-		}
-		conv.SetId(&targetID)
-		conv.SetDisplayName(&txt)
-		t := msmodels.TEAM_TEAMWORKCONVERSATIONIDENTITYTYPE
-		conv.SetConversationIdentityType(&t)
-		mentioned.SetConversation(conv)
-	case models.MentionEveryone:
-		conv := msmodels.NewTeamworkConversationIdentity()
-		if !util.IsLikelyThreadConversationID(targetID) {
-			return nil, fmt.Errorf("invalid TargetID for everyone mention (chatID): %s", targetID)
-		}
-		conv.SetId(&targetID)
-		conv.SetDisplayName(&txt)
-		t := msmodels.CHAT_TEAMWORKCONVERSATIONIDENTITYTYPE
-		conv.SetConversationIdentityType(&t)
-		mentioned.SetConversation(conv)
-	default:
-		return nil, fmt.Errorf("unknown Mention.Kind: %s", mention.Kind)
+		mentioned.SetConversation(convMentioned)
+	} else {
+		return nil, fmt.Errorf("unsupported MentionKind: %s", m.Kind)
 	}
 
 	graphMention.SetMentioned(mentioned)
-
 	return graphMention, nil
+}
+
+func buildUserMentioned(targetID, displayName string) (msmodels.Identityable, error) {
+	if !util.IsLikelyGUID(targetID) {
+		return nil, fmt.Errorf("invalid TargetID for user mention: %s", targetID)
+	}
+	user := msmodels.NewIdentity()
+	user.SetId(&targetID)
+	user.SetDisplayName(&displayName)
+	user.SetAdditionalData(map[string]any{
+		"userIdentityType": "aadUser",
+	})
+	return user, nil
+}
+
+func buildConversationMentioned(
+	targetID, displayName string,
+	typ msmodels.TeamworkConversationIdentityType,
+	validate func(string) bool,
+	label string,
+) (msmodels.TeamworkConversationIdentityable, error) {
+	if !validate(targetID) {
+		return nil, fmt.Errorf("invalid TargetID for %s: %s", label, targetID)
+	}
+	conv := msmodels.NewTeamworkConversationIdentity()
+	conv.SetId(&targetID)
+	conv.SetDisplayName(&displayName)
+	conv.SetConversationIdentityType(&typ)
+	return conv, nil
 }
