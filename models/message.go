@@ -4,20 +4,7 @@ import (
 	"time"
 )
 
-type MentionKind string
 
-const (
-	MentionUser MentionKind = "user"
-	MentionChannel MentionKind = "channel"
-	MentionTeam MentionKind = "team"
-)
-
-type Mention struct {
-	Kind 	  MentionKind
-	ID        string
-	Text 	string
-	Placeholder string
-}
 
 /*
 MessageContentType represents the type of content in a Microsoft Teams message.
