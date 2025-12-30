@@ -373,7 +373,8 @@ func TestChatResolverCacheable_ResolveUserRefToMemberID_CacheMiss_UsesAPIAndCach
 	if fc.getCalls != 1 {
 		t.Errorf("expected 1 Get call, got %d", fc.getCalls)
 	}
-	if fc.lastGetKey != cacher.NewGroupChatMemberKey("chat-42", "u-1", nil) {
+
+	if fc.lastGetKey != cacher.NewGroupChatMemberKey("chat-42", "usr-1", nil) {
 		t.Errorf("unexpected cache key, got %q", fc.lastGetKey)
 	}
 
@@ -387,7 +388,7 @@ func TestChatResolverCacheable_ResolveUserRefToMemberID_CacheMiss_UsesAPIAndCach
 	if fc.setCalls != 1 {
 		t.Errorf("expected 1 Set call, got %d", fc.setCalls)
 	}
-	if fc.lastSetKey != cacher.NewGroupChatMemberKey("chat-42", "u-1", nil) {
+	if fc.lastSetKey != cacher.NewGroupChatMemberKey("chat-42", "usr-1", nil) {
 		t.Errorf("unexpected Set key, got %q", fc.lastSetKey)
 	}
 	if v, ok := fc.lastSetValue.(string); !ok || v != "m-1" {

@@ -80,7 +80,7 @@ func resolveChannelIDByName(chans msmodels.ChannelCollectionResponseable, teamID
 
 func resolveOneOnOneChatIDByUserRef(chats msmodels.ChatCollectionResponseable, userRef string) (string, error) {
 	if chats == nil || chats.GetValue() == nil || len(chats.GetValue()) == 0 {
-		return "", fmt.Errorf("no one-on-one chats avaliable")
+		return "", fmt.Errorf("no one-on-one chats available")
 	}
 
 	for _, chat := range chats.GetValue() {

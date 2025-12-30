@@ -44,10 +44,10 @@ type ChatResolverCacheable struct {
 }
 
 // NewChatResolverCacheable creates a new ChatResolverCacheable.
-func NewChatResolverCacheable(chatsAPI api.ChatAPI, cacher cacher.Cacher, cacheEnabled bool) ChatResolver {
+func NewChatResolverCacheable(chatsAPI api.ChatAPI, c cacher.Cacher, cacheEnabled bool) ChatResolver {
 	return &ChatResolverCacheable{
 		chatsAPI:     chatsAPI,
-		cacher:       cacher,
+		cacher:       c,
 		cacheEnabled: cacheEnabled,
 	}
 }

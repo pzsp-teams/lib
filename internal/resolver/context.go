@@ -27,7 +27,7 @@ type ResolverContext[T any] struct {
 }
 
 // resolveWithCache resolves the reference into a Microsoft Graph resource ID, utilizing caching if enabled.
-func (r *ResolverContext[T]) resolveWithCache(ctx context.Context, cacher cacher.Cacher, cacheEnabled bool) (string, error) {
+func (r *ResolverContext[T]) resolveWithCache(ctx context.Context, c cacher.Cacher, cacheEnabled bool) (string, error) {
 	if r.ref == "" {
 		return "", fmt.Errorf("empty ref")
 	}
@@ -36,8 +36,8 @@ func (r *ResolverContext[T]) resolveWithCache(ctx context.Context, cacher cacher
 		return r.ref, nil
 	}
 
-	if cacheEnabled && cacher != nil {
-		value, found, err := cacher.Get(r.cacheKey)
+	if cacheEnabled && c != nil {
+		value, found, err := c.Get(r.cacheKey)
 		if err == nil && found {
 			if ids, ok := value.([]string); ok && len(ids) == 1 {
 				return ids[0], nil
@@ -55,8 +55,8 @@ func (r *ResolverContext[T]) resolveWithCache(ctx context.Context, cacher cacher
 		return "", err
 	}
 
-	if cacheEnabled && cacher != nil {
-		_ = cacher.Set(r.cacheKey, id)
+	if cacheEnabled && c != nil {
+		_ = c.Set(r.cacheKey, id)
 	}
 
 	return id, nil

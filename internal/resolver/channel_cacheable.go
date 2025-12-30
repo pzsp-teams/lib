@@ -35,10 +35,10 @@ type ChannelResolverCacheable struct {
 }
 
 // NewChannelResolverCacheable creates a new ChannelResolverCacheable.
-func NewChannelResolverCacheable(channelAPI api.ChannelAPI, cacher cacher.Cacher, cacheEnabled bool) ChannelResolver {
+func NewChannelResolverCacheable(channelAPI api.ChannelAPI, c cacher.Cacher, cacheEnabled bool) ChannelResolver {
 	return &ChannelResolverCacheable{
 		channelsAPI:  channelAPI,
-		cacher:       cacher,
+		cacher:       c,
 		cacheEnabled: cacheEnabled,
 	}
 }
