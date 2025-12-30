@@ -19,6 +19,7 @@ type ChannelAPI interface {
 	CreatePrivateChannelWithMembers(ctx context.Context, teamID, displayName string, memberIDs, ownersID []string) (msmodels.Channelable, *sender.RequestError)
 	DeleteChannel(ctx context.Context, teamID, channelID string) *sender.RequestError
 	SendMessage(ctx context.Context, teamID, channelID, content, contentType string) (msmodels.ChatMessageable, *sender.RequestError)
+	SendReply(ctx context.Context, teamID, channelID, messageID, content, contentType string) (msmodels.ChatMessageable, *sender.RequestError)
 	ListMessages(ctx context.Context, teamID, channelID string, top *int32) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError)
 	GetMessage(ctx context.Context, teamID, channelID, messageID string) (msmodels.ChatMessageable, *sender.RequestError)
 	ListReplies(ctx context.Context, teamID, channelID, messageID string, top *int32) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError)
@@ -170,6 +171,36 @@ func (c *channelAPI) SendMessage(ctx context.Context, teamID, channelID, content
 			ByChannelId(channelID).
 			Messages().
 			Post(ctx, message, nil)
+	}
+
+	resp, err := sender.SendRequest(ctx, call, c.techParams)
+	if err != nil {
+		return nil, err
+	}
+
+	out, ok := resp.(msmodels.ChatMessageable)
+	if !ok {
+		return nil, newTypeError("ChatMessageable")
+	}
+
+	return out, nil
+}
+
+// SendReply will be used later
+func (c *channelAPI) SendReply(ctx context.Context, teamID, channelID, messageID, content, contentType string) (msmodels.ChatMessageable, *sender.RequestError) {
+	reply := msmodels.NewChatMessage()
+	reply.SetBody(messageToGraph(content, contentType))
+
+	call := func(ctx context.Context) (sender.Response, error) {
+		return c.client.
+			Teams().
+			ByTeamId(teamID).
+			Channels().
+			ByChannelId(channelID).
+			Messages().
+			ByChatMessageId(messageID).
+			Replies().
+			Post(ctx, reply, nil)
 	}
 
 	resp, err := sender.SendRequest(ctx, call, c.techParams)
