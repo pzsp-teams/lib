@@ -2,7 +2,7 @@ package resolver
 
 import (
 	"context"
-	"strings"
+	"errors"
 	"testing"
 
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
@@ -219,12 +219,16 @@ func TestTeamResolverCacheable_ResolveTeamRefToID_ListMyJoinedErrorPropagated(t 
 	if err == nil {
 		t.Fatalf("expected error, got nil")
 	}
-	if !strings.Contains(err.Error(), "boom") {
-		t.Errorf("expected error containing 'boom', got %v", err)
+
+	var reqErr *sender.RequestError
+	if !errors.As(err, &reqErr) {
+		t.Fatalf("expected RequestError, got %v", err)
 	}
+
 	if apiFake.listCalls != 1 {
 		t.Errorf("expected 1 ListMyJoined call, got %d", apiFake.listCalls)
 	}
+
 	if fc.setCalls != 0 {
 		t.Errorf("expected no cache Set when API fails, got %d", fc.setCalls)
 	}

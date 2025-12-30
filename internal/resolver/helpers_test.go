@@ -1,7 +1,7 @@
 package resolver
 
 import (
-	"strings"
+	"errors"
 	"testing"
 
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
@@ -15,7 +15,9 @@ func TestResolveTeamIDByName_NoTeamsAvailable(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expected error for no teams, got nil")
 	}
-	if !strings.Contains(err.Error(), "no teams available") {
+
+	var rnErr *resourcesNotAvailableError
+	if !errors.As(err, &rnErr) {
 		t.Errorf("unexpected error: %v", err)
 	}
 }
@@ -28,7 +30,9 @@ func TestResolveTeamIDByName_NoMatch(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expected error for missing team, got nil")
 	}
-	if !strings.Contains(err.Error(), "team with name") {
+
+	var rnErr *resourceNotFoundError
+	if !errors.As(err, &rnErr) {
 		t.Errorf("unexpected error: %v", err)
 	}
 }
@@ -57,7 +61,8 @@ func TestResolveTeamIDByName_MultipleMatches(t *testing.T) {
 		t.Fatalf("expected error for multiple matches, got nil")
 	}
 
-	if !strings.Contains(err.Error(), "multiple teams named") {
+	var raErr *resourceAmbiguousError
+	if !errors.As(err, &raErr) {
 		t.Errorf("unexpected error: %v", err)
 	}
 }
@@ -71,7 +76,8 @@ func TestResolveChannelIDByName_NoChannelsAvailable(t *testing.T) {
 		t.Fatalf("expected error for no channels, got nil")
 	}
 
-	if !strings.Contains(err.Error(), "no channels available") {
+	var rnErr *resourcesNotAvailableError
+	if !errors.As(err, &rnErr) {
 		t.Errorf("unexpected error: %v", err)
 	}
 }
@@ -85,7 +91,8 @@ func TestResolveChannelIDByName_NoMatch(t *testing.T) {
 		t.Fatalf("expected error for missing channel, got nil")
 	}
 
-	if !strings.Contains(err.Error(), "channel with name") {
+	var rnErr *resourceNotFoundError
+	if !errors.As(err, &rnErr) {
 		t.Errorf("unexpected error: %v", err)
 	}
 }
@@ -114,7 +121,8 @@ func TestResolveChannelIDByName_MultipleMatches(t *testing.T) {
 		t.Fatalf("expected error for multiple matches, got nil")
 	}
 
-	if !strings.Contains(err.Error(), "multiple channels named") {
+	var raErr *resourceAmbiguousError
+	if !errors.As(err, &raErr) {
 		t.Errorf("unexpected error: %v", err)
 	}
 }
@@ -127,7 +135,9 @@ func TestResolveOneOnOneChatIDByUserRef_NoChatsAvailable(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expected error for no one-on-one chats, got nil")
 	}
-	if !strings.Contains(err.Error(), "no one-on-one chats available") {
+
+	var rnErr *resourcesNotAvailableError
+	if !errors.As(err, &rnErr) {
 		t.Errorf("unexpected error: %v", err)
 	}
 }
@@ -141,7 +151,8 @@ func TestResolveOneOnOneChatIDByUserRef_NoMatch(t *testing.T) {
 		t.Fatalf("expected error for missing user, got nil")
 	}
 
-	if !strings.Contains(err.Error(), "chat with given user") {
+	var rnErr *resourceNotFoundError
+	if !errors.As(err, &rnErr) {
 		t.Errorf("unexpected error: %v", err)
 	}
 }
@@ -184,7 +195,9 @@ func TestResolveGroupChatIDByTopic_NoChatsAvailable(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expected error for no group chats, got nil")
 	}
-	if !strings.Contains(err.Error(), "no group chats available") {
+
+	var rnErr *resourcesNotAvailableError
+	if !errors.As(err, &rnErr) {
 		t.Errorf("unexpected error: %v", err)
 	}
 }
@@ -197,7 +210,8 @@ func TestResolveGroupChatIDByTopic_NoMatch(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expected error for missing topic, got nil")
 	}
-	if !strings.Contains(err.Error(), "chat with given topic") {
+	var rnErr *resourceNotFoundError
+	if !errors.As(err, &rnErr) {
 		t.Errorf("unexpected error: %v", err)
 	}
 }
@@ -225,7 +239,8 @@ func TestResolveGroupChatIDByTopic_MultipleMatches(t *testing.T) {
 		t.Fatalf("expected error for multiple chats, got nil")
 	}
 
-	if !strings.Contains(err.Error(), "multiple chats with given topic") {
+	var raErr *resourceAmbiguousError
+	if !errors.As(err, &raErr) {
 		t.Errorf("unexpected error: %v", err)
 	}
 }
@@ -239,7 +254,8 @@ func TestResolveMemberID_NoMembersAvailable(t *testing.T) {
 		t.Fatalf("expected error for no members, got nil")
 	}
 
-	if !strings.Contains(err.Error(), "no members available") {
+	var rnErr *resourcesNotAvailableError
+	if !errors.As(err, &rnErr) {
 		t.Errorf("unexpected error: %v", err)
 	}
 }
@@ -253,7 +269,8 @@ func TestResolveMemberID_NoMatch(t *testing.T) {
 		t.Fatalf("expected error for missing member, got nil")
 	}
 
-	if !strings.Contains(err.Error(), "member with reference") {
+	var rnErr *resourceNotFoundError
+	if !errors.As(err, &rnErr) {
 		t.Errorf("unexpected error: %v", err)
 	}
 }

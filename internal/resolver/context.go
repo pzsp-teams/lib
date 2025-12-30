@@ -15,19 +15,15 @@ import (
 	"github.com/pzsp-teams/lib/internal/sender"
 )
 
-// ResolverContext encapsulates the context and logic needed to resolve a reference into a resource ID.
-// It is a generic struct that can work with any type T representing the data fetched from the API.
-type ResolverContext[T any] struct {
+type resolverContext[T any] struct {
 	cacheKey    string
-	keyType     cacher.KeyType
 	ref         string
 	isAlreadyID func() bool
 	fetch       func(ctx context.Context) (T, *sender.RequestError)
 	extract     func(data T) (string, error)
 }
 
-// resolveWithCache resolves the reference into a Microsoft Graph resource ID, utilizing caching if enabled.
-func (r *ResolverContext[T]) resolveWithCache(ctx context.Context, c cacher.Cacher, cacheEnabled bool) (string, error) {
+func (r *resolverContext[T]) resolveWithCache(ctx context.Context, c cacher.Cacher, cacheEnabled bool) (string, error) {
 	if r.ref == "" {
 		return "", fmt.Errorf("empty ref")
 	}

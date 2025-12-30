@@ -55,11 +55,10 @@ func (res *ChannelResolverCacheable) ResolveChannelMemberRefToID(ctx context.Con
 	return rCtx.resolveWithCache(ctx, res.cacher, res.cacheEnabled)
 }
 
-func (res *ChannelResolverCacheable) newChannelResolveContext(teamID, channelRef string) ResolverContext[msmodels.ChannelCollectionResponseable] {
+func (res *ChannelResolverCacheable) newChannelResolveContext(teamID, channelRef string) resolverContext[msmodels.ChannelCollectionResponseable] {
 	ref := strings.TrimSpace(channelRef)
-	return ResolverContext[msmodels.ChannelCollectionResponseable]{
+	return resolverContext[msmodels.ChannelCollectionResponseable]{
 		cacheKey:    cacher.NewChannelKey(teamID, ref),
-		keyType:     cacher.Channel,
 		ref:         ref,
 		isAlreadyID: func() bool { return util.IsLikelyThreadConversationID(ref) },
 		fetch: func(ctx context.Context) (msmodels.ChannelCollectionResponseable, *sender.RequestError) {
@@ -71,11 +70,10 @@ func (res *ChannelResolverCacheable) newChannelResolveContext(teamID, channelRef
 	}
 }
 
-func (res *ChannelResolverCacheable) newChannelMemberResolveContext(teamID, channelID, userRef string) ResolverContext[msmodels.ConversationMemberCollectionResponseable] {
+func (res *ChannelResolverCacheable) newChannelMemberResolveContext(teamID, channelID, userRef string) resolverContext[msmodels.ConversationMemberCollectionResponseable] {
 	ref := strings.TrimSpace(userRef)
-	return ResolverContext[msmodels.ConversationMemberCollectionResponseable]{
+	return resolverContext[msmodels.ConversationMemberCollectionResponseable]{
 		cacheKey:    cacher.NewChannelMemberKey(teamID, channelID, ref, nil),
-		keyType:     cacher.ChannelMember,
 		ref:         ref,
 		isAlreadyID: func() bool { return util.IsLikelyGUID(ref) },
 		fetch: func(ctx context.Context) (msmodels.ConversationMemberCollectionResponseable, *sender.RequestError) {
