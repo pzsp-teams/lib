@@ -22,4 +22,5 @@ type Service interface {
 	AddMember(ctx context.Context, teamRef, channelRef, userRef string, isOwner bool) (*models.Member, error)
 	UpdateMemberRole(ctx context.Context, teamRef, channelRef, userRef string, isOwner bool) (*models.Member, error)
 	RemoveMember(ctx context.Context, teamRef, channelRef, userRef string) error
+	GetMentions(ctx context.Context, teamRef, channelRef string, rawMentions []string) ([]models.Mention, error)
 }

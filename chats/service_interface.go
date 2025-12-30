@@ -65,4 +65,9 @@ type Service interface {
 
 	// UnpinMessage unpins a message in a chat.
 	UnpinMessage(ctx context.Context, chatRef ChatRef, pinnedMessageID string) error
+
+	// GetMentions resolves raw mention strings to Mention objects in the context of a chat.
+	GetMentions(ctx context.Context, chatRef ChatRef, rawMentions []string) ([]models.Mention, error)
+
 }
+

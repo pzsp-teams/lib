@@ -19,3 +19,8 @@ func IsLikelyGUID(s string) bool {
 	var guidRegex = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
 	return guidRegex.MatchString(s)
 }
+
+func IsLikelyEmail(s string) bool {
+	var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`)
+	return emailRegex.MatchString(strings.TrimSpace(s))
+}

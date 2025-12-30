@@ -239,6 +239,12 @@ func (s *serviceWithCache) RemoveMember(
 	return nil
 }
 
+func (s *serviceWithCache) GetMentions(ctx context.Context, teamRef, channelRef string, rawMentions []string) ([]models.Mention, error) {
+	return withErrorClear(func() ([]models.Mention, error) {
+		return s.svc.GetMentions(ctx, teamRef, channelRef, rawMentions)
+	}, s)
+}
+
 func (s *serviceWithCache) addChannelsToCache(teamRef string, chans ...models.Channel) {
 	if s.cache == nil || len(chans) == 0 {
 		return
