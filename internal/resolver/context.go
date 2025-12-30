@@ -11,7 +11,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/pzsp-teams/lib/cacher"
+	"github.com/pzsp-teams/lib/internal/cacher"
 	"github.com/pzsp-teams/lib/internal/sender"
 )
 

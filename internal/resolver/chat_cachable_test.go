@@ -7,7 +7,7 @@ import (
 	"time"
 
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
-	"github.com/pzsp-teams/lib/cacher"
+	"github.com/pzsp-teams/lib/internal/cacher"
 	sender "github.com/pzsp-teams/lib/internal/sender"
 )
 

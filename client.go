@@ -6,10 +6,10 @@ import (
 
 	graph "github.com/microsoftgraph/msgraph-sdk-go"
 
-	"github.com/pzsp-teams/lib/cacher"
 	"github.com/pzsp-teams/lib/chats"
 	"github.com/pzsp-teams/lib/internal/api"
 	"github.com/pzsp-teams/lib/internal/auth"
+	"github.com/pzsp-teams/lib/internal/cacher"
 	"github.com/pzsp-teams/lib/internal/resolver"
 
 	"github.com/pzsp-teams/lib/channels"

@@ -5,8 +5,8 @@ import (
 	"strings"
 
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
-	"github.com/pzsp-teams/lib/cacher"
 	"github.com/pzsp-teams/lib/internal/api"
+	"github.com/pzsp-teams/lib/internal/cacher"
 	"github.com/pzsp-teams/lib/internal/sender"
 	"github.com/pzsp-teams/lib/internal/util"
 )
