@@ -1,0 +1,281 @@
+package mentions
+
+import (
+	"strings"
+	"testing"
+
+	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
+	"github.com/pzsp-teams/lib/models"
+)
+
+const (
+	okGUID   = "00000000-0000-0000-0000-000000000001"
+	okThread = "19:thread@thread.tacv2"
+)
+
+func TestMapMentions_EmptyInput_ReturnsNil(t *testing.T) {
+	got, err := MapMentions(nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got != nil {
+		t.Fatalf("expected nil, got %#v", got)
+	}
+}
+
+func TestMapMentions_MapsUserMention(t *testing.T) {
+	in := []models.Mention{
+		{Kind: models.MentionUser, AtID: 0, Text: "Alice", TargetID: okGUID},
+	}
+
+	got, err := MapMentions(in)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(got) != 1 {
+		t.Fatalf("expected 1 mention, got %d", len(got))
+	}
+
+	m := got[0].(*msmodels.ChatMessageMention)
+	if m.GetId() == nil || *m.GetId() != 0 {
+		t.Fatalf("expected id=0, got %#v", m.GetId())
+	}
+	if m.GetMentionText() == nil || *m.GetMentionText() != "Alice" {
+		t.Fatalf("expected mentionText=Alice, got %#v", m.GetMentionText())
+	}
+
+	mentioned := m.GetMentioned()
+	if mentioned == nil || mentioned.GetUser() == nil {
+		t.Fatalf("expected mentioned.user to be set")
+	}
+	u := mentioned.GetUser()
+	if u.GetId() == nil || *u.GetId() != okGUID {
+		t.Fatalf("expected user.id=%q, got %#v", okGUID, u.GetId())
+	}
+}
+
+func TestMapMentions_MapsConversationMentions_ChannelTeamEveryone(t *testing.T) {
+	in := []models.Mention{
+		{Kind: models.MentionChannel, AtID: 0, Text: "Channel", TargetID: okThread},
+		{Kind: models.MentionTeam, AtID: 1, Text: "Team", TargetID: okGUID},
+		{Kind: models.MentionEveryone, AtID: 2, Text: "Everyone", TargetID: okThread},
+	}
+
+	got, err := MapMentions(in)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(got) != 3 {
+		t.Fatalf("expected 3 mentions, got %d", len(got))
+	}
+
+	// Channel
+	m0 := got[0].(*msmodels.ChatMessageMention)
+	if m0.GetMentioned() == nil || m0.GetMentioned().GetConversation() == nil {
+		t.Fatalf("expected channel mention to have mentioned.conversation")
+	}
+	c0 := m0.GetMentioned().GetConversation()
+	if c0.GetId() == nil || *c0.GetId() != okThread {
+		t.Fatalf("expected channel conversation.id=%q, got %#v", okThread, c0.GetId())
+	}
+
+	// Team
+	m1 := got[1].(*msmodels.ChatMessageMention)
+	c1 := m1.GetMentioned().GetConversation()
+	if c1 == nil {
+		t.Fatalf("expected team mention to have mentioned.conversation")
+	}
+	if c1.GetId() == nil || *c1.GetId() != okGUID {
+		t.Fatalf("expected team conversation.id=%q, got %#v", okGUID, c1.GetId())
+	}
+
+	// Everyone
+	m2 := got[2].(*msmodels.ChatMessageMention)
+	c2 := m2.GetMentioned().GetConversation()
+	if c2 == nil {
+		t.Fatalf("expected everyone mention to have mentioned.conversation")
+	}
+	if c2.GetId() == nil || *c2.GetId() != okThread {
+		t.Fatalf("expected everyone conversation.id=%q, got %#v", okThread, c2.GetId())
+	}
+}
+
+func TestMapMentions_ErrorIsWrappedWithIndex(t *testing.T) {
+	// invalid TargetID for user mention => should error; and MapMentions wraps with mention[0]:
+	in := []models.Mention{
+		{Kind: models.MentionUser, AtID: 0, Text: "Alice", TargetID: "not-a-guid"},
+	}
+
+	_, err := MapMentions(in)
+	if err == nil {
+		t.Fatalf("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "mention[0]:") {
+		t.Fatalf("expected error to contain mention[0]: prefix, got %v", err)
+	}
+}
+
+func TestValidateAtTags_NilBody_OK(t *testing.T) {
+	if err := ValidateAtTags(nil); err != nil {
+		t.Fatalf("expected nil error, got %v", err)
+	}
+}
+
+func TestValidateAtTags_NonHTML_OK(t *testing.T) {
+	b := &models.MessageBody{
+		ContentType: models.MessageContentTypeText,
+		Content:     `<at id="0">Alice</at>`,
+		Mentions:    []models.Mention{{Kind: models.MentionUser, AtID: 0, Text: "Alice", TargetID: okGUID}},
+	}
+	if err := ValidateAtTags(b); err != nil {
+		t.Fatalf("expected nil error for non-HTML, got %v", err)
+	}
+}
+
+func TestValidateAtTags_AtTagButNoMentions_Error(t *testing.T) {
+	b := &models.MessageBody{
+		ContentType: models.MessageContentTypeHTML,
+		Content:     `<at id="0">Alice</at>`,
+		Mentions:    nil,
+	}
+	err := ValidateAtTags(b)
+	if err == nil {
+		t.Fatalf("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "mentions list is empty") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestValidateAtTags_DuplicateAtID_Error(t *testing.T) {
+	b := &models.MessageBody{
+		ContentType: models.MessageContentTypeHTML,
+		Content:     `<at id="0">A</at> <at id="0">B</at>`,
+		Mentions: []models.Mention{
+			{Kind: models.MentionUser, AtID: 0, Text: "A", TargetID: okGUID},
+			{Kind: models.MentionUser, AtID: 0, Text: "B", TargetID: okGUID},
+		},
+	}
+	err := ValidateAtTags(b)
+	if err == nil {
+		t.Fatalf("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "duplicate at-id 0") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestValidateAtTags_MissingSpecificAtIDTag_Error(t *testing.T) {
+	b := &models.MessageBody{
+		ContentType: models.MessageContentTypeHTML,
+		Content:     `<at id="0">A</at>`, // missing id="1"
+		Mentions: []models.Mention{
+			{Kind: models.MentionUser, AtID: 0, Text: "A", TargetID: okGUID},
+			{Kind: models.MentionUser, AtID: 1, Text: "B", TargetID: okGUID},
+		},
+	}
+	err := ValidateAtTags(b)
+	if err == nil {
+		t.Fatalf("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), `missing <at id="1"`) {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestValidateAtTags_HappyPath_OK(t *testing.T) {
+	b := &models.MessageBody{
+		ContentType: models.MessageContentTypeHTML,
+		Content:     `Hello <at id="0">Alice</at> and <at id="1">Bob</at>`,
+		Mentions: []models.Mention{
+			{Kind: models.MentionUser, AtID: 0, Text: "Alice", TargetID: okGUID},
+			{Kind: models.MentionUser, AtID: 1, Text: "Bob", TargetID: okGUID},
+		},
+	}
+	if err := ValidateAtTags(b); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestMapToGraphMention_ValidationErrors(t *testing.T) {
+	tests := []struct {
+		name string
+		in   models.Mention
+		want string
+	}{
+		{"missing Text", models.Mention{Kind: models.MentionUser, AtID: 0, Text: "", TargetID: okGUID}, "missing Text"},
+		{"invalid AtID", models.Mention{Kind: models.MentionUser, AtID: -1, Text: "A", TargetID: okGUID}, "invalid AtID"},
+		{"missing TargetID", models.Mention{Kind: models.MentionUser, AtID: 0, Text: "A", TargetID: ""}, "missing TargetID"},
+		{"unsupported kind", models.Mention{Kind: models.MentionKind("weird"), AtID: 0, Text: "A", TargetID: okGUID}, "unsupported MentionKind"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := mapToGraphMention(tt.in)
+			if err == nil {
+				t.Fatalf("expected error, got nil")
+			}
+			if !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("expected error to contain %q, got %v", tt.want, err)
+			}
+		})
+	}
+}
+
+func TestBuildUserMentioned_InvalidTargetID(t *testing.T) {
+	_, err := buildUserMentioned("not-a-guid", "Alice")
+	if err == nil {
+		t.Fatalf("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "invalid TargetID for user mention") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestBuildUserMentioned_SetsFields(t *testing.T) {
+	u, err := buildUserMentioned(okGUID, "Alice")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if u.GetId() == nil || *u.GetId() != okGUID {
+		t.Fatalf("expected id=%q, got %#v", okGUID, u.GetId())
+	}
+	if u.GetDisplayName() == nil || *u.GetDisplayName() != "Alice" {
+		t.Fatalf("expected displayName=Alice, got %#v", u.GetDisplayName())
+	}
+	// additional data contains userIdentityType = aadUser
+	ad := u.GetAdditionalData()
+	if ad == nil || ad["userIdentityType"] != "aadUser" {
+		t.Fatalf("expected additionalData.userIdentityType=aadUser, got %#v", ad)
+	}
+}
+
+func TestBuildConversationMentioned_ValidateFalse_Error(t *testing.T) {
+	validate := func(string) bool { return false }
+	_, err := buildConversationMentioned("x", "Name", msmodels.CHAT_TEAMWORKCONVERSATIONIDENTITYTYPE, validate, "label")
+	if err == nil {
+		t.Fatalf("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "invalid TargetID for label") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestBuildConversationMentioned_SetsFieldsAndType(t *testing.T) {
+	validate := func(string) bool { return true }
+	typ := msmodels.CHANNEL_TEAMWORKCONVERSATIONIDENTITYTYPE
+
+	conv, err := buildConversationMentioned("conv-id", "Conv", typ, validate, "channel mention")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if conv.GetId() == nil || *conv.GetId() != "conv-id" {
+		t.Fatalf("expected id=conv-id, got %#v", conv.GetId())
+	}
+	if conv.GetDisplayName() == nil || *conv.GetDisplayName() != "Conv" {
+		t.Fatalf("expected displayName=Conv, got %#v", conv.GetDisplayName())
+	}
+	if conv.GetConversationIdentityType() == nil || *conv.GetConversationIdentityType() != typ {
+		t.Fatalf("expected conversationIdentityType=%v, got %#v", typ, conv.GetConversationIdentityType())
+	}
+}
