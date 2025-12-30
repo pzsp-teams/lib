@@ -44,11 +44,10 @@ func (r *TeamResolverCacheable) ResolveTeamRefToID(ctx context.Context, teamRef 
 	return rCtx.resolveWithCache(ctx, r.cacher, r.cacheEnabled)
 }
 
-func (r *TeamResolverCacheable) newTeamResolveContext(teamRef string) ResolverContext[msmodels.TeamCollectionResponseable] {
+func (r *TeamResolverCacheable) newTeamResolveContext(teamRef string) resolverContext[msmodels.TeamCollectionResponseable] {
 	ref := strings.TrimSpace(teamRef)
-	return ResolverContext[msmodels.TeamCollectionResponseable]{
+	return resolverContext[msmodels.TeamCollectionResponseable]{
 		cacheKey:    cacher.NewTeamKey(ref),
-		keyType:     cacher.Team,
 		ref:         ref,
 		isAlreadyID: func() bool { return util.IsLikelyGUID(ref) },
 		fetch: func(ctx context.Context) (msmodels.TeamCollectionResponseable, *sender.RequestError) {

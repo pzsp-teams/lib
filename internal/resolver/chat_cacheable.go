@@ -70,11 +70,10 @@ func (m *ChatResolverCacheable) ResolveGroupChatRefToID(ctx context.Context, cha
 	return rCtx.resolveWithCache(ctx, m.cacher, m.cacheEnabled)
 }
 
-func (m *ChatResolverCacheable) newOneOnOneResolveContext(userRef string) ResolverContext[msmodels.ChatCollectionResponseable] {
+func (m *ChatResolverCacheable) newOneOnOneResolveContext(userRef string) resolverContext[msmodels.ChatCollectionResponseable] {
 	ref := strings.TrimSpace(userRef)
-	return ResolverContext[msmodels.ChatCollectionResponseable]{
+	return resolverContext[msmodels.ChatCollectionResponseable]{
 		cacheKey:    cacher.NewOneOnOneChatKey(ref, nil),
-		keyType:     cacher.DirectChat,
 		ref:         ref,
 		isAlreadyID: func() bool { return util.IsLikelyGUID(ref) },
 		fetch: func(ctx context.Context) (msmodels.ChatCollectionResponseable, *sender.RequestError) {
@@ -87,11 +86,10 @@ func (m *ChatResolverCacheable) newOneOnOneResolveContext(userRef string) Resolv
 	}
 }
 
-func (m *ChatResolverCacheable) newGroupChatResolveContext(topic string) ResolverContext[msmodels.ChatCollectionResponseable] {
+func (m *ChatResolverCacheable) newGroupChatResolveContext(topic string) resolverContext[msmodels.ChatCollectionResponseable] {
 	ref := strings.TrimSpace(topic)
-	return ResolverContext[msmodels.ChatCollectionResponseable]{
+	return resolverContext[msmodels.ChatCollectionResponseable]{
 		cacheKey:    cacher.NewGroupChatKey(ref),
-		keyType:     cacher.GroupChat,
 		ref:         ref,
 		isAlreadyID: func() bool { return util.IsLikelyThreadConversationID(ref) },
 		fetch: func(ctx context.Context) (msmodels.ChatCollectionResponseable, *sender.RequestError) {
@@ -104,11 +102,10 @@ func (m *ChatResolverCacheable) newGroupChatResolveContext(topic string) Resolve
 	}
 }
 
-func (m *ChatResolverCacheable) newChatMemberResolveContext(chatID, userRef string) ResolverContext[msmodels.ConversationMemberCollectionResponseable] {
+func (m *ChatResolverCacheable) newChatMemberResolveContext(chatID, userRef string) resolverContext[msmodels.ConversationMemberCollectionResponseable] {
 	ref := strings.TrimSpace(userRef)
-	return ResolverContext[msmodels.ConversationMemberCollectionResponseable]{
+	return resolverContext[msmodels.ConversationMemberCollectionResponseable]{
 		cacheKey:    cacher.NewGroupChatMemberKey(chatID, ref, nil),
-		keyType:     cacher.GroupChatMember,
 		ref:         ref,
 		isAlreadyID: func() bool { return util.IsLikelyGUID(ref) },
 		fetch: func(ctx context.Context) (msmodels.ConversationMemberCollectionResponseable, *sender.RequestError) {
