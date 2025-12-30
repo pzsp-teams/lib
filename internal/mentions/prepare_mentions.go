@@ -21,7 +21,7 @@ var convKinds = map[models.MentionKind]convCfg{
 	models.MentionEveryone: {msmodels.CHAT_TEAMWORKCONVERSATIONIDENTITYTYPE, util.IsLikelyThreadConversationID, "everyone mention (chatID)"},
 }
 
-func MapMentions(in []models.Mention) (mentions []msmodels.ChatMessageMentionable, err error) {
+func mapMentions(in []models.Mention) (mentions []msmodels.ChatMessageMentionable, err error) {
 	if len(in) == 0 {
 		return nil, nil
 	}
@@ -36,7 +36,7 @@ func MapMentions(in []models.Mention) (mentions []msmodels.ChatMessageMentionabl
 	return out, nil
 }
 
-func ValidateAtTags(body *models.MessageBody) error {
+func validateAtTags(body *models.MessageBody) error {
 	if body == nil {
 		return nil
 	}
@@ -140,8 +140,8 @@ func PrepareMentions(body *models.MessageBody) ([]msmodels.ChatMessageMentionabl
 	if len(body.Mentions) > 0 && body.ContentType != models.MessageContentTypeHTML {
 		return nil, fmt.Errorf("mentions can only be used with HTML content type")
 	}
-	if err := ValidateAtTags(body); err != nil {
+	if err := validateAtTags(body); err != nil {
 		return nil, err
 	}
-	return MapMentions(body.Mentions)
+	return mapMentions(body.Mentions)
 }

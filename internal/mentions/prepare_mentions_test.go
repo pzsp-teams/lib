@@ -6,6 +6,7 @@ import (
 
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
 	"github.com/pzsp-teams/lib/models"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -14,7 +15,7 @@ const (
 )
 
 func TestMapMentions_EmptyInput_ReturnsNil(t *testing.T) {
-	got, err := MapMentions(nil)
+	got, err := mapMentions(nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -28,7 +29,7 @@ func TestMapMentions_MapsUserMention(t *testing.T) {
 		{Kind: models.MentionUser, AtID: 0, Text: "Alice", TargetID: okGUID},
 	}
 
-	got, err := MapMentions(in)
+	got, err := mapMentions(in)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -61,7 +62,7 @@ func TestMapMentions_MapsConversationMentions_ChannelTeamEveryone(t *testing.T) 
 		{Kind: models.MentionEveryone, AtID: 2, Text: "Everyone", TargetID: okThread},
 	}
 
-	got, err := MapMentions(in)
+	got, err := mapMentions(in)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -106,7 +107,7 @@ func TestMapMentions_ErrorIsWrappedWithIndex(t *testing.T) {
 		{Kind: models.MentionUser, AtID: 0, Text: "Alice", TargetID: "not-a-guid"},
 	}
 
-	_, err := MapMentions(in)
+	_, err := mapMentions(in)
 	if err == nil {
 		t.Fatalf("expected error, got nil")
 	}
@@ -116,7 +117,7 @@ func TestMapMentions_ErrorIsWrappedWithIndex(t *testing.T) {
 }
 
 func TestValidateAtTags_NilBody_OK(t *testing.T) {
-	if err := ValidateAtTags(nil); err != nil {
+	if err := validateAtTags(nil); err != nil {
 		t.Fatalf("expected nil error, got %v", err)
 	}
 }
@@ -127,7 +128,7 @@ func TestValidateAtTags_NonHTML_OK(t *testing.T) {
 		Content:     `<at id="0">Alice</at>`,
 		Mentions:    []models.Mention{{Kind: models.MentionUser, AtID: 0, Text: "Alice", TargetID: okGUID}},
 	}
-	if err := ValidateAtTags(b); err != nil {
+	if err := validateAtTags(b); err != nil {
 		t.Fatalf("expected nil error for non-HTML, got %v", err)
 	}
 }
@@ -138,7 +139,7 @@ func TestValidateAtTags_AtTagButNoMentions_Error(t *testing.T) {
 		Content:     `<at id="0">Alice</at>`,
 		Mentions:    nil,
 	}
-	err := ValidateAtTags(b)
+	err := validateAtTags(b)
 	if err == nil {
 		t.Fatalf("expected error, got nil")
 	}
@@ -156,7 +157,7 @@ func TestValidateAtTags_DuplicateAtID_Error(t *testing.T) {
 			{Kind: models.MentionUser, AtID: 0, Text: "B", TargetID: okGUID},
 		},
 	}
-	err := ValidateAtTags(b)
+	err := validateAtTags(b)
 	if err == nil {
 		t.Fatalf("expected error, got nil")
 	}
@@ -174,7 +175,7 @@ func TestValidateAtTags_MissingSpecificAtIDTag_Error(t *testing.T) {
 			{Kind: models.MentionUser, AtID: 1, Text: "B", TargetID: okGUID},
 		},
 	}
-	err := ValidateAtTags(b)
+	err := validateAtTags(b)
 	if err == nil {
 		t.Fatalf("expected error, got nil")
 	}
@@ -192,7 +193,7 @@ func TestValidateAtTags_HappyPath_OK(t *testing.T) {
 			{Kind: models.MentionUser, AtID: 1, Text: "Bob", TargetID: okGUID},
 		},
 	}
-	if err := ValidateAtTags(b); err != nil {
+	if err := validateAtTags(b); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
@@ -278,4 +279,255 @@ func TestBuildConversationMentioned_SetsFieldsAndType(t *testing.T) {
 	if conv.GetConversationIdentityType() == nil || *conv.GetConversationIdentityType() != typ {
 		t.Fatalf("expected conversationIdentityType=%v, got %#v", typ, conv.GetConversationIdentityType())
 	}
+}
+
+func TestPrepareMentions_NoMentions_ReturnsNilNil(t *testing.T) {
+	body := &models.MessageBody{
+		Content:     "hello",
+		ContentType: models.MessageContentTypeText,
+		Mentions:    nil,
+	}
+
+	got, err := PrepareMentions(body)
+	require.NoError(t, err)
+	require.Nil(t, got)
+}
+
+func TestPrepareMentions_MentionsWithNonHTML_ReturnsError(t *testing.T) {
+	body := &models.MessageBody{
+		Content:     "hello",
+		ContentType: models.MessageContentTypeText,
+		Mentions: []models.Mention{
+			{Kind: models.MentionUser, AtID: 0, Text: "Alice", TargetID: "00000000-0000-0000-0000-000000000001"},
+		},
+	}
+
+	_, err := PrepareMentions(body)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "mentions can only be used with HTML content type")
+}
+
+func TestPrepareMentions_AtTagsPresentButMentionsEmpty_ReturnsError(t *testing.T) {
+	body := &models.MessageBody{
+		Content:     `<div>Hello <at id="0">Alice</at></div>`,
+		ContentType: models.MessageContentTypeHTML,
+		Mentions:    nil,
+	}
+
+	_, err := PrepareMentions(body)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "content contains <at> tags but mentions list is empty")
+}
+
+func TestPrepareMentions_MentionMissingAtTag_ReturnsError(t *testing.T) {
+	body := &models.MessageBody{
+		Content:     `<div>Hello world</div>`,
+		ContentType: models.MessageContentTypeHTML,
+		Mentions: []models.Mention{
+			{Kind: models.MentionUser, AtID: 0, Text: "Alice", TargetID: "00000000-0000-0000-0000-000000000001"},
+		},
+	}
+
+	_, err := PrepareMentions(body)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), `missing <at id="0"`)
+}
+
+func TestPrepareMentions_DuplicateAtID_ReturnsError(t *testing.T) {
+	body := &models.MessageBody{
+		Content:     `<div><at id="0">Alice</at> and <at id="0">Bob</at></div>`,
+		ContentType: models.MessageContentTypeHTML,
+		Mentions: []models.Mention{
+			{Kind: models.MentionUser, AtID: 0, Text: "Alice", TargetID: "00000000-0000-0000-0000-000000000001"},
+			{Kind: models.MentionUser, AtID: 0, Text: "Bob", TargetID: "00000000-0000-0000-0000-000000000002"},
+		},
+	}
+
+	_, err := PrepareMentions(body)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "duplicate at-id 0")
+}
+
+func TestPrepareMentions_MapMentionsWrapsIndexError(t *testing.T) {
+	body := &models.MessageBody{
+		Content:     `<div><at id="-1">Alice</at></div>`,
+		ContentType: models.MessageContentTypeHTML,
+		Mentions: []models.Mention{
+			{Kind: models.MentionUser, AtID: -1, Text: "Alice", TargetID: "00000000-0000-0000-0000-000000000001"},
+		},
+	}
+
+	_, err := PrepareMentions(body)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "mention[0]:")
+	require.Contains(t, err.Error(), "invalid AtID")
+}
+
+func TestPrepareMentions_UserMention_Success(t *testing.T) {
+	userID := "00000000-0000-0000-0000-000000000001"
+
+	body := &models.MessageBody{
+		Content:     `<div>Hello <at id="0">Alice</at></div>`,
+		ContentType: models.MessageContentTypeHTML,
+		Mentions: []models.Mention{
+			{Kind: models.MentionUser, AtID: 0, Text: "Alice", TargetID: userID},
+		},
+	}
+
+	got, err := PrepareMentions(body)
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+
+	m0 := got[0]
+	require.NotNil(t, m0.GetId())
+	require.Equal(t, int32(0), *m0.GetId())
+	require.NotNil(t, m0.GetMentionText())
+	require.Equal(t, "Alice", *m0.GetMentionText())
+
+	mentioned := m0.GetMentioned()
+	require.NotNil(t, mentioned)
+	require.NotNil(t, mentioned.GetUser())
+
+	u := mentioned.GetUser()
+	require.NotNil(t, u.GetId())
+	require.Equal(t, userID, *u.GetId())
+
+	ad := u.GetAdditionalData()
+	require.NotNil(t, ad)
+	require.Equal(t, "aadUser", ad["userIdentityType"])
+}
+
+func TestPrepareMentions_ChannelMention_Success(t *testing.T) {
+	channelThreadID := "19:abc123def456@thread.tacv2"
+
+	body := &models.MessageBody{
+		Content:     `<div>Hello <at id="0">General</at></div>`,
+		ContentType: models.MessageContentTypeHTML,
+		Mentions: []models.Mention{
+			{Kind: models.MentionChannel, AtID: 0, Text: "General", TargetID: channelThreadID},
+		},
+	}
+
+	got, err := PrepareMentions(body)
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+
+	m0 := got[0]
+	mentioned := m0.GetMentioned()
+	require.NotNil(t, mentioned)
+	require.NotNil(t, mentioned.GetConversation())
+
+	conv := mentioned.GetConversation()
+	require.NotNil(t, conv.GetId())
+	require.Equal(t, channelThreadID, *conv.GetId())
+	require.NotNil(t, conv.GetConversationIdentityType())
+	require.Equal(t, msmodels.CHANNEL_TEAMWORKCONVERSATIONIDENTITYTYPE, *conv.GetConversationIdentityType())
+}
+
+func TestPrepareMentions_TeamMention_Success(t *testing.T) {
+	teamID := "00000000-0000-0000-0000-0000000000aa"
+
+	body := &models.MessageBody{
+		Content:     `<div>Hello <at id="0">My Team</at></div>`,
+		ContentType: models.MessageContentTypeHTML,
+		Mentions: []models.Mention{
+			{Kind: models.MentionTeam, AtID: 0, Text: "My Team", TargetID: teamID},
+		},
+	}
+
+	got, err := PrepareMentions(body)
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+
+	m0 := got[0]
+	require.NotNil(t, m0.GetMentioned())
+	require.NotNil(t, m0.GetMentioned().GetConversation())
+
+	conv := m0.GetMentioned().GetConversation()
+	require.NotNil(t, conv.GetId())
+	require.Equal(t, teamID, *conv.GetId())
+	require.NotNil(t, conv.GetConversationIdentityType())
+	require.Equal(t, msmodels.TEAM_TEAMWORKCONVERSATIONIDENTITYTYPE, *conv.GetConversationIdentityType())
+}
+
+func TestPrepareMentions_EveryoneMention_Success(t *testing.T) {
+	chatThreadID := "19:abcdef123456@thread.tacv2"
+
+	body := &models.MessageBody{
+		Content:     `<div>Hello <at id="0">Everyone</at></div>`,
+		ContentType: models.MessageContentTypeHTML,
+		Mentions: []models.Mention{
+			{Kind: models.MentionEveryone, AtID: 0, Text: "Everyone", TargetID: chatThreadID},
+		},
+	}
+
+	got, err := PrepareMentions(body)
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+
+	m0 := got[0]
+	mentioned := m0.GetMentioned()
+	require.NotNil(t, mentioned)
+	require.NotNil(t, mentioned.GetConversation())
+
+	conv := mentioned.GetConversation()
+	require.NotNil(t, conv.GetId())
+	require.Equal(t, chatThreadID, *conv.GetId())
+	require.NotNil(t, conv.GetConversationIdentityType())
+	require.Equal(t, msmodels.CHAT_TEAMWORKCONVERSATIONIDENTITYTYPE, *conv.GetConversationIdentityType())
+}
+
+func TestPrepareMentions_AtTagCheckIsCaseSensitiveOnIdAttribute(t *testing.T) {
+	// sanity check: ValidateAtTags looks for `<at id="%d"`
+	body := &models.MessageBody{
+		Content:     `<div><at ID="0">Alice</at></div>`,
+		ContentType: models.MessageContentTypeHTML,
+		Mentions: []models.Mention{
+			{Kind: models.MentionUser, AtID: 0, Text: "Alice", TargetID: "00000000-0000-0000-0000-000000000001"},
+		},
+	}
+
+	_, err := PrepareMentions(body)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), `missing <at id="0"`)
+}
+
+func TestPrepareMentions_AtTagPresentButMentionsIsEmptySlice_ReturnsError(t *testing.T) {
+	body := &models.MessageBody{
+		Content:     `<div>Hello <at id="0">X</at></div>`,
+		ContentType: models.MessageContentTypeHTML,
+		Mentions:    []models.Mention{},
+	}
+
+	_, err := PrepareMentions(body)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "content contains <at> tags but mentions list is empty")
+}
+
+func TestPrepareMentions_NoAtTagsButMentionsPresent_ReturnsError(t *testing.T) {
+	body := &models.MessageBody{
+		Content:     `<div>Hello</div>`,
+		ContentType: models.MessageContentTypeHTML,
+		Mentions: []models.Mention{
+			{Kind: models.MentionTeam, AtID: 0, Text: "My Team", TargetID: "00000000-0000-0000-0000-0000000000aa"},
+		},
+	}
+
+	_, err := PrepareMentions(body)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), `missing <at id="0"`)
+}
+
+func TestPrepareMentions_UnsupportedMentionKind_ReturnsError(t *testing.T) {
+	body := &models.MessageBody{
+		Content:     `<div>Hello <at id="0">X</at></div>`,
+		ContentType: models.MessageContentTypeHTML,
+		Mentions: []models.Mention{
+			{Kind: models.MentionKind("weird"), AtID: 0, Text: "X", TargetID: "whatever"},
+		},
+	}
+
+	_, err := PrepareMentions(body)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "unsupported MentionKind")
 }
