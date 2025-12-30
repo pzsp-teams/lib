@@ -124,7 +124,7 @@ func (f *fakeChanAPI) DeleteChannel(ctx context.Context, teamID, channelID strin
 	return f.deleteErr
 }
 
-func (f *fakeChanAPI) SendMessage(ctx context.Context, teamID, channelID, content, contentType string) (msmodels.ChatMessageable, *sender.RequestError) {
+func (f *fakeChanAPI) SendMessage(ctx context.Context, teamID, channelID, content, contentType string, mentions []msmodels.ChatMessageMentionable) (msmodels.ChatMessageable, *sender.RequestError) {
 	f.lastTeamID = teamID
 	f.lastChanID = channelID
 	f.lastContent = content
@@ -132,7 +132,7 @@ func (f *fakeChanAPI) SendMessage(ctx context.Context, teamID, channelID, conten
 	return f.sendMsgResp, f.sendMsgErr
 }
 
-func (f *fakeChanAPI) SendReply(ctx context.Context, teamID, channelID, messageID, content, contentType string) (msmodels.ChatMessageable, *sender.RequestError) {
+func (f *fakeChanAPI) SendReply(ctx context.Context, teamID, channelID, messageID, content, contentType string, mentions []msmodels.ChatMessageMentionable) (msmodels.ChatMessageable, *sender.RequestError) {
 	f.lastTeamID = teamID
 	f.lastChanID = channelID
 	f.lastMessageID = messageID

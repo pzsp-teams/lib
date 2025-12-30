@@ -130,11 +130,11 @@ func (f *fakeChannelAPI) DeleteChannel(ctx context.Context, teamID, channelID st
 	return nil
 }
 
-func (f *fakeChannelAPI) SendMessage(ctx context.Context, teamID, channelID, content, contentType string) (msmodels.ChatMessageable, *snd.RequestError) {
+func (f *fakeChannelAPI) SendMessage(ctx context.Context, teamID, channelID, content, contentType string, mentions []msmodels.ChatMessageMentionable) (msmodels.ChatMessageable, *snd.RequestError) {
 	return nil, nil
 }
 
-func (f *fakeChannelAPI) SendReply(ctx context.Context, teamID, channelID, messageID, content, contentType string) (msmodels.ChatMessageable, *snd.RequestError) {
+func (f *fakeChannelAPI) SendReply(ctx context.Context, teamID, channelID, messageID, content, contentType string, mentions []msmodels.ChatMessageMentionable) (msmodels.ChatMessageable, *snd.RequestError) {
 	return nil, nil
 }
 

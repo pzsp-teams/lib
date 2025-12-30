@@ -18,8 +18,8 @@ type ChannelAPI interface {
 	CreateStandardChannel(ctx context.Context, teamID string, channel msmodels.Channelable) (msmodels.Channelable, *sender.RequestError)
 	CreatePrivateChannelWithMembers(ctx context.Context, teamID, displayName string, memberIDs, ownersID []string) (msmodels.Channelable, *sender.RequestError)
 	DeleteChannel(ctx context.Context, teamID, channelID string) *sender.RequestError
-	SendMessage(ctx context.Context, teamID, channelID, content, contentType string) (msmodels.ChatMessageable, *sender.RequestError)
-	SendReply(ctx context.Context, teamID, channelID, messageID, content, contentType string) (msmodels.ChatMessageable, *sender.RequestError)
+	SendMessage(ctx context.Context, teamID, channelID, content, contentType string, mentions []msmodels.ChatMessageMentionable) (msmodels.ChatMessageable, *sender.RequestError)
+	SendReply(ctx context.Context, teamID, channelID, messageID, content, contentType string, mentions []msmodels.ChatMessageMentionable) (msmodels.ChatMessageable, *sender.RequestError)
 	ListMessages(ctx context.Context, teamID, channelID string, top *int32) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError)
 	GetMessage(ctx context.Context, teamID, channelID, messageID string) (msmodels.ChatMessageable, *sender.RequestError)
 	ListReplies(ctx context.Context, teamID, channelID, messageID string, top *int32) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError)
@@ -159,9 +159,12 @@ func (c *channelAPI) DeleteChannel(ctx context.Context, teamID, channelID string
 }
 
 // SendMessage will be used later
-func (c *channelAPI) SendMessage(ctx context.Context, teamID, channelID, content, contentType string) (msmodels.ChatMessageable, *sender.RequestError) {
+func (c *channelAPI) SendMessage(ctx context.Context, teamID, channelID, content, contentType string, mentions []msmodels.ChatMessageMentionable) (msmodels.ChatMessageable, *sender.RequestError) {
 	message := msmodels.NewChatMessage()
 	message.SetBody(messageToGraph(content, contentType))
+	if len(mentions) > 0 {
+		message.SetMentions(mentions)
+	}
 
 	call := func(ctx context.Context) (sender.Response, error) {
 		return c.client.
@@ -187,9 +190,12 @@ func (c *channelAPI) SendMessage(ctx context.Context, teamID, channelID, content
 }
 
 // SendReply will be used later
-func (c *channelAPI) SendReply(ctx context.Context, teamID, channelID, messageID, content, contentType string) (msmodels.ChatMessageable, *sender.RequestError) {
+func (c *channelAPI) SendReply(ctx context.Context, teamID, channelID, messageID, content, contentType string, mentions []msmodels.ChatMessageMentionable) (msmodels.ChatMessageable, *sender.RequestError) {
 	reply := msmodels.NewChatMessage()
 	reply.SetBody(messageToGraph(content, contentType))
+	if len(mentions) > 0 {
+		reply.SetMentions(mentions)
+	}
 
 	call := func(ctx context.Context) (sender.Response, error) {
 		return c.client.
