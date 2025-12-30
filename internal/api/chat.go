@@ -28,7 +28,7 @@ type ChatAPI interface {
 	GroupChatAPI
 	ListMessages(ctx context.Context, chatID string) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError)
 	ListChats(ctx context.Context, chatType *string) (msmodels.ChatCollectionResponseable, *sender.RequestError)
-	SendMessage(ctx context.Context, chatID, content, contentType string) (msmodels.ChatMessageable, *sender.RequestError)
+	SendMessage(ctx context.Context, chatID, content, contentType string, mentions []msmodels.ChatMessageMentionable) (msmodels.ChatMessageable, *sender.RequestError)
 	DeleteMessage(ctx context.Context, chatID, messageID string) *sender.RequestError
 	GetMessage(ctx context.Context, chatID, messageID string) (msmodels.ChatMessageable, *sender.RequestError)
 	ListAllMessages(ctx context.Context, startTime, endTime *time.Time, top *int32) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError)
@@ -238,16 +238,15 @@ func (c *chatsAPI) ListMessages(ctx context.Context, chatID string) (msmodels.Ch
 	return out, nil
 }
 
-func (c *chatsAPI) SendMessage(ctx context.Context, chatID, content, contentType string) (msmodels.ChatMessageable, *sender.RequestError) {
-	requestBody := msmodels.NewChatMessage()
-	body := msmodels.NewItemBody()
-	bodyType := msmodels.TEXT_BODYTYPE
-	body.SetContentType(&bodyType)
-	body.SetContent(&content)
-	requestBody.SetBody(body)
+func (c *chatsAPI) SendMessage(ctx context.Context, chatID, content, contentType string, mentions []msmodels.ChatMessageMentionable) (msmodels.ChatMessageable, *sender.RequestError) {
+	msg := msmodels.NewChatMessage()
+	msg.SetBody(messageToGraph(content, contentType))
 
+	if len(mentions) > 0 {
+		msg.SetMentions(mentions)
+	}
 	call := func(ctx context.Context) (sender.Response, error) {
-		return c.client.Chats().ByChatId(chatID).Messages().Post(ctx, requestBody, nil)
+		return c.client.Chats().ByChatId(chatID).Messages().Post(ctx, msg, nil)
 	}
 
 	resp, err := sender.SendRequest(ctx, call, c.techParams)
