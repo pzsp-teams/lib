@@ -2,18 +2,44 @@ package util
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
-func TestDeref_NilReturnsEmpty(t *testing.T) {
-	var text *string = nil
-	if got := Deref(text); got != "" {
-		t.Fatalf("expected empty string, got %q", got)
+func TestDeref(t *testing.T) {
+	type testCase struct {
+		name string
+		got  func() any
+		want any
 	}
-}
 
-func TestDeref_NonNil(t *testing.T) {
-	s := "hello"
-	if got := Deref(&s); got != "hello" {
-		t.Fatalf("expected 'hello', got %q", got)
+	tests := []testCase{
+		{
+			name: "nil *int",
+			got:  func() any { return Deref((*int)(nil)) },
+			want: 0,
+		},
+		{
+			name: "non-nil *int",
+			got:  func() any { return Deref(Ptr(42)) },
+			want: 42,
+		},
+		{
+			name: "nil *string",
+			got:  func() any { return Deref((*string)(nil)) },
+			want: "",
+		},
+		{
+			name: "non-nil *string",
+			got:  func() any { return Deref(Ptr("hello")) },
+			want: "hello",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.got()
+			assert.Equal(t, tt.want, got)
+		})
 	}
 }

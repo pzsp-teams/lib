@@ -3,6 +3,8 @@ package util
 import (
 	"sync/atomic"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestSyncRunner_RunAndWait(t *testing.T) {
@@ -14,9 +16,7 @@ func TestSyncRunner_RunAndWait(t *testing.T) {
 	})
 	r.Wait()
 
-	if atomic.LoadInt32(&called) != 1 {
-		t.Fatalf("expected called=1, got %d", called)
-	}
+	assert.Equal(t, int32(1), atomic.LoadInt32(&called))
 }
 
 func TestAsyncRunner_RunAndWait(t *testing.T) {
@@ -24,7 +24,7 @@ func TestAsyncRunner_RunAndWait(t *testing.T) {
 	r := &AsyncRunner{}
 
 	const n = 10
-	for i := 0; i < n; i++ {
+	for range n {
 		r.Run(func() {
 			atomic.AddInt32(&called, 1)
 		})
@@ -32,9 +32,7 @@ func TestAsyncRunner_RunAndWait(t *testing.T) {
 
 	r.Wait()
 
-	if atomic.LoadInt32(&called) != n {
-		t.Fatalf("expected %d calls, got %d", n, called)
-	}
+	assert.Equal(t, int32(n), atomic.LoadInt32(&called))
 }
 
 func TestAsyncRunner_WaitWithNoTasks(t *testing.T) {
@@ -57,7 +55,7 @@ func TestAsyncRunner_RunIsNonBlocking(t *testing.T) {
 	// Check that Run does not block
 	select {
 	case <-done:
-		t.Fatalf("Run should not execute function synchronously")
+		assert.Fail(t, "Run should not execute function synchronously")
 	default:
 	}
 
@@ -68,6 +66,6 @@ func TestAsyncRunner_RunIsNonBlocking(t *testing.T) {
 	case <-done:
 		// success
 	default:
-		t.Fatalf("expected function to finish after Wait()")
+		assert.Fail(t, "expected function to finish after Wait()")
 	}
 }

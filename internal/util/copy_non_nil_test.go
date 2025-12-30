@@ -1,6 +1,10 @@
 package util
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
 
 func TestCopyNonNil_Ints(t *testing.T) {
 	a, b, c := 1, 2, 3
@@ -33,17 +37,12 @@ func TestCopyNonNil_Ints(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			got := CopyNonNil(tt.input)
 
-			if len(got) != len(tt.want) {
-				t.Fatalf("expected len=%d, got %d (got=%v, want=%v)", len(tt.want), len(got), got, tt.want)
-			}
+			assert.Equal(t, len(tt.want), len(got), "length mismatch")
 			for i := range tt.want {
-				if got[i] != tt.want[i] {
-					t.Errorf("at index %d expected %d, got %d", i, tt.want[i], got[i])
-				}
+				assert.Equal(t, tt.want[i], got[i], "mismatch at index %d", i)
 			}
 		})
 	}
@@ -55,13 +54,10 @@ func TestCopyNonNil_NoAliasing(t *testing.T) {
 
 	out := CopyNonNil(input)
 
-	if len(out) != 1 || out[0] != 10 {
-		t.Fatalf("unexpected result: %#v", out)
-	}
+	assert.Equal(t, len(out) == 1, "expected output length to be 1")
+	assert.Equal(t, out[0] == 10, "expected output value to be 10")
 
 	out[0] = 42
 
-	if x != 10 {
-		t.Fatalf("expected original x to remain 10, got %d", x)
-	}
+	assert.Equal(t, 10, x, "input value should not be affected by changes to output")
 }
