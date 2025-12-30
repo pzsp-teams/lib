@@ -78,7 +78,8 @@ func (m *ChatResolverCacheable) newOneOnOneResolveContext(userRef string) Resolv
 		ref:         ref,
 		isAlreadyID: func() bool { return util.IsLikelyGUID(ref) },
 		fetch: func(ctx context.Context) (msmodels.ChatCollectionResponseable, *sender.RequestError) {
-			return m.chatsAPI.ListChats(ctx, "oneOnOne")
+			oneOnOneChat := "oneOnOne"
+			return m.chatsAPI.ListChats(ctx, &oneOnOneChat)
 		},
 		extract: func(data msmodels.ChatCollectionResponseable) (string, error) {
 			return resolveOneOnOneChatIDByUserRef(data, ref)
@@ -94,7 +95,8 @@ func (m *ChatResolverCacheable) newGroupChatResolveContext(topic string) Resolve
 		ref:         ref,
 		isAlreadyID: func() bool { return util.IsLikelyThreadConversationID(ref) },
 		fetch: func(ctx context.Context) (msmodels.ChatCollectionResponseable, *sender.RequestError) {
-			return m.chatsAPI.ListChats(ctx, "group")
+			groupChat := "group"
+			return m.chatsAPI.ListChats(ctx, &groupChat)
 		},
 		extract: func(data msmodels.ChatCollectionResponseable) (string, error) {
 			return resolveGroupChatIDByTopic(data, ref)

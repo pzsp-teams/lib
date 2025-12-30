@@ -20,7 +20,7 @@ type fakeChatAPI struct {
 	listResp  msmodels.ChatCollectionResponseable
 	listErr   *sender.RequestError
 	listCalls int
-	lastType  string
+	lastType  *string
 }
 
 func (f *fakeChatAPI) ListGroupChatMembers(ctx context.Context, chatID string) (msmodels.ConversationMemberCollectionResponseable, *sender.RequestError) {
@@ -29,7 +29,7 @@ func (f *fakeChatAPI) ListGroupChatMembers(ctx context.Context, chatID string) (
 	return f.membersResp, f.membersErr
 }
 
-func (f *fakeChatAPI) ListChats(ctx context.Context, chatType string) (msmodels.ChatCollectionResponseable, *sender.RequestError) {
+func (f *fakeChatAPI) ListChats(ctx context.Context, chatType *string) (msmodels.ChatCollectionResponseable, *sender.RequestError) {
 	f.listCalls++
 	f.lastType = chatType
 	return f.listResp, f.listErr

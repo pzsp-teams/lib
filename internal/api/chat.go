@@ -27,7 +27,7 @@ type ChatAPI interface {
 	OneOnOneChatAPI
 	GroupChatAPI
 	ListMessages(ctx context.Context, chatID string) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError)
-	ListChats(ctx context.Context, chatType string) (msmodels.ChatCollectionResponseable, *sender.RequestError)
+	ListChats(ctx context.Context, chatType *string) (msmodels.ChatCollectionResponseable, *sender.RequestError)
 	SendMessage(ctx context.Context, chatID, content, contentType string) (msmodels.ChatMessageable, *sender.RequestError)
 	DeleteMessage(ctx context.Context, chatID, messageID string) *sender.RequestError
 	GetMessage(ctx context.Context, chatID, messageID string) (msmodels.ChatMessageable, *sender.RequestError)
@@ -77,12 +77,15 @@ func (c *chatsAPI) CreateOneOnOneChat(ctx context.Context, userRef string) (msmo
 	return out, nil
 }
 
-func (c *chatsAPI) ListChats(ctx context.Context, chatType string) (msmodels.ChatCollectionResponseable, *sender.RequestError) {
-	filter := fmt.Sprintf("chatType eq '%s'", chatType)
+func (c *chatsAPI) ListChats(ctx context.Context, chatType *string) (msmodels.ChatCollectionResponseable, *sender.RequestError) {
 	requestParameters := &graphusers.ItemChatsRequestBuilderGetQueryParameters{
-		Filter:  &filter,
 		Expand:  []string{"members"},
 		Orderby: []string{"lastMessagePreview/createdDateTime desc"},
+	}
+
+	if chatType != nil {
+		filter := fmt.Sprintf("chatType eq '%s'", *chatType)
+		requestParameters.Filter = &filter
 	}
 
 	configuration := &graphusers.ItemChatsRequestBuilderGetRequestConfiguration{
