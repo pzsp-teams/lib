@@ -9,6 +9,7 @@ import (
 	"github.com/pzsp-teams/lib/internal/adapter"
 	"github.com/pzsp-teams/lib/internal/api"
 	"github.com/pzsp-teams/lib/internal/resolver"
+	"github.com/pzsp-teams/lib/internal/resources"
 	snd "github.com/pzsp-teams/lib/internal/sender"
 	"github.com/pzsp-teams/lib/internal/util"
 	"github.com/pzsp-teams/lib/models"
@@ -34,7 +35,7 @@ func (s *service) Get(ctx context.Context, teamRef string) (*models.Team, error)
 
 	resp, requestErr := s.teamAPI.Get(ctx, teamID)
 	if requestErr != nil {
-		return nil, snd.MapError(requestErr, snd.WithResource(snd.Team, teamRef))
+		return nil, snd.MapError(requestErr, snd.WithResource(resources.Team, teamRef))
 	}
 
 	return adapter.MapGraphTeam(resp), nil
@@ -58,7 +59,7 @@ func (s *service) Update(ctx context.Context, teamRef string, patch *msmodels.Te
 
 	resp, requestErr := s.teamAPI.Update(ctx, teamID, patch)
 	if requestErr != nil {
-		return nil, snd.MapError(requestErr, snd.WithResource(snd.Team, teamID))
+		return nil, snd.MapError(requestErr, snd.WithResource(resources.Team, teamID))
 	}
 
 	return adapter.MapGraphTeam(resp), nil
@@ -86,7 +87,7 @@ func (s *service) CreateFromTemplate(ctx context.Context, displayName, descripti
 		if requestErr.Code == http.StatusCreated {
 			return id, nil
 		}
-		return "", snd.MapError(requestErr, snd.WithResources(snd.User, owners))
+		return "", snd.MapError(requestErr, snd.WithResources(resources.User, owners))
 	}
 
 	return id, nil
@@ -100,7 +101,7 @@ func (s *service) Archive(ctx context.Context, teamRef string, spoReadOnlyForMem
 	}
 
 	if e := s.teamAPI.Archive(ctx, teamID, spoReadOnlyForMembers); e != nil {
-		return snd.MapError(e, snd.WithResource(snd.Team, teamRef))
+		return snd.MapError(e, snd.WithResource(resources.Team, teamRef))
 	}
 
 	return nil
@@ -114,7 +115,7 @@ func (s *service) Unarchive(ctx context.Context, teamRef string) error {
 	}
 
 	if requestErr := s.teamAPI.Unarchive(ctx, teamID); requestErr != nil {
-		return snd.MapError(requestErr, snd.WithResource(snd.Team, teamRef))
+		return snd.MapError(requestErr, snd.WithResource(resources.Team, teamRef))
 	}
 
 	return nil
@@ -128,7 +129,7 @@ func (s *service) Delete(ctx context.Context, teamRef string) error {
 	}
 
 	if requestErr := s.teamAPI.Delete(ctx, teamID); requestErr != nil {
-		return snd.MapError(requestErr, snd.WithResource(snd.Team, teamRef))
+		return snd.MapError(requestErr, snd.WithResource(resources.Team, teamRef))
 	}
 
 	return nil
@@ -138,7 +139,7 @@ func (s *service) Delete(ctx context.Context, teamRef string) error {
 func (s *service) RestoreDeleted(ctx context.Context, deletedGroupID string) (string, error) {
 	obj, err := s.teamAPI.RestoreDeleted(ctx, deletedGroupID)
 	if err != nil {
-		return "", snd.MapError(err, snd.WithResource(snd.Team, deletedGroupID))
+		return "", snd.MapError(err, snd.WithResource(resources.Team, deletedGroupID))
 	}
 	if obj == nil {
 		return "", fmt.Errorf("restored object is nil")

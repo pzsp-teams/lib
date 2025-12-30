@@ -4,6 +4,8 @@ import (
 	"errors"
 	"strings"
 	"testing"
+
+	"github.com/pzsp-teams/lib/internal/resources"
 )
 
 func TestRequestError_ErrorFormatsCorrectly(t *testing.T) {
@@ -22,7 +24,7 @@ func TestRequestError_ErrorFormatsCorrectly(t *testing.T) {
 
 func TestErrData_String_Empty(t *testing.T) {
 	ed := ErrData{
-		ResourceRefs: map[Resource]string{},
+		ResourceRefs: map[resources.Resource]string{},
 	}
 
 	got := ed.String()
@@ -33,8 +35,8 @@ func TestErrData_String_Empty(t *testing.T) {
 
 func TestErrData_String_SingleEntry(t *testing.T) {
 	ed := ErrData{
-		ResourceRefs: map[Resource]string{
-			Team: "z1",
+		ResourceRefs: map[resources.Resource]string{
+			resources.Team: "z1",
 		},
 	}
 
@@ -48,9 +50,9 @@ func TestErrData_String_SingleEntry(t *testing.T) {
 
 func TestErrData_String_MultipleEntries_NoOrderAssumed(t *testing.T) {
 	ed := ErrData{
-		ResourceRefs: map[Resource]string{
-			Team:    "z1",
-			Channel: "general",
+		ResourceRefs: map[resources.Resource]string{
+			resources.Team:    "z1",
+			resources.Channel: "general",
 		},
 	}
 
@@ -72,8 +74,8 @@ func TestErrAccessForbidden_ErrorIncludesCodeAndResources(t *testing.T) {
 	e := ErrAccessForbidden{
 		Code: 403,
 		ErrData: ErrData{
-			ResourceRefs: map[Resource]string{
-				Team: "z1",
+			ResourceRefs: map[resources.Resource]string{
+				resources.Team: "z1",
 			},
 		},
 	}
@@ -90,8 +92,8 @@ func TestErrAccessForbidden_IsMatchesSameCode(t *testing.T) {
 	err := ErrAccessForbidden{
 		Code: 403,
 		ErrData: ErrData{
-			ResourceRefs: map[Resource]string{
-				Team: "z1",
+			ResourceRefs: map[resources.Resource]string{
+				resources.Team: "z1",
 			},
 		},
 	}
@@ -113,8 +115,8 @@ func TestErrResourceNotFound_ErrorIncludesCodeAndResources(t *testing.T) {
 	e := ErrResourceNotFound{
 		Code: 404,
 		ErrData: ErrData{
-			ResourceRefs: map[Resource]string{
-				Channel: "general",
+			ResourceRefs: map[resources.Resource]string{
+				resources.Channel: "general",
 			},
 		},
 	}
@@ -131,8 +133,8 @@ func TestErrResourceNotFound_IsMatchesSameCode(t *testing.T) {
 	err := ErrResourceNotFound{
 		Code: 404,
 		ErrData: ErrData{
-			ResourceRefs: map[Resource]string{
-				Channel: "general",
+			ResourceRefs: map[resources.Resource]string{
+				resources.Channel: "general",
 			},
 		},
 	}
