@@ -7,3 +7,7 @@ func Deref[T any](s *T) T {
 	}
 	return *s
 }
+
+func Ptr[T any](v T) *T {
+	return &v
+}

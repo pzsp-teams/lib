@@ -44,7 +44,11 @@ type ChatResolverCacheable struct {
 }
 
 // NewChatResolverCacheable creates a new ChatResolverCacheable.
-func NewChatResolverCacheable(chatsAPI api.ChatAPI, c cacher.Cacher, cacheEnabled bool) ChatResolver {
+func NewChatResolverCacheable(
+	chatsAPI api.ChatAPI,
+	c cacher.Cacher,
+	cacheEnabled bool,
+) ChatResolver {
 	return &ChatResolverCacheable{
 		chatsAPI:     chatsAPI,
 		cacher:       c,
@@ -53,29 +57,40 @@ func NewChatResolverCacheable(chatsAPI api.ChatAPI, c cacher.Cacher, cacheEnable
 }
 
 // ResolveOneOnOneChatRefToID implements ChatResolver.
-func (m *ChatResolverCacheable) ResolveOneOnOneChatRefToID(ctx context.Context, userRef string) (string, error) {
+func (m *ChatResolverCacheable) ResolveOneOnOneChatRefToID(
+	ctx context.Context,
+	userRef string,
+) (string, error) {
 	rCtx := m.newOneOnOneResolveContext(userRef)
 	return rCtx.resolveWithCache(ctx, m.cacher, m.cacheEnabled)
 }
 
 // ResolveChatMemberRefToID implements ChatResolver.
-func (m *ChatResolverCacheable) ResolveChatMemberRefToID(ctx context.Context, chatID, userRef string) (string, error) {
+func (m *ChatResolverCacheable) ResolveChatMemberRefToID(
+	ctx context.Context,
+	chatID, userRef string,
+) (string, error) {
 	rCtx := m.newChatMemberResolveContext(chatID, userRef)
 	return rCtx.resolveWithCache(ctx, m.cacher, m.cacheEnabled)
 }
 
 // ResolveGroupChatRefToID implements ChatResolver.
-func (m *ChatResolverCacheable) ResolveGroupChatRefToID(ctx context.Context, chatRef string) (string, error) {
+func (m *ChatResolverCacheable) ResolveGroupChatRefToID(
+	ctx context.Context,
+	chatRef string,
+) (string, error) {
 	rCtx := m.newGroupChatResolveContext(chatRef)
 	return rCtx.resolveWithCache(ctx, m.cacher, m.cacheEnabled)
 }
 
-func (m *ChatResolverCacheable) newOneOnOneResolveContext(userRef string) resolverContext[msmodels.ChatCollectionResponseable] {
+func (m *ChatResolverCacheable) newOneOnOneResolveContext(
+	userRef string,
+) resolverContext[msmodels.ChatCollectionResponseable] {
 	ref := strings.TrimSpace(userRef)
 	return resolverContext[msmodels.ChatCollectionResponseable]{
 		cacheKey:    cacher.NewOneOnOneChatKey(ref, nil),
 		ref:         ref,
-		isAlreadyID: func() bool { return util.IsLikelyGUID(ref) },
+		isAlreadyID: func() bool { return util.IsLikelyChatID(ref) },
 		fetch: func(ctx context.Context) (msmodels.ChatCollectionResponseable, *sender.RequestError) {
 			oneOnOneChat := "oneOnOne"
 			return m.chatsAPI.ListChats(ctx, &oneOnOneChat)
@@ -86,7 +101,9 @@ func (m *ChatResolverCacheable) newOneOnOneResolveContext(userRef string) resolv
 	}
 }
 
-func (m *ChatResolverCacheable) newGroupChatResolveContext(topic string) resolverContext[msmodels.ChatCollectionResponseable] {
+func (m *ChatResolverCacheable) newGroupChatResolveContext(
+	topic string,
+) resolverContext[msmodels.ChatCollectionResponseable] {
 	ref := strings.TrimSpace(topic)
 	return resolverContext[msmodels.ChatCollectionResponseable]{
 		cacheKey:    cacher.NewGroupChatKey(ref),
@@ -102,7 +119,9 @@ func (m *ChatResolverCacheable) newGroupChatResolveContext(topic string) resolve
 	}
 }
 
-func (m *ChatResolverCacheable) newChatMemberResolveContext(chatID, userRef string) resolverContext[msmodels.ConversationMemberCollectionResponseable] {
+func (m *ChatResolverCacheable) newChatMemberResolveContext(
+	chatID, userRef string,
+) resolverContext[msmodels.ConversationMemberCollectionResponseable] {
 	ref := strings.TrimSpace(userRef)
 	return resolverContext[msmodels.ConversationMemberCollectionResponseable]{
 		cacheKey:    cacher.NewGroupChatMemberKey(chatID, ref, nil),

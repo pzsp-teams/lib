@@ -1,372 +1,451 @@
 package resolver
 
 import (
-	"errors"
 	"testing"
 
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
+	"github.com/pzsp-teams/lib/internal/testutil"
+	"github.com/pzsp-teams/lib/internal/util"
+	"github.com/stretchr/testify/require"
 )
 
-func TestResolveTeamIDByName_NoTeamsAvailable(t *testing.T) {
-	col := msmodels.NewTeamCollectionResponse()
-	col.SetValue(nil)
-
-	_, err := resolveTeamIDByName(col, "X")
-	if err == nil {
-		t.Fatalf("expected error for no teams, got nil")
+func TestResolveTeamIDByName(t *testing.T) {
+	type testCase struct {
+		name        string
+		setupTeams  func() msmodels.TeamCollectionResponseable
+		teamName    string
+		expectedID  string
+		expectError bool
+		errorType   error
 	}
 
-	var rnErr *resourcesNotAvailableError
-	if !errors.As(err, &rnErr) {
-		t.Errorf("unexpected error: %v", err)
-	}
-}
-
-func TestResolveTeamIDByName_NoMatch(t *testing.T) {
-	t1 := newGraphTeam("1", "Alpha")
-	col := newTeamCollection(t1)
-
-	_, err := resolveTeamIDByName(col, "Beta")
-	if err == nil {
-		t.Fatalf("expected error for missing team, got nil")
-	}
-
-	var rnErr *resourceNotFoundError
-	if !errors.As(err, &rnErr) {
-		t.Errorf("unexpected error: %v", err)
-	}
-}
-
-func TestResolveTeamIDByName_SingleMatch(t *testing.T) {
-	t1 := newGraphTeam("1", "Alpha")
-	t2 := newGraphTeam("2", "Beta")
-	col := newTeamCollection(t1, t2)
-
-	id, err := resolveTeamIDByName(col, "Beta")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if id != "2" {
-		t.Fatalf("expected id=2, got %q", id)
-	}
-}
-
-func TestResolveTeamIDByName_MultipleMatches(t *testing.T) {
-	t1 := newGraphTeam("1", "Alpha")
-	t2 := newGraphTeam("2", "Alpha")
-	col := newTeamCollection(t1, t2)
-
-	_, err := resolveTeamIDByName(col, "Alpha")
-	if err == nil {
-		t.Fatalf("expected error for multiple matches, got nil")
-	}
-
-	var raErr *resourceAmbiguousError
-	if !errors.As(err, &raErr) {
-		t.Errorf("unexpected error: %v", err)
-	}
-}
-
-func TestResolveChannelIDByName_NoChannelsAvailable(t *testing.T) {
-	col := msmodels.NewChannelCollectionResponse()
-	col.SetValue(nil)
-
-	_, err := resolveChannelIDByName(col, "team-1", "X")
-	if err == nil {
-		t.Fatalf("expected error for no channels, got nil")
+	testCases := []testCase{
+		{
+			name: "No teams available",
+			setupTeams: func() msmodels.TeamCollectionResponseable {
+				col := msmodels.NewTeamCollectionResponse()
+				col.SetValue(nil)
+				return col
+			},
+			teamName:    "Alpha",
+			expectError: true,
+			errorType:   &resourcesNotAvailableError{},
+		},
+		{
+			name: "No match",
+			setupTeams: func() msmodels.TeamCollectionResponseable {
+				t1 := testutil.NewGraphTeam(
+					&testutil.NewTeamParams{ID: util.Ptr("1"), DisplayName: util.Ptr("Alpha")},
+				)
+				col := testutil.NewTeamCollection(t1)
+				return col
+			},
+			teamName:    "Beta",
+			expectError: true,
+			errorType:   &resourceNotFoundError{},
+		},
+		{
+			name: "Single match",
+			setupTeams: func() msmodels.TeamCollectionResponseable {
+				t1 := testutil.NewGraphTeam(
+					&testutil.NewTeamParams{ID: util.Ptr("1"), DisplayName: util.Ptr("Alpha")},
+				)
+				col := testutil.NewTeamCollection(t1)
+				return col
+			},
+			teamName:   "Alpha",
+			expectedID: "1",
+		},
+		{
+			name: "Multiple matches",
+			setupTeams: func() msmodels.TeamCollectionResponseable {
+				t1 := testutil.NewGraphTeam(
+					&testutil.NewTeamParams{ID: util.Ptr("1"), DisplayName: util.Ptr("Alpha")},
+				)
+				t2 := testutil.NewGraphTeam(
+					&testutil.NewTeamParams{ID: util.Ptr("2"), DisplayName: util.Ptr("Alpha")},
+				)
+				col := testutil.NewTeamCollection(t1, t2)
+				return col
+			},
+			teamName:    "Alpha",
+			expectError: true,
+			errorType:   &resourceAmbiguousError{},
+		},
 	}
 
-	var rnErr *resourcesNotAvailableError
-	if !errors.As(err, &rnErr) {
-		t.Errorf("unexpected error: %v", err)
-	}
-}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			teams := tc.setupTeams()
+			id, err := resolveTeamIDByName(teams, tc.teamName)
 
-func TestResolveChannelIDByName_NoMatch(t *testing.T) {
-	ch1 := newGraphChannel("c1", "General")
-	col := newChannelCollection(ch1)
+			if tc.expectError {
+				require.Error(t, err)
+				require.ErrorAs(t, err, &tc.errorType)
+				return
+			}
 
-	_, err := resolveChannelIDByName(col, "team-1", "Random")
-	if err == nil {
-		t.Fatalf("expected error for missing channel, got nil")
-	}
-
-	var rnErr *resourceNotFoundError
-	if !errors.As(err, &rnErr) {
-		t.Errorf("unexpected error: %v", err)
+			require.NoError(t, err)
+			require.Equal(t, tc.expectedID, id, "resolved team ID does not match expected")
+		})
 	}
 }
 
-func TestResolveChannelIDByName_SingleMatch(t *testing.T) {
-	ch1 := newGraphChannel("c1", "General")
-	ch2 := newGraphChannel("c2", "Random")
-	col := newChannelCollection(ch1, ch2)
-
-	id, err := resolveChannelIDByName(col, "team-1", "Random")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if id != "c2" {
-		t.Fatalf("expected id=c2, got %q", id)
-	}
-}
-
-func TestResolveChannelIDByName_MultipleMatches(t *testing.T) {
-	ch1 := newGraphChannel("c1", "General")
-	ch2 := newGraphChannel("c2", "General")
-	col := newChannelCollection(ch1, ch2)
-
-	_, err := resolveChannelIDByName(col, "team-1", "General")
-	if err == nil {
-		t.Fatalf("expected error for multiple matches, got nil")
+func TestResolveChannelIDByName(t *testing.T) {
+	type testCase struct {
+		name          string
+		setupChannels func() msmodels.ChannelCollectionResponseable
+		teamID        string
+		channelName   string
+		expectedID    string
+		expectError   bool
+		errorType     error
 	}
 
-	var raErr *resourceAmbiguousError
-	if !errors.As(err, &raErr) {
-		t.Errorf("unexpected error: %v", err)
-	}
-}
-
-func TestResolveOneOnOneChatIDByUserRef_NoChatsAvailable(t *testing.T) {
-	col := msmodels.NewChatCollectionResponse()
-	col.SetValue(nil)
-
-	_, err := resolveOneOnOneChatIDByUserRef(col, "u")
-	if err == nil {
-		t.Fatalf("expected error for no one-on-one chats, got nil")
-	}
-
-	var rnErr *resourcesNotAvailableError
-	if !errors.As(err, &rnErr) {
-		t.Errorf("unexpected error: %v", err)
-	}
-}
-func TestResolveOneOnOneChatIDByUserRef_NoMatch(t *testing.T) {
-	m := newAadUserMember("m-1", "usr-1", "jane@example.com")
-	chat := newOneOnOneChat("chat-1", m)
-	col := newChatCollection(chat)
-
-	_, err := resolveOneOnOneChatIDByUserRef(col, "other-user")
-	if err == nil {
-		t.Fatalf("expected error for missing user, got nil")
-	}
-
-	var rnErr *resourceNotFoundError
-	if !errors.As(err, &rnErr) {
-		t.Errorf("unexpected error: %v", err)
-	}
-}
-
-func TestResolveOneOnOneChatIDByUserRef_IDMatch(t *testing.T) {
-	m := newAadUserMember("m-1", "usr-1", "jane@example.com")
-	chat := newOneOnOneChat("chat-1", m)
-	col := newChatCollection(chat)
-
-	id, err := resolveOneOnOneChatIDByUserRef(col, "usr-1")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if id != "chat-1" {
-		t.Fatalf("expected chat id chat-1, got %q", id)
-	}
-}
-
-func TestResolveOneOnOneChatIDByUserRef_EmailMatch(t *testing.T) {
-	m := newAadUserMember("m-1", "usr-1", "jane@example.com")
-	chat := newOneOnOneChat("chat-1", m)
-	col := newChatCollection(chat)
-
-	id, err := resolveOneOnOneChatIDByUserRef(col, "jane@example.com")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+	testCases := []testCase{
+		{
+			name: "No channels available",
+			setupChannels: func() msmodels.ChannelCollectionResponseable {
+				col := msmodels.NewChannelCollectionResponse()
+				col.SetValue(nil)
+				return col
+			},
+			teamID:      "team-1",
+			channelName: "Alpha",
+			expectError: true,
+			errorType:   &resourcesNotAvailableError{},
+		},
+		{
+			name: "No match",
+			setupChannels: func() msmodels.ChannelCollectionResponseable {
+				ch1 := testutil.NewGraphChannel(
+					&testutil.NewChannelParams{ID: util.Ptr("c1"), Name: util.Ptr("Alpha")},
+				)
+				col := testutil.NewChannelCollection(ch1)
+				return col
+			},
+			teamID:      "team-1",
+			channelName: "Beta",
+			expectError: true,
+			errorType:   &resourceNotFoundError{},
+		},
+		{
+			name: "Single match",
+			setupChannels: func() msmodels.ChannelCollectionResponseable {
+				ch1 := testutil.NewGraphChannel(
+					&testutil.NewChannelParams{ID: util.Ptr("c1"), Name: util.Ptr("Alpha")},
+				)
+				col := testutil.NewChannelCollection(ch1)
+				return col
+			},
+			teamID:      "team-1",
+			channelName: "Alpha",
+			expectedID:  "c1",
+		},
+		{
+			name: "Multiple matches",
+			setupChannels: func() msmodels.ChannelCollectionResponseable {
+				ch1 := testutil.NewGraphChannel(
+					&testutil.NewChannelParams{ID: util.Ptr("c1"), Name: util.Ptr("Alpha")},
+				)
+				ch2 := testutil.NewGraphChannel(
+					&testutil.NewChannelParams{ID: util.Ptr("c2"), Name: util.Ptr("Alpha")},
+				)
+				col := testutil.NewChannelCollection(ch1, ch2)
+				return col
+			},
+			teamID:      "team-1",
+			channelName: "Alpha",
+			expectError: true,
+			errorType:   &resourceAmbiguousError{},
+		},
 	}
 
-	if id != "chat-1" {
-		t.Fatalf("expected chat id chat-1, got %q", id)
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			channels := tc.setupChannels()
+			id, err := resolveChannelIDByName(channels, tc.teamID, tc.channelName)
+
+			if tc.expectError {
+				require.Error(t, err)
+				require.ErrorAs(t, err, &tc.errorType)
+				return
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, tc.expectedID, id, "resolved channel ID does not match expected")
+		})
 	}
 }
 
-func TestResolveGroupChatIDByTopic_NoChatsAvailable(t *testing.T) {
-	col := msmodels.NewChatCollectionResponse()
-	col.SetValue(nil)
-
-	_, err := resolveGroupChatIDByTopic(col, "Topic")
-	if err == nil {
-		t.Fatalf("expected error for no group chats, got nil")
+func TestResolveOneonOneChatIDByUserRef(t *testing.T) {
+	type testCase struct {
+		name        string
+		setupChats  func() msmodels.ChatCollectionResponseable
+		userRef     string
+		expectedID  string
+		expectError bool
+		errorType   error
 	}
 
-	var rnErr *resourcesNotAvailableError
-	if !errors.As(err, &rnErr) {
-		t.Errorf("unexpected error: %v", err)
-	}
-}
-
-func TestResolveGroupChatIDByTopic_NoMatch(t *testing.T) {
-	c := newGroupChat("c1", "X")
-	col := newChatCollection(c)
-
-	_, err := resolveGroupChatIDByTopic(col, "Y")
-	if err == nil {
-		t.Fatalf("expected error for missing topic, got nil")
-	}
-	var rnErr *resourceNotFoundError
-	if !errors.As(err, &rnErr) {
-		t.Errorf("unexpected error: %v", err)
-	}
-}
-
-func TestResolveGroupChatIDByTopic_SingleMatch(t *testing.T) {
-	c1 := newGroupChat("c1", "Project")
-	col := newChatCollection(c1)
-
-	id, err := resolveGroupChatIDByTopic(col, "Project")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if id != "c1" {
-		t.Fatalf("expected c1, got %q", id)
-	}
-}
-
-func TestResolveGroupChatIDByTopic_MultipleMatches(t *testing.T) {
-	c1 := newGroupChat("c1", "Project")
-	c2 := newGroupChat("c2", "Project")
-	col := newChatCollection(c1, c2)
-
-	_, err := resolveGroupChatIDByTopic(col, "Project")
-	if err == nil {
-		t.Fatalf("expected error for multiple chats, got nil")
-	}
-
-	var raErr *resourceAmbiguousError
-	if !errors.As(err, &raErr) {
-		t.Errorf("unexpected error: %v", err)
-	}
-}
-
-func TestResolveMemberID_NoMembersAvailable(t *testing.T) {
-	colEmpty := msmodels.NewConversationMemberCollectionResponse()
-	colEmpty.SetValue(nil)
-
-	_, err := resolveMemberID(colEmpty, "any")
-	if err == nil {
-		t.Fatalf("expected error for no members, got nil")
-	}
-
-	var rnErr *resourcesNotAvailableError
-	if !errors.As(err, &rnErr) {
-		t.Errorf("unexpected error: %v", err)
-	}
-}
-
-func TestResolveMemberID_NoMatch(t *testing.T) {
-	m := newAadUserMember("m-1", "usr-1", "jane@example.com")
-	col := newMemberCollection(m)
-
-	_, err := resolveMemberID(col, "missing")
-	if err == nil {
-		t.Fatalf("expected error for missing member, got nil")
-	}
-
-	var rnErr *resourceNotFoundError
-	if !errors.As(err, &rnErr) {
-		t.Errorf("unexpected error: %v", err)
-	}
-}
-
-func TestResolveMemberID_UserIDMatch(t *testing.T) {
-	m := newAadUserMember("m-1", "usr-1", "jane@example.com")
-	col2 := newMemberCollection(m)
-
-	id, err := resolveMemberID(col2, "usr-1")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+	testCases := []testCase{
+		{
+			name: "No chats available",
+			setupChats: func() msmodels.ChatCollectionResponseable {
+				col := msmodels.NewChatCollectionResponse()
+				col.SetValue(nil)
+				return col
+			},
+			userRef:     "usr-1",
+			expectError: true,
+			errorType:   &resourcesNotAvailableError{},
+		},
+		{
+			name: "No match",
+			setupChats: func() msmodels.ChatCollectionResponseable {
+				m := testutil.NewGraphMember(&testutil.NewMemberParams{
+					ID:     util.Ptr("m-1"),
+					UserID: util.Ptr("usr-1"),
+					Email:  util.Ptr("jane@example.com"),
+				})
+				chat := testutil.NewGraphChat(&testutil.NewChatParams{
+					ID:      util.Ptr("chat-1"),
+					Type:    util.Ptr(msmodels.ONEONONE_CHATTYPE),
+					Members: []msmodels.ConversationMemberable{m},
+				})
+				col := testutil.NewChatCollection(chat)
+				return col
+			},
+			userRef:     "other-user",
+			expectError: true,
+			errorType:   &resourceNotFoundError{},
+		},
+		{
+			name: "ID match",
+			setupChats: func() msmodels.ChatCollectionResponseable {
+				m := testutil.NewGraphMember(&testutil.NewMemberParams{
+					ID:     util.Ptr("m-1"),
+					UserID: util.Ptr("usr-1"),
+					Email:  util.Ptr("jane@example.com"),
+				})
+				chat := testutil.NewGraphChat(&testutil.NewChatParams{
+					ID:      util.Ptr("chat-1"),
+					Type:    util.Ptr(msmodels.ONEONONE_CHATTYPE),
+					Members: []msmodels.ConversationMemberable{m},
+				})
+				col := testutil.NewChatCollection(chat)
+				return col
+			},
+			userRef:    "usr-1",
+			expectedID: "chat-1",
+		},
+		{
+			name: "Email match",
+			setupChats: func() msmodels.ChatCollectionResponseable {
+				m := testutil.NewGraphMember(&testutil.NewMemberParams{
+					ID:     util.Ptr("m-1"),
+					UserID: util.Ptr("usr-1"),
+					Email:  util.Ptr("jane@example.com"),
+				})
+				chat := testutil.NewGraphChat(&testutil.NewChatParams{
+					ID:      util.Ptr("chat-1"),
+					Type:    util.Ptr(msmodels.ONEONONE_CHATTYPE),
+					Members: []msmodels.ConversationMemberable{m},
+				})
+				col := testutil.NewChatCollection(chat)
+				return col
+			},
+			userRef:    "jane@example.com",
+			expectedID: "chat-1",
+		},
 	}
 
-	if id != "m-1" {
-		t.Fatalf("expected m-1, got %q", id)
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			chats := tc.setupChats()
+			id, err := resolveOneOnOneChatIDByUserRef(chats, tc.userRef)
+			if tc.expectError {
+				require.Error(t, err)
+				require.ErrorAs(t, err, &tc.errorType)
+				return
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, tc.expectedID, id, "resolved chat ID does not match expected")
+		})
 	}
 }
 
-func TestResolveMemberID_UserEmailMatch(t *testing.T) {
-	m := newAadUserMember("m-1", "usr-1", "jane@example.com")
-	col2 := newMemberCollection(m)
-
-	id2, err := resolveMemberID(col2, "jane@example.com")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+func TestResolveGroupChatID(t *testing.T) {
+	type testCase struct {
+		name        string
+		setupChats  func() msmodels.ChatCollectionResponseable
+		topic       string
+		expectedID  string
+		expectError bool
+		errorType   error
 	}
 
-	if id2 != "m-1" {
-		t.Fatalf("expected m-1 by display name, got %q", id2)
+	testCases := []testCase{
+		{
+			name: "No chats available",
+			setupChats: func() msmodels.ChatCollectionResponseable {
+				col := msmodels.NewChatCollectionResponse()
+				col.SetValue(nil)
+				return col
+			},
+			topic:       "Project X",
+			expectError: true,
+			errorType:   &resourcesNotAvailableError{},
+		},
+		{
+			name: "No match",
+			setupChats: func() msmodels.ChatCollectionResponseable {
+				chat := testutil.NewGraphChat(&testutil.NewChatParams{
+					ID:    util.Ptr("chat-1"),
+					Type:  util.Ptr(msmodels.GROUP_CHATTYPE),
+					Topic: util.Ptr("Project A"),
+				})
+				col := testutil.NewChatCollection(chat)
+				return col
+			},
+			topic:       "Project X",
+			expectError: true,
+			errorType:   &resourceNotFoundError{},
+		},
+		{
+			name: "Single match",
+			setupChats: func() msmodels.ChatCollectionResponseable {
+				chat := testutil.NewGraphChat(&testutil.NewChatParams{
+					ID:    util.Ptr("chat-1"),
+					Type:  util.Ptr(msmodels.GROUP_CHATTYPE),
+					Topic: util.Ptr("Project X"),
+				})
+				col := testutil.NewChatCollection(chat)
+				return col
+			},
+			topic:      "Project X",
+			expectedID: "chat-1",
+		},
+		{
+			name: "Multiple matches",
+			setupChats: func() msmodels.ChatCollectionResponseable {
+				chat1 := testutil.NewGraphChat(&testutil.NewChatParams{
+					ID:    util.Ptr("chat-1"),
+					Type:  util.Ptr(msmodels.GROUP_CHATTYPE),
+					Topic: util.Ptr("Project X"),
+				})
+				chat2 := testutil.NewGraphChat(&testutil.NewChatParams{
+					ID:    util.Ptr("chat-2"),
+					Type:  util.Ptr(msmodels.GROUP_CHATTYPE),
+					Topic: util.Ptr("Project X"),
+				})
+				col := testutil.NewChatCollection(chat1, chat2)
+				return col
+			},
+			topic:       "Project X",
+			expectError: true,
+			errorType:   &resourceAmbiguousError{},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			chats := tc.setupChats()
+			id, err := resolveGroupChatIDByTopic(chats, tc.topic)
+
+			if tc.expectError {
+				require.Error(t, err)
+				require.ErrorAs(t, err, &tc.errorType)
+				return
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, tc.expectedID, id, "resolved chat ID does not match expected")
+		})
 	}
 }
 
-// ----------
-// TEST UTILS
-// ----------
+func TestResolveMemberID(t *testing.T) {
+	type testCase struct {
+		name         string
+		setupMembers func() msmodels.ConversationMemberCollectionResponseable
+		userRef      string
+		expectedID   string
+		expectError  bool
+		errorType    error
+	}
 
-func newGraphTeam(id, name string) msmodels.Teamable {
-	t := msmodels.NewTeam()
-	t.SetId(&id)
-	t.SetDisplayName(&name)
-	return t
-}
+	testCases := []testCase{
+		{
+			name: "No members available",
+			setupMembers: func() msmodels.ConversationMemberCollectionResponseable {
+				col := msmodels.NewConversationMemberCollectionResponse()
+				col.SetValue(nil)
+				return col
+			},
+			userRef:     "any",
+			expectError: true,
+			errorType:   &resourcesNotAvailableError{},
+		},
+		{
+			name: "No match",
+			setupMembers: func() msmodels.ConversationMemberCollectionResponseable {
+				m := testutil.NewGraphMember(&testutil.NewMemberParams{
+					ID:     util.Ptr("m-1"),
+					UserID: util.Ptr("usr-1"),
+					Email:  util.Ptr("jane@emxaple.com"),
+				})
+				col := testutil.NewMemberCollection(m)
+				return col
+			},
+			userRef:     "missing",
+			expectError: true,
+			errorType:   &resourceNotFoundError{},
+		},
+		{
+			name: "UserID match",
+			setupMembers: func() msmodels.ConversationMemberCollectionResponseable {
+				m := testutil.NewGraphMember(&testutil.NewMemberParams{
+					ID:     util.Ptr("m-1"),
+					UserID: util.Ptr("usr-1"),
+					Email:  util.Ptr("jane@example.com"),
+				})
+				col := testutil.NewMemberCollection(m)
+				return col
+			},
+			userRef:    "usr-1",
+			expectedID: "m-1",
+		},
+		{
+			name: "UserEmail match",
+			setupMembers: func() msmodels.ConversationMemberCollectionResponseable {
+				m := testutil.NewGraphMember(&testutil.NewMemberParams{
+					ID:     util.Ptr("m-1"),
+					UserID: util.Ptr("usr-1"),
+					Email:  util.Ptr("jane@example.com"),
+				})
+				col := testutil.NewMemberCollection(m)
+				return col
+			},
+			userRef:    "jane@example.com",
+			expectedID: "m-1",
+		},
+	}
 
-func newTeamCollection(teams ...msmodels.Teamable) msmodels.TeamCollectionResponseable {
-	col := msmodels.NewTeamCollectionResponse()
-	col.SetValue(teams)
-	return col
-}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			members := tc.setupMembers()
+			id, err := resolveMemberID(members, tc.userRef)
 
-func newGraphChannel(id, name string) msmodels.Channelable {
-	ch := msmodels.NewChannel()
-	ch.SetId(&id)
-	ch.SetDisplayName(&name)
-	return ch
-}
+			if tc.expectError {
+				require.Error(t, err)
+				require.ErrorAs(t, err, &tc.errorType)
+				return
+			}
 
-func newChannelCollection(channels ...msmodels.Channelable) msmodels.ChannelCollectionResponseable {
-	col := msmodels.NewChannelCollectionResponse()
-	col.SetValue(channels)
-	return col
-}
-
-func newAadUserMember(id, userID, email string) msmodels.ConversationMemberable {
-	m := msmodels.NewAadUserConversationMember()
-	m.SetId(&id)
-	m.SetUserId(&userID)
-	_ = m.GetBackingStore().Set("email", &email)
-	return m
-}
-
-func newMemberCollection(members ...msmodels.ConversationMemberable) msmodels.ConversationMemberCollectionResponseable {
-	col := msmodels.NewConversationMemberCollectionResponse()
-	col.SetValue(members)
-	return col
-}
-
-func newOneOnOneChat(chatID string, member msmodels.ConversationMemberable) msmodels.Chatable {
-	c := msmodels.NewChat()
-	c.SetId(&chatID)
-	chatType := msmodels.ONEONONE_CHATTYPE
-	c.SetChatType(&chatType)
-	c.SetMembers([]msmodels.ConversationMemberable{member})
-	return c
-}
-
-func newGroupChat(chatID, topic string) msmodels.Chatable {
-	c := msmodels.NewChat()
-	c.SetId(&chatID)
-	chatType := msmodels.GROUP_CHATTYPE
-	c.SetChatType(&chatType)
-	c.SetTopic(&topic)
-	return c
-}
-
-func newChatCollection(chats ...msmodels.Chatable) msmodels.ChatCollectionResponseable {
-	col := msmodels.NewChatCollectionResponse()
-	col.SetValue(chats)
-	return col
+			require.NoError(t, err)
+			require.Equal(t, tc.expectedID, id, "resolved member ID does not match expected")
+		})
+	}
 }

@@ -7,13 +7,12 @@ import (
 	"github.com/pzsp-teams/lib/internal/cacher"
 	sender "github.com/pzsp-teams/lib/internal/sender"
 	testutil "github.com/pzsp-teams/lib/internal/testutil"
+	"github.com/pzsp-teams/lib/internal/util"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
 
 func TestTeamResolverCacheable_ResolveTeamRefToID(t *testing.T) {
-	ctx := context.Background()
 
 	type testCase struct {
 		name         string
@@ -51,7 +50,10 @@ func TestTeamResolverCacheable_ResolveTeamRefToID(t *testing.T) {
 			cacheEnabled: true,
 			setupMocks: func(api *testutil.MockTeamAPI, c *testutil.MockCacher) {
 				api.EXPECT().ListMyJoined(gomock.Any()).Times(0)
-				c.EXPECT().Get(cacher.NewTeamKey("My Team")).Return([]string{"team-id-123"}, true, nil).Times(1)
+				c.EXPECT().
+					Get(cacher.NewTeamKey("My Team")).
+					Return([]string{"team-id-123"}, true, nil).
+					Times(1)
 				c.EXPECT().Set(gomock.Any(), gomock.Any()).Times(0)
 			},
 			expectedID: "team-id-123",
@@ -61,8 +63,13 @@ func TestTeamResolverCacheable_ResolveTeamRefToID(t *testing.T) {
 			teamRef:      "My Team",
 			cacheEnabled: true,
 			setupMocks: func(api *testutil.MockTeamAPI, c *testutil.MockCacher) {
-				team := newGraphTeam("team-id-123", "My Team")
-				collection := newTeamCollection(team)
+				team := testutil.NewGraphTeam(
+					&testutil.NewTeamParams{
+						ID:          util.Ptr("team-id-123"),
+						DisplayName: util.Ptr("My Team"),
+					},
+				)
+				collection := testutil.NewTeamCollection(team)
 				api.EXPECT().ListMyJoined(gomock.Any()).Return(collection, nil).Times(1)
 				c.EXPECT().Get(cacher.NewTeamKey("My Team")).Return(nil, false, nil).Times(1)
 				c.EXPECT().Set(cacher.NewTeamKey("My Team"), "team-id-123").Return(nil).Times(1)
@@ -74,8 +81,13 @@ func TestTeamResolverCacheable_ResolveTeamRefToID(t *testing.T) {
 			teamRef:      "My Team",
 			cacheEnabled: false,
 			setupMocks: func(api *testutil.MockTeamAPI, c *testutil.MockCacher) {
-				team := newGraphTeam("team-id-123", "My Team")
-				collection := newTeamCollection(team)
+				team := testutil.NewGraphTeam(
+					&testutil.NewTeamParams{
+						ID:          util.Ptr("team-id-123"),
+						DisplayName: util.Ptr("My Team"),
+					},
+				)
+				collection := testutil.NewTeamCollection(team)
 				api.EXPECT().ListMyJoined(gomock.Any()).Return(collection, nil).Times(1)
 				c.EXPECT().Get(gomock.Any()).Times(0)
 				c.EXPECT().Set(gomock.Any(), gomock.Any()).Times(0)
@@ -110,15 +122,16 @@ func TestTeamResolverCacheable_ResolveTeamRefToID(t *testing.T) {
 
 			res := NewTeamResolverCacheable(mockAPI, mockCacher, tc.cacheEnabled)
 
+			ctx := context.Background()
 			id, err := res.ResolveTeamRefToID(ctx, tc.teamRef)
 
 			if tc.expectError {
-				require.Error(t, err, "expected error but got none")
+				assert.Error(t, err)
 				return
 			}
 
-			require.NoError(t, err)
-			assert.Equal(t, tc.expectedID, id, "resolved team ID does not match expected")
+			assert.NoError(t, err)
+			assert.Equal(t, tc.expectedID, id)
 		})
 	}
 }

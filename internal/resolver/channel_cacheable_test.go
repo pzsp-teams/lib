@@ -2,418 +2,300 @@ package resolver
 
 import (
 	"context"
-	"errors"
 	"testing"
 
-	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
 	"github.com/pzsp-teams/lib/internal/cacher"
 	sender "github.com/pzsp-teams/lib/internal/sender"
+	"github.com/pzsp-teams/lib/internal/testutil"
+	"github.com/pzsp-teams/lib/internal/util"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
-type fakeCacher struct {
-	getValue     any
-	getFound     bool
-	getErr       error
-	setErr       error
-	getCalls     int
-	setCalls     int
-	lastGetKey   string
-	lastSetKey   string
-	lastSetValue any
-}
+func TestChannelResolverCacheable_ResolveChannelRefToID(t *testing.T) {
 
-func (f *fakeCacher) Get(key string) (valeu any, found bool, err error) {
-	f.getCalls++
-	f.lastGetKey = key
-	return f.getValue, f.getFound, f.getErr
-}
-
-func (f *fakeCacher) Set(key string, value any) error {
-	f.setCalls++
-	f.lastSetKey = key
-	f.lastSetValue = value
-	return f.setErr
-}
-
-func (f *fakeCacher) Invalidate(key string) error {
-	return nil
-}
-
-func (f *fakeCacher) Clear() error {
-	return nil
-}
-
-type fakeChannelAPI struct {
-	listResp       msmodels.ChannelCollectionResponseable
-	listErr        *sender.RequestError
-	listCalls      int
-	lastListTeamID string
-
-	membersResp       msmodels.ConversationMemberCollectionResponseable
-	membersErr        *sender.RequestError
-	listMembersCalls  int
-	lastMembersTeamID string
-	lastMembersChanID string
-}
-
-func (f *fakeChannelAPI) ListChannels(ctx context.Context, teamID string) (msmodels.ChannelCollectionResponseable, *sender.RequestError) {
-	f.listCalls++
-	f.lastListTeamID = teamID
-	return f.listResp, f.listErr
-}
-
-func (f *fakeChannelAPI) ListMembers(ctx context.Context, teamID, channelID string) (msmodels.ConversationMemberCollectionResponseable, *sender.RequestError) {
-	f.listMembersCalls++
-	f.lastMembersTeamID = teamID
-	f.lastMembersChanID = channelID
-	return f.membersResp, f.membersErr
-}
-
-func (f *fakeChannelAPI) GetChannel(ctx context.Context, teamID, channelID string) (msmodels.Channelable, *sender.RequestError) {
-	return nil, nil
-}
-
-func (f *fakeChannelAPI) CreateStandardChannel(ctx context.Context, teamID string, channel msmodels.Channelable) (msmodels.Channelable, *sender.RequestError) {
-	return nil, nil
-}
-
-func (f *fakeChannelAPI) CreatePrivateChannelWithMembers(ctx context.Context, teamID, displayName string, memberIDs, ownerIDs []string) (msmodels.Channelable, *sender.RequestError) {
-	return nil, nil
-}
-
-func (f *fakeChannelAPI) DeleteChannel(ctx context.Context, teamID, channelID string) *sender.RequestError {
-	return nil
-}
-
-func (f *fakeChannelAPI) SendMessage(ctx context.Context, teamID, channelID, content, contentType string, mentions []msmodels.ChatMessageMentionable) (msmodels.ChatMessageable, *sender.RequestError) {
-	return nil, nil
-}
-
-func (f *fakeChannelAPI) SendReply(ctx context.Context, teamID, channelID, messageID, content, contentType string, mentions []msmodels.ChatMessageMentionable) (msmodels.ChatMessageable, *sender.RequestError) {
-	return nil, nil
-}
-
-func (f *fakeChannelAPI) ListMessages(ctx context.Context, teamID, channelID string, top *int32) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError) {
-	return nil, nil
-}
-
-func (f *fakeChannelAPI) GetMessage(ctx context.Context, teamID, channelID, messageID string) (msmodels.ChatMessageable, *sender.RequestError) {
-	return nil, nil
-}
-
-func (f *fakeChannelAPI) ListReplies(ctx context.Context, teamID, channelID, messageID string, top *int32) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError) {
-	return nil, nil
-}
-
-func (f *fakeChannelAPI) GetReply(ctx context.Context, teamID, channelID, messageID, replyID string) (msmodels.ChatMessageable, *sender.RequestError) {
-	return nil, nil
-}
-
-func (f *fakeChannelAPI) AddMember(ctx context.Context, teamID, channelID, userID, role string) (msmodels.ConversationMemberable, *sender.RequestError) {
-	return nil, nil
-}
-
-func (f *fakeChannelAPI) RemoveMember(ctx context.Context, teamID, channelID, memberID string) *sender.RequestError {
-	return nil
-}
-
-func (f *fakeChannelAPI) UpdateMemberRole(ctx context.Context, teamID, channelID, memberID, role string) (msmodels.ConversationMemberable, *sender.RequestError) {
-	return nil, nil
-}
-
-func TestChannelResolverCacheable_ResolveChannelRefToID_EmptyRef(t *testing.T) {
-	ctx := context.Background()
-	fc := &fakeCacher{}
-	apiFake := &fakeChannelAPI{}
-
-	res := NewChannelResolverCacheable(apiFake, fc, true)
-
-	_, err := res.ResolveChannelRefToID(ctx, "team-1", "   ")
-	if err == nil {
-		t.Fatalf("expected error for empty channel reference, got nil")
-	}
-}
-
-func TestChannelResolverCacheable_ResolveChannelRefToID_DirectID_ShortCircuit(t *testing.T) {
-	ctx := context.Background()
-	fc := &fakeCacher{}
-	apiFake := &fakeChannelAPI{}
-	res := NewChannelResolverCacheable(apiFake, fc, true)
-
-	chID := "19:abc123@thread.tacv2"
-
-	id, err := res.ResolveChannelRefToID(ctx, "team-1", chID)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if id != chID {
-		t.Fatalf("expected %q, got %q", chID, id)
+	type testCase struct {
+		name         string
+		teamID       string
+		channelRef   string
+		cacheEnabled bool
+		setupMocks   func(api *testutil.MockChannelAPI, c *testutil.MockCacher)
+		expectedID   string
+		expectError  bool
 	}
 
-	if fc.getCalls != 0 || fc.setCalls != 0 {
-		t.Errorf("expected no cache calls for direct channel ID, got get=%d set=%d", fc.getCalls, fc.setCalls)
+	testCases := []testCase{
+		{
+			name:         "Empty channel reference",
+			teamID:       "team-1",
+			channelRef:   "   ",
+			cacheEnabled: true,
+			setupMocks: func(api *testutil.MockChannelAPI, c *testutil.MockCacher) {
+				api.EXPECT().ListChannels(gomock.Any(), gomock.Any()).Times(0)
+				c.EXPECT().Get(gomock.Any()).Times(0)
+			},
+			expectError: true,
+		},
+		{
+			name:         "Direct channel ID short circuit",
+			teamID:       "team-1",
+			channelRef:   "19:abc123@thread.tacv2",
+			cacheEnabled: true,
+			setupMocks: func(api *testutil.MockChannelAPI, c *testutil.MockCacher) {
+				api.EXPECT().ListChannels(gomock.Any(), gomock.Any()).Times(0)
+				c.EXPECT().Get(gomock.Any()).Times(0)
+			},
+			expectedID: "19:abc123@thread.tacv2",
+		},
+		{
+			name:         "Cache single hit",
+			teamID:       "team-1",
+			channelRef:   "General",
+			cacheEnabled: true,
+			setupMocks: func(api *testutil.MockChannelAPI, c *testutil.MockCacher) {
+				api.EXPECT().ListChannels(gomock.Any(), gomock.Any()).Times(0)
+				c.EXPECT().
+					Get(cacher.NewChannelKey("team-1", "General")).
+					Return([]string{"chan-id-123"}, true, nil).
+					Times(1)
+				c.EXPECT().Set(gomock.Any(), gomock.Any()).Times(0)
+			},
+			expectedID: "chan-id-123",
+		},
+		{
+			name:         "Cache miss uses API and caches result",
+			teamID:       "team-42",
+			channelRef:   "  General ",
+			cacheEnabled: true,
+			setupMocks: func(api *testutil.MockChannelAPI, c *testutil.MockCacher) {
+				ch := testutil.NewGraphChannel(
+					&testutil.NewChannelParams{
+						ID:   util.Ptr("chan-id-xyz"),
+						Name: util.Ptr("General"),
+					},
+				)
+				collection := testutil.NewChannelCollection(ch)
+				api.EXPECT().ListChannels(gomock.Any(), "team-42").Return(collection, nil).Times(1)
+				c.EXPECT().
+					Get(cacher.NewChannelKey("team-42", "General")).
+					Return(nil, false, nil).
+					Times(1)
+				c.EXPECT().
+					Set(cacher.NewChannelKey("team-42", "General"), gomock.Any()).
+					Return(nil).
+					Times(1)
+			},
+			expectedID: "chan-id-xyz",
+		},
+		{
+			name:         "Cache disabled skips cache",
+			teamID:       "team-1",
+			channelRef:   "General",
+			cacheEnabled: false,
+			setupMocks: func(api *testutil.MockChannelAPI, c *testutil.MockCacher) {
+				ch := testutil.NewGraphChannel(
+					&testutil.NewChannelParams{
+						ID:   util.Ptr("chan-id-api"),
+						Name: util.Ptr("General"),
+					},
+				)
+				collection := testutil.NewChannelCollection(ch)
+				api.EXPECT().ListChannels(gomock.Any(), "team-1").Return(collection, nil).Times(1)
+				c.EXPECT().Get(gomock.Any()).Times(0)
+				c.EXPECT().Set(gomock.Any(), gomock.Any()).Times(0)
+			},
+			expectedID: "chan-id-api",
+		},
+		{
+			name:         "Fetch from API fails",
+			teamID:       "team-1",
+			channelRef:   "General",
+			cacheEnabled: true,
+			setupMocks: func(api *testutil.MockChannelAPI, c *testutil.MockCacher) {
+				wantErr := &sender.RequestError{Message: "boom"}
+				api.EXPECT().ListChannels(gomock.Any(), "team-1").Return(nil, wantErr).Times(1)
+				c.EXPECT().
+					Get(cacher.NewChannelKey("team-1", "General")).
+					Return(nil, false, nil).
+					Times(1)
+			},
+			expectError: true,
+		},
 	}
-	if apiFake.listCalls != 0 {
-		t.Errorf("expected no ListChannels calls for direct ID, got %d", apiFake.listCalls)
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			apiMock := testutil.NewMockChannelAPI(ctrl)
+			cacherMock := testutil.NewMockCacher(ctrl)
+
+			tc.setupMocks(apiMock, cacherMock)
+
+			resolver := NewChannelResolverCacheable(apiMock, cacherMock, tc.cacheEnabled)
+
+			id, err := resolver.ResolveChannelRefToID(
+				context.Background(),
+				tc.teamID,
+				tc.channelRef,
+			)
+
+			if tc.expectError {
+				require.Error(t, err)
+				return
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, tc.expectedID, id)
+		})
 	}
 }
 
-func TestChannelResolverCacheable_ResolveChannelRefToID_CacheHitSingleID(t *testing.T) {
-	ctx := context.Background()
-	fc := &fakeCacher{
-		getValue: []string{"chan-id-123"},
-		getFound: true,
+func TestChannelResolverCacheable_ResolveChannelMemberRefToID(t *testing.T) {
+	type testCase struct {
+		name         string
+		teamID       string
+		channelID    string
+		userRef      string
+		cacheEnabled bool
+		setupMocks   func(api *testutil.MockChannelAPI, c *testutil.MockCacher)
+		expectedID   string
+		expectError  bool
 	}
 
-	apiFake := &fakeChannelAPI{}
-	res := NewChannelResolverCacheable(apiFake, fc, true)
-
-	id, err := res.ResolveChannelRefToID(ctx, "team-1", "General")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if id != "chan-id-123" {
-		t.Fatalf("expected chan-id-123 from cache, got %q", id)
-	}
-
-	if fc.getCalls != 1 {
-		t.Errorf("expected 1 cache Get call, got %d", fc.getCalls)
-	}
-	if fc.lastGetKey != cacher.NewChannelKey("team-1", "General") {
-		t.Errorf("unexpected cache key, got %q", fc.lastGetKey)
-	}
-	if fc.setCalls != 0 {
-		t.Errorf("expected no cache Set on hit, got %d", fc.setCalls)
-	}
-	if apiFake.listCalls != 0 {
-		t.Errorf("expected no ListChannels on cache hit, got %d", apiFake.listCalls)
-	}
-}
-
-func TestChannelResolverCacheable_ResolveChannelRefToID_CacheMiss_UsesAPIAndCaches(t *testing.T) {
-	ctx := context.Background()
-	fc := &fakeCacher{
-		getFound: false,
-	}
-	ch := newGraphChannel("chan-id-xyz", "General")
-	apiFake := &fakeChannelAPI{
-		listResp: newChannelCollection(ch),
-	}
-	res := NewChannelResolverCacheable(apiFake, fc, true)
-
-	id, err := res.ResolveChannelRefToID(ctx, "team-42", "  General ")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if id != "chan-id-xyz" {
-		t.Fatalf("expected chan-id-xyz, got %q", id)
-	}
-
-	if fc.getCalls != 1 {
-		t.Errorf("expected 1 Get call, got %d", fc.getCalls)
-	}
-	if fc.lastGetKey != cacher.NewChannelKey("team-42", "General") {
-		t.Errorf("unexpected cache key, got %q", fc.lastGetKey)
-	}
-
-	if apiFake.listCalls != 1 {
-		t.Errorf("expected 1 ListChannels call, got %d", apiFake.listCalls)
-	}
-	if apiFake.lastListTeamID != "team-42" {
-		t.Errorf("expected ListChannels for team-42, got %q", apiFake.lastListTeamID)
-	}
-
-	if fc.setCalls != 1 {
-		t.Errorf("expected 1 Set call, got %d", fc.setCalls)
-	}
-	if fc.lastSetKey != cacher.NewChannelKey("team-42", "General") {
-		t.Errorf("unexpected Set key, got %q", fc.lastSetKey)
-	}
-	if v, ok := fc.lastSetValue.(string); !ok || v != "chan-id-xyz" {
-		t.Errorf("expected cached value 'chan-id-xyz', got %#v", fc.lastSetValue)
-	}
-}
-
-func TestChannelResolverCacheable_ResolveChannelRefToID_CacheDisabled_SkipsCache(t *testing.T) {
-	ctx := context.Background()
-	fc := &fakeCacher{
-		getValue: []string{"chan-id-from-cache"},
-		getFound: true,
-	}
-	ch := newGraphChannel("chan-id-api", "General")
-	apiFake := &fakeChannelAPI{
-		listResp: newChannelCollection(ch),
-	}
-
-	res := NewChannelResolverCacheable(apiFake, fc, false)
-
-	id, err := res.ResolveChannelRefToID(ctx, "team-1", "General")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if id != "chan-id-api" {
-		t.Fatalf("expected chan-id-api from API, got %q", id)
-	}
-
-	if fc.getCalls != 0 && fc.setCalls != 0 {
-		t.Errorf("expected no cache calls when cache disabled, got get=%d set=%d", fc.getCalls, fc.setCalls)
-	}
-	if apiFake.listCalls != 1 {
-		t.Errorf("expected 1 ListChannels call, got %d", apiFake.listCalls)
-	}
-}
-
-func TestChannelResolverCacheable_ResolveChannelRefToID_ResolverErrorPropagated(t *testing.T) {
-	ctx := context.Background()
-	fc := &fakeCacher{
-		getFound: false,
-	}
-	apiErr := &sender.RequestError{
-		Message: "boom",
-	}
-	apiFake := &fakeChannelAPI{
-		listErr: apiErr,
-	}
-	res := NewChannelResolverCacheable(apiFake, fc, true)
-
-	_, err := res.ResolveChannelRefToID(ctx, "team-1", "General")
-	if err == nil {
-		t.Fatalf("expected error, got nil")
-	}
-}
-
-func TestChannelResolverCacheable_ResolveUserRefToMemberID_EmptyRef(t *testing.T) {
-	ctx := context.Background()
-	fc := &fakeCacher{}
-	apiFake := &fakeChannelAPI{}
-	res := NewChannelResolverCacheable(apiFake, fc, true)
-
-	_, err := res.ResolveChannelMemberRefToID(ctx, "team-1", "chan-1", " ")
-	if err == nil {
-		t.Fatalf("expected error for empty user reference, got nil")
-	}
-}
-
-func TestChannelResolverCacheable_ResolveUserRefToMemberID_CacheHitSingleID(t *testing.T) {
-	ctx := context.Background()
-	fc := &fakeCacher{
-		getValue: []string{"member-id-123"},
-		getFound: true,
-	}
-	apiFake := &fakeChannelAPI{}
-	res := NewChannelResolverCacheable(apiFake, fc, true)
-
-	id, err := res.ResolveChannelMemberRefToID(ctx, "team-1", "chan-1", "user-ref")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if id != "member-id-123" {
-		t.Fatalf("expected member-id-123 from cache, got %q", id)
+	testCases := []testCase{
+		{
+			name:         "Empty user reference",
+			teamID:       "team-1",
+			channelID:    "chan-1",
+			userRef:      " ",
+			cacheEnabled: true,
+			setupMocks: func(api *testutil.MockChannelAPI, c *testutil.MockCacher) {
+				api.EXPECT().ListMembers(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+				c.EXPECT().Get(gomock.Any()).Times(0)
+			},
+			expectError: true,
+		},
+		{
+			name:         "Cache hit single ID",
+			teamID:       "team-1",
+			channelID:    "chan-1",
+			userRef:      "user-ref",
+			cacheEnabled: true,
+			setupMocks: func(api *testutil.MockChannelAPI, c *testutil.MockCacher) {
+				c.EXPECT().
+					Get(cacher.NewChannelMemberKey("team-1", "chan-1", "user-ref", nil)).
+					Return([]string{"member-id-123"}, true, nil).
+					Times(1)
+				api.EXPECT().ListMembers(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+				c.EXPECT().Set(gomock.Any(), gomock.Any()).Times(0)
+			},
+			expectedID: "member-id-123",
+		},
+		{
+			name:         "Cache miss uses API and caches",
+			teamID:       "team-42",
+			channelID:    "chan-7",
+			userRef:      " u-1 ",
+			cacheEnabled: true,
+			setupMocks: func(api *testutil.MockChannelAPI, c *testutil.MockCacher) {
+				member := testutil.NewGraphMember(
+					&testutil.NewMemberParams{
+						ID:          util.Ptr("m-1"),
+						UserID:      util.Ptr("u-1"),
+						DisplayName: util.Ptr("Alice"),
+					},
+				)
+				collection := testutil.NewMemberCollection(member)
+				api.EXPECT().
+					ListMembers(gomock.Any(), "team-42", "chan-7").
+					Return(collection, nil).
+					Times(1)
+				c.EXPECT().
+					Get(cacher.NewChannelMemberKey("team-42", "chan-7", "u-1", nil)).
+					Return(nil, false, nil).
+					Times(1)
+				c.EXPECT().
+					Set(cacher.NewChannelMemberKey("team-42", "chan-7", "u-1", nil), gomock.Any()).
+					Return(nil).
+					Times(1)
+			},
+			expectedID: "m-1",
+		},
+		{
+			name:         "Cache disabled skips cache",
+			teamID:       "team-1",
+			channelID:    "chan-1",
+			userRef:      "u-1",
+			cacheEnabled: false,
+			setupMocks: func(api *testutil.MockChannelAPI, c *testutil.MockCacher) {
+				member := testutil.NewGraphMember(
+					&testutil.NewMemberParams{
+						ID:          util.Ptr("m-api"),
+						UserID:      util.Ptr("u-1"),
+						DisplayName: util.Ptr("Alice"),
+					},
+				)
+				collection := testutil.NewMemberCollection(member)
+				api.EXPECT().
+					ListMembers(gomock.Any(), "team-1", "chan-1").
+					Return(collection, nil).
+					Times(1)
+				c.EXPECT().Get(gomock.Any()).Times(0)
+				c.EXPECT().Set(gomock.Any(), gomock.Any()).Times(0)
+			},
+			expectedID: "m-api",
+		},
+		{
+			name:         "Resolver error propagated",
+			teamID:       "team-1",
+			channelID:    "chan-1",
+			userRef:      "user-ref",
+			cacheEnabled: true,
+			setupMocks: func(api *testutil.MockChannelAPI, c *testutil.MockCacher) {
+				apiErr := &sender.RequestError{Code: 500, Message: "api error"}
+				api.EXPECT().
+					ListMembers(gomock.Any(), "team-1", "chan-1").
+					Return(nil, apiErr).
+					Times(1)
+				c.EXPECT().
+					Get(cacher.NewChannelMemberKey("team-1", "chan-1", "user-ref", nil)).
+					Return(nil, false, nil).
+					Times(1)
+				c.EXPECT().Set(gomock.Any(), gomock.Any()).Times(0)
+			},
+			expectError: true,
+		},
 	}
 
-	if fc.getCalls != 1 {
-		t.Errorf("expected 1 Get call, got %d", fc.getCalls)
-	}
-	if fc.lastGetKey != cacher.NewChannelMemberKey("team-1", "chan-1", "user-ref", nil) {
-		t.Errorf("unexpected cache key, got %q", fc.lastGetKey)
-	}
-	if fc.setCalls != 0 {
-		t.Errorf("expected no Set on cache hit, got %d", fc.setCalls)
-	}
-	if apiFake.listMembersCalls != 0 {
-		t.Errorf("expected no ListMembers on cache hit, got %d", apiFake.listMembersCalls)
-	}
-}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
 
-func TestChannelResolverCacheable_ResolveUserRefToMemberID_CacheMiss_UsesAPIAndCaches(t *testing.T) {
-	ctx := context.Background()
-	fc := &fakeCacher{
-		getFound: false,
-	}
-	member := newAadUserMember("m-1", "u-1", "Alice")
-	apiFake := &fakeChannelAPI{
-		membersResp: newMemberCollection(member),
-	}
-	res := NewChannelResolverCacheable(apiFake, fc, true)
-	id, err := res.ResolveChannelMemberRefToID(ctx, "team-42", "chan-7", " u-1 ")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if id != "m-1" {
-		t.Fatalf("expected m-1 from API, got %q", id)
-	}
+			apiMock := testutil.NewMockChannelAPI(ctrl)
+			cacherMock := testutil.NewMockCacher(ctrl)
 
-	if fc.getCalls != 1 {
-		t.Errorf("expected 1 Get call, got %d", fc.getCalls)
-	}
-	if fc.lastGetKey != cacher.NewChannelMemberKey("team-42", "chan-7", "u-1", nil) {
-		t.Errorf("unexpected cache key, got %q", fc.lastGetKey)
-	}
+			tc.setupMocks(apiMock, cacherMock)
 
-	if apiFake.listMembersCalls != 1 {
-		t.Errorf("expected 1 ListMembers call, got %d", apiFake.listMembersCalls)
-	}
-	if apiFake.lastMembersTeamID != "team-42" || apiFake.lastMembersChanID != "chan-7" {
-		t.Errorf("expected ListMembers for team-42/chan-7, got team=%q chan=%q", apiFake.lastMembersTeamID, apiFake.lastMembersChanID)
-	}
+			resolver := NewChannelResolverCacheable(apiMock, cacherMock, tc.cacheEnabled)
 
-	if fc.setCalls != 1 {
-		t.Errorf("expected 1 Set call, got %d", fc.setCalls)
-	}
-	if fc.lastSetKey != cacher.NewChannelMemberKey("team-42", "chan-7", "u-1", nil) {
-		t.Errorf("unexpected Set key, got %q", fc.lastSetKey)
-	}
-	if v, ok := fc.lastSetValue.(string); !ok || v != "m-1" {
-		t.Errorf("expected cached value 'm-1', got %#v", fc.lastSetValue)
-	}
-}
+			id, err := resolver.ResolveChannelMemberRefToID(
+				context.Background(),
+				tc.teamID,
+				tc.channelID,
+				tc.userRef,
+			)
 
-func TestChannelResolverCacheable_ResolveUserRefToMemberID_CacheDisabled_SkipsCache(t *testing.T) {
-	ctx := context.Background()
-	fc := &fakeCacher{
-		getFound: true,
-	}
-	member := newAadUserMember("m-api", "u-1", "Alice")
-	apiFake := &fakeChannelAPI{
-		membersResp: newMemberCollection(member),
-	}
-	res := NewChannelResolverCacheable(apiFake, fc, false)
+			if tc.expectError {
+				assert.Error(t, err)
+				return
+			}
 
-	id, err := res.ResolveChannelMemberRefToID(ctx, "team-1", "chan-1", "u-1")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if id != "m-api" {
-		t.Fatalf("expected m-api from API, got %q", id)
-	}
-
-	if fc.getCalls != 0 && fc.setCalls != 0 {
-		t.Errorf("expected no cache calls when cache disabled, got get=%d set=%d", fc.getCalls, fc.setCalls)
-	}
-	if apiFake.listMembersCalls != 1 {
-		t.Errorf("expected 1 ListMembers call, got %d", apiFake.listMembersCalls)
-	}
-}
-
-func TestChannelResolverCacheable_ResolveUserRefToMemberID_ResolverErrorPropagated(t *testing.T) {
-	ctx := context.Background()
-	fc := &fakeCacher{
-		getFound: false,
-	}
-	wantErr := &sender.RequestError{
-		Message: "nope",
-	}
-	apiFake := &fakeChannelAPI{
-		membersErr: wantErr,
-	}
-	res := NewChannelResolverCacheable(apiFake, fc, true)
-
-	_, err := res.ResolveChannelMemberRefToID(ctx, "team-1", "chan-1", "user-ref")
-	if err == nil {
-		t.Fatalf("expected error, got nil")
-	}
-	var reqErr *sender.RequestError
-	if !errors.As(err, &reqErr) {
-		t.Fatalf("expected RequestError, got %T %v", err, err)
+			assert.NoError(t, err)
+			assert.Equal(t, tc.expectedID, id)
+		})
 	}
 }

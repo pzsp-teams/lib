@@ -23,7 +23,10 @@ type ChannelResolver interface {
 
 	// ResolveChannelMemberRefToID resolves a user reference (email or ID)
 	// to a channel member ID within the specified channel.
-	ResolveChannelMemberRefToID(ctx context.Context, teamID, channelID, userRef string) (string, error)
+	ResolveChannelMemberRefToID(
+		ctx context.Context,
+		teamID, channelID, userRef string,
+	) (string, error)
 }
 
 // ChannelResolverCacheable resolves channel references using the graph API
@@ -35,7 +38,11 @@ type ChannelResolverCacheable struct {
 }
 
 // NewChannelResolverCacheable creates a new ChannelResolverCacheable.
-func NewChannelResolverCacheable(channelAPI api.ChannelAPI, c cacher.Cacher, cacheEnabled bool) ChannelResolver {
+func NewChannelResolverCacheable(
+	channelAPI api.ChannelAPI,
+	c cacher.Cacher,
+	cacheEnabled bool,
+) ChannelResolver {
 	return &ChannelResolverCacheable{
 		channelsAPI:  channelAPI,
 		cacher:       c,
@@ -44,18 +51,26 @@ func NewChannelResolverCacheable(channelAPI api.ChannelAPI, c cacher.Cacher, cac
 }
 
 // ResolveChannelRefToID implements ChannelResolver.
-func (res *ChannelResolverCacheable) ResolveChannelRefToID(ctx context.Context, teamID, channelRef string) (string, error) {
+func (res *ChannelResolverCacheable) ResolveChannelRefToID(
+	ctx context.Context,
+	teamID, channelRef string,
+) (string, error) {
 	rCtx := res.newChannelResolveContext(teamID, channelRef)
 	return rCtx.resolveWithCache(ctx, res.cacher, res.cacheEnabled)
 }
 
 // ResolveChannelMemberRefToID implements ChannelResolver.
-func (res *ChannelResolverCacheable) ResolveChannelMemberRefToID(ctx context.Context, teamID, channelID, userRef string) (string, error) {
+func (res *ChannelResolverCacheable) ResolveChannelMemberRefToID(
+	ctx context.Context,
+	teamID, channelID, userRef string,
+) (string, error) {
 	rCtx := res.newChannelMemberResolveContext(teamID, channelID, userRef)
 	return rCtx.resolveWithCache(ctx, res.cacher, res.cacheEnabled)
 }
 
-func (res *ChannelResolverCacheable) newChannelResolveContext(teamID, channelRef string) resolverContext[msmodels.ChannelCollectionResponseable] {
+func (res *ChannelResolverCacheable) newChannelResolveContext(
+	teamID, channelRef string,
+) resolverContext[msmodels.ChannelCollectionResponseable] {
 	ref := strings.TrimSpace(channelRef)
 	return resolverContext[msmodels.ChannelCollectionResponseable]{
 		cacheKey:    cacher.NewChannelKey(teamID, ref),
@@ -70,7 +85,9 @@ func (res *ChannelResolverCacheable) newChannelResolveContext(teamID, channelRef
 	}
 }
 
-func (res *ChannelResolverCacheable) newChannelMemberResolveContext(teamID, channelID, userRef string) resolverContext[msmodels.ConversationMemberCollectionResponseable] {
+func (res *ChannelResolverCacheable) newChannelMemberResolveContext(
+	teamID, channelID, userRef string,
+) resolverContext[msmodels.ConversationMemberCollectionResponseable] {
 	ref := strings.TrimSpace(userRef)
 	return resolverContext[msmodels.ConversationMemberCollectionResponseable]{
 		cacheKey:    cacher.NewChannelMemberKey(teamID, channelID, ref, nil),

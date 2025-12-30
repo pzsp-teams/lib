@@ -2,446 +2,271 @@ package resolver
 
 import (
 	"context"
-	"errors"
 	"testing"
-	"time"
 
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
 	"github.com/pzsp-teams/lib/internal/cacher"
 	sender "github.com/pzsp-teams/lib/internal/sender"
+	"github.com/pzsp-teams/lib/internal/testutil"
+	"github.com/pzsp-teams/lib/internal/util"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
-type fakeChatAPI struct {
-	membersResp    msmodels.ConversationMemberCollectionResponseable
-	membersErr     *sender.RequestError
-	listGroupCalls int
-	lastChatID     string
+func TestChatResolverCachable_ResolveOneOnOneRef(t *testing.T) {
 
-	listResp  msmodels.ChatCollectionResponseable
-	listErr   *sender.RequestError
-	listCalls int
-	lastType  *string
-}
+	type testCase struct {
+		name         string
+		chatRef      string
+		cacheEnabled bool
+		setupMocks   func(api *testutil.MockChatAPI, c *testutil.MockCacher)
+		expectedID   string
+		expectError  bool
+	}
 
-func (f *fakeChatAPI) ListGroupChatMembers(ctx context.Context, chatID string) (msmodels.ConversationMemberCollectionResponseable, *sender.RequestError) {
-	f.listGroupCalls++
-	f.lastChatID = chatID
-	return f.membersResp, f.membersErr
-}
+	testCases := []testCase{
+		{
+			name:         "Empty one-on-one chat reference",
+			chatRef:      "   ",
+			cacheEnabled: true,
+			setupMocks: func(api *testutil.MockChatAPI, c *testutil.MockCacher) {
+				api.EXPECT().ListChats(gomock.Any(), gomock.Any()).Times(0)
+				c.EXPECT().Get(gomock.Any()).Times(0)
+			},
+			expectError: true,
+		},
+		{
+			name:         "Chat ID short circuit",
+			chatRef:      "19:3A8b081ef6-4792-4def-b2c9-c363a1bf41d5_877192bd-9183-47d3-a74c-8aa0426716cf@unq.gbl.spaces",
+			cacheEnabled: true,
+			setupMocks: func(api *testutil.MockChatAPI, c *testutil.MockCacher) {
+				api.EXPECT().ListChats(gomock.Any(), gomock.Any()).Times(0)
+				c.EXPECT().Get(gomock.Any()).Times(0)
+			},
+			expectedID: "19:3A8b081ef6-4792-4def-b2c9-c363a1bf41d5_877192bd-9183-47d3-a74c-8aa0426716cf@unq.gbl.spaces",
+		},
+		{
+			name:         "Cache single hit",
+			chatRef:      "jane@example.com",
+			cacheEnabled: true,
+			setupMocks: func(api *testutil.MockChatAPI, c *testutil.MockCacher) {
+				api.EXPECT().ListChats(gomock.Any(), gomock.Any()).Times(0)
+				c.EXPECT().
+					Get(cacher.NewOneOnOneChatKey("jane@example.com", nil)).
+					Return([]string{"chat-id-123"}, true, nil).
+					Times(1)
+				c.EXPECT().Set(gomock.Any(), gomock.Any()).Times(0)
+			},
+			expectedID: "chat-id-123",
+		},
+		{
+			name:         "Cache miss uses API and caches result",
+			chatRef:      "jane@example.com",
+			cacheEnabled: true,
+			setupMocks: func(api *testutil.MockChatAPI, c *testutil.MockCacher) {
+				m := testutil.NewGraphMember(
+					&testutil.NewMemberParams{
+						Email: util.Ptr("jane@example.com"),
+					},
+				)
+				chat := testutil.NewGraphChat(
+					&testutil.NewChatParams{
+						ID:      util.Ptr("chat-id-123"),
+						Type:    util.Ptr(msmodels.ONEONONE_CHATTYPE),
+						Members: []msmodels.ConversationMemberable{m},
+					},
+				)
+				collection := testutil.NewChatCollection(chat)
+				api.EXPECT().ListChats(gomock.Any(), gomock.Any()).Return(collection, nil).Times(1)
+				c.EXPECT().
+					Get(cacher.NewOneOnOneChatKey("jane@example.com", nil)).
+					Return(nil, false, nil).
+					Times(1)
+				c.EXPECT().Set(gomock.Any(), gomock.Any()).Times(1)
+			},
+			expectedID: "chat-id-123",
+		},
+		{
+			name:         "Cache disabled skips cache",
+			chatRef:      "jane@example.com",
+			cacheEnabled: false,
+			setupMocks: func(api *testutil.MockChatAPI, c *testutil.MockCacher) {
+				m := testutil.NewGraphMember(
+					&testutil.NewMemberParams{
+						Email: util.Ptr("jane@example.com"),
+					},
+				)
+				chat := testutil.NewGraphChat(
+					&testutil.NewChatParams{
+						ID:      util.Ptr("chat-id-123"),
+						Type:    util.Ptr(msmodels.ONEONONE_CHATTYPE),
+						Members: []msmodels.ConversationMemberable{m},
+					},
+				)
+				collection := testutil.NewChatCollection(chat)
+				api.EXPECT().ListChats(gomock.Any(), gomock.Any()).Return(collection, nil).Times(1)
+				c.EXPECT().Get(gomock.Any()).Times(0)
+				c.EXPECT().Set(gomock.Any(), gomock.Any()).Times(0)
+			},
+			expectedID: "chat-id-123",
+		},
+		{
+			name:         "Fetch from API fails",
+			chatRef:      "jane@example.com",
+			cacheEnabled: true,
+			setupMocks: func(api *testutil.MockChatAPI, c *testutil.MockCacher) {
+				wantErr := &sender.RequestError{Message: "nope"}
+				api.EXPECT().ListChats(gomock.Any(), gomock.Any()).Return(nil, wantErr).Times(1)
+				c.EXPECT().Get(gomock.Any()).Return(nil, false, nil).Times(1)
+			},
+			expectError: true,
+		},
+	}
 
-func (f *fakeChatAPI) ListChats(ctx context.Context, chatType *string) (msmodels.ChatCollectionResponseable, *sender.RequestError) {
-	f.listCalls++
-	f.lastType = chatType
-	return f.listResp, f.listErr
-}
-func (f *fakeChatAPI) ListMessages(ctx context.Context, chatID string) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError) {
-	return nil, nil
-}
-func (f *fakeChatAPI) SendMessage(ctx context.Context, chatID, content, contentType string, mentions []msmodels.ChatMessageMentionable) (msmodels.ChatMessageable, *sender.RequestError) {
-	return nil, nil
-}
-func (f *fakeChatAPI) DeleteMessage(ctx context.Context, chatID, messageID string) *sender.RequestError {
-	return nil
-}
-func (f *fakeChatAPI) GetMessage(ctx context.Context, chatID, messageID string) (msmodels.ChatMessageable, *sender.RequestError) {
-	return nil, nil
-}
-func (f *fakeChatAPI) ListAllMessages(ctx context.Context, startTime, endTime *time.Time, top *int32) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError) {
-	return nil, nil
-}
-func (f *fakeChatAPI) ListPinnedMessages(ctx context.Context, chatID string) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError) {
-	return nil, nil
-}
-func (f *fakeChatAPI) PinMessage(ctx context.Context, chatID, messageID string) *sender.RequestError {
-	return nil
-}
-func (f *fakeChatAPI) UnpinMessage(ctx context.Context, chatID, pinnedID string) *sender.RequestError {
-	return nil
-}
-func (f *fakeChatAPI) CreateOneOnOneChat(ctx context.Context, recipientRef string) (msmodels.Chatable, *sender.RequestError) {
-	return nil, nil
-}
-func (f *fakeChatAPI) CreateGroupChat(ctx context.Context, recipientRefs []string, topic string, includeMe bool) (msmodels.Chatable, *sender.RequestError) {
-	return nil, nil
-}
-func (f *fakeChatAPI) AddMemberToGroupChat(ctx context.Context, chatID, userRef string) (msmodels.ConversationMemberable, *sender.RequestError) {
-	return nil, nil
-}
-func (f *fakeChatAPI) RemoveMemberFromGroupChat(ctx context.Context, chatID, userRef string) *sender.RequestError {
-	return nil
-}
-func (f *fakeChatAPI) UpdateGroupChatTopic(ctx context.Context, chatID, topic string) (msmodels.Chatable, *sender.RequestError) {
-	return nil, nil
-}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
 
-func TestChatResolverCacheable_ResolveOneOnOneRef_EmptyRef(t *testing.T) {
-	ctx := context.Background()
-	fc := &fakeCacher{}
-	apiFake := &fakeChatAPI{}
-	res := NewChatResolverCacheable(apiFake, fc, true)
+			apiMock := testutil.NewMockChatAPI(ctrl)
+			cacherMock := testutil.NewMockCacher(ctrl)
 
-	_, err := res.ResolveOneOnOneChatRefToID(ctx, "   ")
-	if err == nil {
-		t.Fatalf("expected error for empty one-on-one ref, got nil")
-	}
-}
+			tc.setupMocks(apiMock, cacherMock)
 
-func TestChatResolverCacheable_ResolveOneOnOneRef_DirectGUIDShortCircuit(t *testing.T) {
-	ctx := context.Background()
-	fc := &fakeCacher{}
-	apiFake := &fakeChatAPI{}
-	res := NewChatResolverCacheable(apiFake, fc, true)
+			resolver := NewChatResolverCacheable(apiMock, cacherMock, tc.cacheEnabled)
 
-	guid := "123e4567-e89b-12d3-a456-426614174000"
-	id, err := res.ResolveOneOnOneChatRefToID(ctx, guid)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if id != guid {
-		t.Fatalf("expected %q, got %q", guid, id)
-	}
-	if apiFake.listCalls != 0 {
-		t.Errorf("expected no ListChats calls for GUID, got %d", apiFake.listCalls)
-	}
-	if fc.getCalls != 0 || fc.setCalls != 0 {
-		t.Errorf("expected no cache calls for GUID, got get=%d set=%d", fc.getCalls, fc.setCalls)
-	}
-}
+			id, err := resolver.ResolveOneOnOneChatRefToID(context.Background(), tc.chatRef)
 
-func TestChatResolverCacheable_ResolveOneOnOneRef_CacheHitSingleID(t *testing.T) {
-	ctx := context.Background()
-	fc := &fakeCacher{
-		getValue: []string{"chat-id-123"},
-		getFound: true,
-	}
-	apiFake := &fakeChatAPI{}
-	res := NewChatResolverCacheable(apiFake, fc, true)
+			if tc.expectError {
+				require.Error(t, err)
+				return
+			}
 
-	id, err := res.ResolveOneOnOneChatRefToID(ctx, "user-ref")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if id != "chat-id-123" {
-		t.Fatalf("expected chat-id-123 from cache, got %q", id)
-	}
-	if fc.getCalls != 1 {
-		t.Errorf("expected 1 Get call, got %d", fc.getCalls)
-	}
-	if fc.lastGetKey != cacher.NewOneOnOneChatKey("user-ref", nil) {
-		t.Errorf("unexpected cache key, got %q", fc.lastGetKey)
-	}
-	if apiFake.listCalls != 0 {
-		t.Errorf("expected no ListChats on cache hit, got %d", apiFake.listCalls)
-	}
-}
-
-func TestChatResolverCacheable_ResolveOneOnOneRef_CacheMiss_UsesAPIAndCaches(t *testing.T) {
-	ctx := context.Background()
-	fc := &fakeCacher{getFound: false}
-	m := newAadUserMember("m-1", "usr-1", "jane@example.com")
-	chat := newOneOnOneChat("chat-1", m)
-	apiFake := &fakeChatAPI{listResp: newChatCollection(chat)}
-	res := NewChatResolverCacheable(apiFake, fc, true)
-
-	id, err := res.ResolveOneOnOneChatRefToID(ctx, "  usr-1  ")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if id != "chat-1" {
-		t.Fatalf("expected chat-1 from API, got %q", id)
-	}
-	if apiFake.listCalls != 1 {
-		t.Errorf("expected 1 ListChats call, got %d", apiFake.listCalls)
-	}
-	if fc.setCalls != 1 {
-		t.Errorf("expected 1 Set call, got %d", fc.setCalls)
+			require.NoError(t, err)
+			require.Equal(t, tc.expectedID, id)
+		})
 	}
 }
 
-func TestChatResolverCacheable_ResolveOneOnOneRef_CacheDisabled_SkipsCache(t *testing.T) {
-	ctx := context.Background()
-	fc := &fakeCacher{getFound: true}
-	m := newAadUserMember("m-1", "usr-1", "jane@example.com")
-	chat := newOneOnOneChat("chat-api", m)
-	apiFake := &fakeChatAPI{listResp: newChatCollection(chat)}
-	res := NewChatResolverCacheable(apiFake, fc, false)
-
-	id, err := res.ResolveOneOnOneChatRefToID(ctx, "usr-1")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if id != "chat-api" {
-		t.Fatalf("expected chat-api from API, got %q", id)
-	}
-	if fc.getCalls != 0 || fc.setCalls != 0 {
-		t.Errorf("expected no cache calls when cache disabled, got get=%d set=%d", fc.getCalls, fc.setCalls)
-	}
-	if apiFake.listCalls != 1 {
-		t.Errorf("expected 1 ListChats call, got %d", apiFake.listCalls)
-	}
-}
-
-func TestChatResolverCacheable_ResolveOneOnOneRef_ResolverErrorPropagated(t *testing.T) {
-	ctx := context.Background()
-	fc := &fakeCacher{getFound: false}
-	wantErr := &sender.RequestError{Message: "nope"}
-	apiFake := &fakeChatAPI{listErr: wantErr}
-	res := NewChatResolverCacheable(apiFake, fc, true)
-
-	_, err := res.ResolveOneOnOneChatRefToID(ctx, "user-ref")
-	if err == nil {
-		t.Fatalf("expected error, got nil")
-	}
-	var reqErr *sender.RequestError
-	if !errors.As(err, &reqErr) {
-		t.Fatalf("expected RequestError, got %T %v", err, err)
-	}
-}
-
-func TestChatResolverCacheable_ResolveGroupChatRefToID_EmptyRef(t *testing.T) {
-	ctx := context.Background()
-	fc := &fakeCacher{}
-	apiFake := &fakeChatAPI{}
-	res := NewChatResolverCacheable(apiFake, fc, true)
-
-	_, err := res.ResolveGroupChatRefToID(ctx, "   ")
-	if err == nil {
-		t.Fatalf("expected error for empty group chat ref, got nil")
-	}
-}
-
-func TestChatResolverCacheable_ResolveGroupChatRefToID_DirectIDShortCircuit(t *testing.T) {
-	ctx := context.Background()
-	fc := &fakeCacher{}
-	apiFake := &fakeChatAPI{}
-	res := NewChatResolverCacheable(apiFake, fc, true)
-
-	threadID := "19:abc123@thread.tacv2"
-	id, err := res.ResolveGroupChatRefToID(ctx, threadID)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if id != threadID {
-		t.Fatalf("expected %q, got %q", threadID, id)
-	}
-	if apiFake.listCalls != 0 {
-		t.Errorf("expected no ListChats calls for direct thread id, got %d", apiFake.listCalls)
-	}
-}
-
-func TestChatResolverCacheable_ResolveGroupChatRefToID_CacheHitSingleID(t *testing.T) {
-	ctx := context.Background()
-	fc := &fakeCacher{getValue: []string{"c-id-123"}, getFound: true}
-	apiFake := &fakeChatAPI{}
-	res := NewChatResolverCacheable(apiFake, fc, true)
-
-	id, err := res.ResolveGroupChatRefToID(ctx, "My Topic")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if id != "c-id-123" {
-		t.Fatalf("expected c-id-123 from cache, got %q", id)
-	}
-	if fc.getCalls != 1 {
-		t.Errorf("expected 1 Get call, got %d", fc.getCalls)
-	}
-}
-
-func TestChatResolverCacheable_ResolveGroupChatRefToID_CacheMiss_UsesAPIAndCaches(t *testing.T) {
-	ctx := context.Background()
-	fc := &fakeCacher{getFound: false}
-	chat := newGroupChat("gc-1", "Topic")
-	apiFake := &fakeChatAPI{listResp: newChatCollection(chat)}
-	res := NewChatResolverCacheable(apiFake, fc, true)
-
-	id, err := res.ResolveGroupChatRefToID(ctx, "  Topic  ")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if id != "gc-1" {
-		t.Fatalf("expected gc-1 from API, got %q", id)
-	}
-	if apiFake.listCalls != 1 {
-		t.Errorf("expected 1 ListChats call, got %d", apiFake.listCalls)
-	}
-	if fc.setCalls != 1 {
-		t.Errorf("expected 1 Set call, got %d", fc.setCalls)
-	}
-}
-
-func TestChatResolverCacheable_ResolveGroupChatRefToID_CacheDisabled_SkipsCache(t *testing.T) {
-	ctx := context.Background()
-	fc := &fakeCacher{getFound: true}
-	chat := newGroupChat("gc-api", "Topic")
-	apiFake := &fakeChatAPI{listResp: newChatCollection(chat)}
-	res := NewChatResolverCacheable(apiFake, fc, false)
-
-	id, err := res.ResolveGroupChatRefToID(ctx, "Topic")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if id != "gc-api" {
-		t.Fatalf("expected gc-api from API, got %q", id)
-	}
-	if fc.getCalls != 0 || fc.setCalls != 0 {
-		t.Errorf("expected no cache calls when cache disabled, got get=%d set=%d", fc.getCalls, fc.setCalls)
-	}
-	if apiFake.listCalls != 1 {
-		t.Errorf("expected 1 ListChats call, got %d", apiFake.listCalls)
-	}
-}
-
-func TestChatResolverCacheable_ResolveGroupChatRefToID_ResolverErrorPropagated(t *testing.T) {
-	ctx := context.Background()
-	fc := &fakeCacher{getFound: false}
-	wantErr := &sender.RequestError{Message: "nope"}
-	apiFake := &fakeChatAPI{listErr: wantErr}
-	res := NewChatResolverCacheable(apiFake, fc, true)
-
-	_, err := res.ResolveGroupChatRefToID(ctx, "Topic")
-	if err == nil {
-		t.Fatalf("expected error, got nil")
-	}
-	var reqErr *sender.RequestError
-	if !errors.As(err, &reqErr) {
-		t.Fatalf("expected RequestError, got %T %v", err, err)
-	}
-}
-
-func TestChatResolverCacheable_ResolveUserRefToMemberID_EmptyRef(t *testing.T) {
-	ctx := context.Background()
-	fc := &fakeCacher{}
-	apiFake := &fakeChatAPI{}
-	res := NewChatResolverCacheable(apiFake, fc, true)
-
-	_, err := res.ResolveChatMemberRefToID(ctx, "chat-1", "   ")
-	if err == nil {
-		t.Fatalf("expected error for empty user reference, got nil")
-	}
-}
-
-func TestChatResolverCacheable_ResolveUserRefToMemberID_CacheHitSingleID(t *testing.T) {
-	ctx := context.Background()
-	fc := &fakeCacher{
-		getValue: []string{"member-id-123"},
-		getFound: true,
-	}
-	apiFake := &fakeChatAPI{}
-	res := NewChatResolverCacheable(apiFake, fc, true)
-
-	id, err := res.ResolveChatMemberRefToID(ctx, "chat-1", "user-ref")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if id != "member-id-123" {
-		t.Fatalf("expected member-id-123 from cache, got %q", id)
+func TestChatResolverCachable_ResolveGroupChatRefToID(t *testing.T) {
+	type testCase struct {
+		name         string
+		chatRef      string
+		cacheEnabled bool
+		setupMocks   func(api *testutil.MockChatAPI, c *testutil.MockCacher)
+		expectedID   string
+		expectError  bool
 	}
 
-	if fc.getCalls != 1 {
-		t.Errorf("expected 1 Get call, got %d", fc.getCalls)
+	testCases := []testCase{
+		{
+			name:         "Empty group chat reference",
+			chatRef:      "   ",
+			cacheEnabled: true,
+			setupMocks: func(api *testutil.MockChatAPI, c *testutil.MockCacher) {
+				api.EXPECT().ListChats(gomock.Any(), gomock.Any()).Times(0)
+				c.EXPECT().Get(gomock.Any()).Times(0)
+			},
+			expectError: true,
+		},
+		{
+			name:         "Thread ID short circuit",
+			chatRef:      "19:abc123@thread.tacv2",
+			cacheEnabled: true,
+			setupMocks: func(api *testutil.MockChatAPI, c *testutil.MockCacher) {
+				api.EXPECT().ListChats(gomock.Any(), gomock.Any()).Times(0)
+				c.EXPECT().Get(gomock.Any()).Times(0)
+			},
+			expectedID: "19:abc123@thread.tacv2",
+		},
+		{
+			name:         "Cache single hit",
+			chatRef:      "My Topic",
+			cacheEnabled: true,
+			setupMocks: func(api *testutil.MockChatAPI, c *testutil.MockCacher) {
+				api.EXPECT().ListChats(gomock.Any(), gomock.Any()).Times(0)
+				c.EXPECT().
+					Get(cacher.NewGroupChatKey("My Topic")).
+					Return([]string{"c-id-123"}, true, nil).
+					Times(1)
+				c.EXPECT().Set(gomock.Any(), gomock.Any()).Times(0)
+			},
+			expectedID: "c-id-123",
+		},
+		{
+			name:         "Cache miss uses API and caches result",
+			chatRef:      "My Topic",
+			cacheEnabled: true,
+			setupMocks: func(api *testutil.MockChatAPI, c *testutil.MockCacher) {
+				chat := testutil.NewGraphChat(
+					&testutil.NewChatParams{
+						ID:    util.Ptr("gc-1"),
+						Type:  util.Ptr(msmodels.GROUP_CHATTYPE),
+						Topic: util.Ptr("My Topic"),
+					},
+				)
+				collection := testutil.NewChatCollection(chat)
+				api.EXPECT().ListChats(gomock.Any(), gomock.Any()).Return(collection, nil).Times(1)
+				c.EXPECT().Get(cacher.NewGroupChatKey("My Topic")).Return(nil, false, nil).Times(1)
+				c.EXPECT().Set(gomock.Any(), gomock.Any()).Times(1)
+			},
+			expectedID: "gc-1",
+		},
+		{
+			name:         "Cache disabled skips cache",
+			chatRef:      "Topic",
+			cacheEnabled: false,
+			setupMocks: func(api *testutil.MockChatAPI, c *testutil.MockCacher) {
+				chat := testutil.NewGraphChat(
+					&testutil.NewChatParams{
+						ID:    util.Ptr("gc-api"),
+						Type:  util.Ptr(msmodels.GROUP_CHATTYPE),
+						Topic: util.Ptr("Topic"),
+					},
+				)
+				collection := testutil.NewChatCollection(chat)
+				api.EXPECT().ListChats(gomock.Any(), gomock.Any()).Return(collection, nil).Times(1)
+				c.EXPECT().Get(gomock.Any()).Times(0)
+				c.EXPECT().Set(gomock.Any(), gomock.Any()).Times(0)
+			},
+			expectedID: "gc-api",
+		},
+		{
+			name:         "Fetch from API fails",
+			chatRef:      "Topic",
+			cacheEnabled: true,
+			setupMocks: func(api *testutil.MockChatAPI, c *testutil.MockCacher) {
+				apiErr := &sender.RequestError{Code: 500, Message: "api error"}
+				api.EXPECT().ListChats(gomock.Any(), gomock.Any()).Return(nil, apiErr).Times(1)
+				c.EXPECT().Get(cacher.NewGroupChatKey("Topic")).Return(nil, false, nil).Times(1)
+				c.EXPECT().Set(gomock.Any(), gomock.Any()).Times(0)
+			},
+			expectError: true,
+		},
 	}
-	if fc.lastGetKey != cacher.NewGroupChatMemberKey("chat-1", "user-ref", nil) {
-		t.Errorf("unexpected cache key, got %q", fc.lastGetKey)
-	}
-	if fc.setCalls != 0 {
-		t.Errorf("expected no Set on cache hit, got %d", fc.setCalls)
-	}
-	if apiFake.listGroupCalls != 0 {
-		t.Errorf("expected no ListGroupChatMembers on cache hit, got %d", apiFake.listGroupCalls)
-	}
-}
 
-func TestChatResolverCacheable_ResolveUserRefToMemberID_CacheMiss_UsesAPIAndCaches(t *testing.T) {
-	ctx := context.Background()
-	fc := &fakeCacher{
-		getFound: false,
-	}
-	m := newAadUserMember("m-1", "usr-1", "jane@example.com")
-	apiFake := &fakeChatAPI{
-		membersResp: newMemberCollection(m),
-	}
-	res := NewChatResolverCacheable(apiFake, fc, true)
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
 
-	id, err := res.ResolveChatMemberRefToID(ctx, "chat-42", " usr-1 ")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if id != "m-1" {
-		t.Fatalf("expected m-1 from API, got %q", id)
-	}
+			apiMock := testutil.NewMockChatAPI(ctrl)
+			cacherMock := testutil.NewMockCacher(ctrl)
 
-	if fc.getCalls != 1 {
-		t.Errorf("expected 1 Get call, got %d", fc.getCalls)
-	}
+			tc.setupMocks(apiMock, cacherMock)
 
-	if fc.lastGetKey != cacher.NewGroupChatMemberKey("chat-42", "usr-1", nil) {
-		t.Errorf("unexpected cache key, got %q", fc.lastGetKey)
-	}
+			resolver := NewChatResolverCacheable(apiMock, cacherMock, tc.cacheEnabled)
 
-	if apiFake.listGroupCalls != 1 {
-		t.Errorf("expected 1 ListGroupChatMembers call, got %d", apiFake.listGroupCalls)
-	}
-	if apiFake.lastChatID != "chat-42" {
-		t.Errorf("expected ListGroupChatMembers for chat-42, got chat=%q", apiFake.lastChatID)
-	}
+			id, err := resolver.ResolveGroupChatRefToID(context.Background(), tc.chatRef)
 
-	if fc.setCalls != 1 {
-		t.Errorf("expected 1 Set call, got %d", fc.setCalls)
-	}
-	if fc.lastSetKey != cacher.NewGroupChatMemberKey("chat-42", "usr-1", nil) {
-		t.Errorf("unexpected Set key, got %q", fc.lastSetKey)
-	}
-	if v, ok := fc.lastSetValue.(string); !ok || v != "m-1" {
-		t.Errorf("expected cached value 'm-1', got %#v", fc.lastSetValue)
-	}
-}
+			if tc.expectError {
+				assert.Error(t, err)
+				return
+			}
 
-func TestChatResolverCacheable_ResolveUserRefToMemberID_CacheDisabled_SkipsCache(t *testing.T) {
-	ctx := context.Background()
-	fc := &fakeCacher{
-		getFound: true,
-	}
-	m := newAadUserMember("m-1", "usr-1", "jane@example.com")
-	apiFake := &fakeChatAPI{
-		membersResp: newMemberCollection(m),
-	}
-	res := NewChatResolverCacheable(apiFake, fc, false)
-
-	id, err := res.ResolveChatMemberRefToID(ctx, "chat-1", "usr-1")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if id != "m-1" {
-		t.Fatalf("expected m-1 from API, got %q", id)
-	}
-
-	if fc.getCalls != 0 && fc.setCalls != 0 {
-		t.Errorf("expected no cache calls when cache disabled, got get=%d set=%d", fc.getCalls, fc.setCalls)
-	}
-	if apiFake.listGroupCalls != 1 {
-		t.Errorf("expected 1 ListGroupChatMembers call, got %d", apiFake.listGroupCalls)
-	}
-}
-
-func TestChatResolverCacheable_ResolveUserRefToMemberID_ResolverErrorPropagated(t *testing.T) {
-	ctx := context.Background()
-	fc := &fakeCacher{
-		getFound: false,
-	}
-	wantErr := &sender.RequestError{
-		Message: "nope",
-	}
-	apiFake := &fakeChatAPI{
-		membersErr: wantErr,
-	}
-	res := NewChatResolverCacheable(apiFake, fc, true)
-
-	_, err := res.ResolveChatMemberRefToID(ctx, "chat-1", "user-ref")
-	if err == nil {
-		t.Fatalf("expected error, got nil")
-	}
-	var reqErr *sender.RequestError
-	if !errors.As(err, &reqErr) {
-		t.Fatalf("expected RequestError, got %T %v", err, err)
+			assert.NoError(t, err)
+			assert.Equal(t, tc.expectedID, id)
+		})
 	}
 }
