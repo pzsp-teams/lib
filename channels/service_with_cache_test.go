@@ -9,6 +9,7 @@ import (
 	"github.com/pzsp-teams/lib/cacher"
 	snd "github.com/pzsp-teams/lib/internal/sender"
 	"github.com/pzsp-teams/lib/internal/util"
+	"github.com/pzsp-teams/lib/models"
 )
 
 type fakeCacher struct {
@@ -93,9 +94,16 @@ type fakeChannelAPI struct {
 	deleteChannelFunc               func(ctx context.Context, teamID, channelID string) *snd.RequestError
 	addMemberFunc                   func(ctx context.Context, teamID, channelID, userRef, role string) (msmodels.ConversationMemberable, *snd.RequestError)
 	removeMemberFunc                func(ctx context.Context, teamID, channelID, memberID string) *snd.RequestError
+	membersResp                     msmodels.ConversationMemberCollectionResponseable
+	listErr                         *snd.RequestError
+	sendMsgErr                      *snd.RequestError
+	listMembersFunc                 func(ctx context.Context, teamID, channelID string) (msmodels.ConversationMemberCollectionResponseable, *snd.RequestError)
 }
 
 func (f *fakeChannelAPI) ListChannels(ctx context.Context, teamID string) (msmodels.ChannelCollectionResponseable, *snd.RequestError) {
+	if f.listErr != nil {
+		return nil, f.listErr
+	}
 	if f.listChannelsFunc != nil {
 		return f.listChannelsFunc(ctx, teamID)
 	}
@@ -131,6 +139,9 @@ func (f *fakeChannelAPI) DeleteChannel(ctx context.Context, teamID, channelID st
 }
 
 func (f *fakeChannelAPI) SendMessage(ctx context.Context, teamID, channelID, content, contentType string, mentions []msmodels.ChatMessageMentionable) (msmodels.ChatMessageable, *snd.RequestError) {
+	if f.sendMsgErr != nil {
+		return nil, f.sendMsgErr
+	}
 	return nil, nil
 }
 
@@ -155,6 +166,12 @@ func (f *fakeChannelAPI) GetReply(ctx context.Context, teamID, channelID, messag
 }
 
 func (f *fakeChannelAPI) ListMembers(ctx context.Context, teamID, channelID string) (msmodels.ConversationMemberCollectionResponseable, *snd.RequestError) {
+	if f.listMembersFunc != nil {
+		return f.listMembersFunc(ctx, teamID, channelID)
+	}
+	if f.membersResp != nil {
+		return f.membersResp, nil
+	}
 	return nil, nil
 }
 
@@ -584,5 +601,162 @@ func TestServiceWithCache_RemoveMember_InvalidatesMemberMapping(t *testing.T) {
 	}
 	if fc.setCalls != 0 {
 		t.Fatalf("expected 0 Set calls, got %d", fc.setCalls)
+	}
+}
+
+type trackingCacher struct {
+	fakeCacher
+	clearCalls int
+}
+
+func (t *trackingCacher) Clear() error {
+	t.clearCalls++
+	return nil
+}
+
+func TestServiceWithCache_CreatePrivateChannel_UpdatesCache(t *testing.T) {
+	ctx := context.Background()
+	fc := &fakeCacher{}
+	fr := &fakeTeamResolver{
+		resolveFunc: func(ctx context.Context, teamRef string) (string, error) {
+			return "team-id-1", nil
+		},
+	}
+	fapi := &fakeChannelAPI{
+		createPrivateChannelWithMembers: func(ctx context.Context, teamID, name string, m, o []string) (msmodels.Channelable, *snd.RequestError) {
+			return newGraphChan("priv-id", "Private Chan"), nil
+		},
+	}
+
+	svc := &service{channelAPI: fapi, teamResolver: fr, channelResolver: &fakeChannelRes{}}
+	decor := &serviceWithCache{
+		svc:          svc,
+		cache:        fc,
+		teamResolver: fr,
+		runner:       &util.SyncRunner{},
+	}
+
+	got, err := decor.CreatePrivateChannel(ctx, "team-1", "Private Chan", nil, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if got.ID != "priv-id" {
+		t.Errorf("expected ID priv-id, got %s", got.ID)
+	}
+
+	if fc.invalidateCalls != 1 {
+		t.Errorf("expected 1 invalidate call, got %d", fc.invalidateCalls)
+	}
+
+	if fc.setCalls != 1 {
+		t.Errorf("expected 1 set call, got %d", fc.setCalls)
+	}
+	expectedKey := cacher.NewChannelKey("team-id-1", "Private Chan")
+	if fc.setKeys[0] != expectedKey {
+		t.Errorf("expected cache key %q, got %q", expectedKey, fc.setKeys[0])
+	}
+}
+
+func TestServiceWithCache_ListMembers_WarmsCache(t *testing.T) {
+	ctx := context.Background()
+	fc := &fakeCacher{}
+
+	fr := &fakeTeamResolver{
+		resolveFunc: func(ctx context.Context, r string) (string, error) { return "tid", nil },
+	}
+	cr := &fakeChannelResolver{
+		resolveChannelFunc: func(ctx context.Context, t, r string) (string, error) { return "cid", nil },
+	}
+
+	fapi := &fakeChannelAPI{
+		listChannelsFunc: nil,
+		membersResp: func() msmodels.ConversationMemberCollectionResponseable {
+			col := msmodels.NewConversationMemberCollectionResponse()
+			m := newAadUserMember("mid", "uid", "Name", nil)
+			email := "user@test.com"
+			_ = m.GetBackingStore().Set("email", &email)
+			col.SetValue([]msmodels.ConversationMemberable{m})
+			return col
+		}(),
+	}
+
+	svc := &service{channelAPI: fapi, teamResolver: fr, channelResolver: cr}
+	decor := &serviceWithCache{
+		svc:             svc,
+		cache:           fc,
+		teamResolver:    fr,
+		channelResolver: cr,
+		runner:          &util.SyncRunner{},
+	}
+
+	members, err := decor.ListMembers(ctx, "team", "chan")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(members) != 1 {
+		t.Fatal("expected 1 member")
+	}
+
+	if fc.setCalls != 1 {
+		t.Errorf("expected cache set to be called 1 time, got %d", fc.setCalls)
+	}
+
+	expectedKey := cacher.NewChannelMemberKey("user@test.com", "tid", "cid", nil)
+	if fc.setKeys[0] != expectedKey {
+		t.Errorf("expected key %q, got %q", expectedKey, fc.setKeys[0])
+	}
+}
+
+func TestServiceWithCache_SendMessage_ClearsCacheOnError(t *testing.T) {
+	ctx := context.Background()
+
+	tc := &trackingCacher{}
+
+	fapi := &fakeChannelAPI{
+		sendMsgErr: &snd.RequestError{Code: 500, Message: "Graph down"},
+	}
+
+	svc := &service{channelAPI: fapi, teamResolver: &fakeTeamRes{}, channelResolver: &fakeChannelRes{}}
+	decor := &serviceWithCache{
+		svc:    svc,
+		cache:  tc,
+		runner: &util.SyncRunner{},
+	}
+
+	body := models.MessageBody{Content: "test"}
+	_, err := decor.SendMessage(ctx, "t", "c", body)
+
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+
+	if tc.clearCalls != 1 {
+		t.Errorf("expected cache.Clear() to be called 1 time on error, got %d", tc.clearCalls)
+	}
+}
+
+func TestServiceWithCache_ListChannels_ClearsCacheOnError(t *testing.T) {
+	ctx := context.Background()
+	tc := &trackingCacher{}
+
+	fapi := &fakeChannelAPI{
+		listErr: &snd.RequestError{Code: 400, Message: "Bad Request"},
+	}
+
+	svc := &service{channelAPI: fapi, teamResolver: &fakeTeamRes{}, channelResolver: &fakeChannelRes{}}
+	decor := &serviceWithCache{
+		svc:    svc,
+		cache:  tc,
+		runner: &util.SyncRunner{},
+	}
+
+	_, err := decor.ListChannels(ctx, "team")
+	if err == nil {
+		t.Fatal("expected error")
+	}
+
+	if tc.clearCalls != 1 {
+		t.Errorf("expected Clear call on error, got %d", tc.clearCalls)
 	}
 }
