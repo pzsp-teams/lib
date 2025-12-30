@@ -144,7 +144,6 @@ func (s *service) SendReply(ctx context.Context, teamRef, channelRef, messageID 
 	return adapter.MapGraphMessage(resp), nil
 }
 
-
 // ListMessages retrieves messages from a channel
 func (s *service) ListMessages(ctx context.Context, teamRef, channelRef string, opts *models.ListMessagesOptions) ([]*models.Message, error) {
 	teamID, channelID, err := s.resolveTeamAndChannelID(ctx, teamRef, channelRef)
