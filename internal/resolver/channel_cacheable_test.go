@@ -89,6 +89,10 @@ func (f *fakeChannelAPI) SendMessage(ctx context.Context, teamID, channelID, con
 	return nil, nil
 }
 
+func (f *fakeChannelAPI) SendReply(ctx context.Context, teamID, channelID, messageID, content, contentType string) (msmodels.ChatMessageable, *sender.RequestError) {
+	return nil, nil
+}
+
 func (f *fakeChannelAPI) ListMessages(ctx context.Context, teamID, channelID string, top *int32) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError) {
 	return nil, nil
 }
