@@ -31,24 +31,29 @@ func (u *usersAPI) GetUserByEmailOrUPN(ctx context.Context, emailOrUPN string) (
 	if key == "" {
 		return nil, &sender.RequestError{Message: "emailOrUPN is empty"}
 	}
-	id, reqErr := u.getUserByKey(ctx, key)
+	user, reqErr := u.getUserByKey(ctx, key)
 	if reqErr == nil {
-		return id, nil
+		return user, nil
 	}
 	if util.IsLikelyEmail(key) {
-		id2, reqErr2 := u.findUserByEmail(ctx, key)
-		if reqErr2 == nil {
-			return id2, nil
+		user, reqErr := u.findUserByEmail(ctx, key)
+		if reqErr == nil {
+			return user, nil
 		}
-		return nil, reqErr2
+		return nil, reqErr
 	}
 
 	return nil, reqErr
 }
 
 func (u *usersAPI) getUserByKey(ctx context.Context, key string) (msmodels.Userable, *sender.RequestError) {
+	cfg := &graphusers.UserItemRequestBuilderGetRequestConfiguration{
+		QueryParameters: &graphusers.UserItemRequestBuilderGetQueryParameters{
+			Select: []string{"id", "displayName", "mail", "userPrincipalName"},
+		},
+	}
 	call := func(ctx context.Context) (sender.Response, error) {
-		return u.client.Users().ByUserId(key).Get(ctx, nil)
+		return u.client.Users().ByUserId(key).Get(ctx, cfg)
 	}
 
 	resp, err := sender.SendRequest(ctx, call, u.techParams)
@@ -61,9 +66,11 @@ func (u *usersAPI) getUserByKey(ctx context.Context, key string) (msmodels.Usera
 		return nil, newTypeError("Userable")
 	}
 
-	userIDPtr := userResp.GetId()
-	if userIDPtr == nil || strings.TrimSpace(*userIDPtr) == "" {
+	if userResp.GetId() == nil || strings.TrimSpace(*userResp.GetId()) == "" {
 		return nil, &sender.RequestError{Message: fmt.Sprintf("user id is empty for key=%q", key)}
+	}
+	if userResp.GetDisplayName() == nil || strings.TrimSpace(*userResp.GetDisplayName()) == "" {
+		return nil, &sender.RequestError{Message: fmt.Sprintf("user displayName is empty for key=%q", key)}
 	}
 
 	return userResp, nil
@@ -76,25 +83,30 @@ func (u *usersAPI) findUserByEmail(ctx context.Context, email string) (msmodels.
 			"proxyAddresses/any(p:p eq 'SMTP:%[1]s') or proxyAddresses/any(p:p eq 'smtp:%[1]s')",
 		escaped,
 	)
+
 	top := int32(2)
 	cfg := &graphusers.UsersRequestBuilderGetRequestConfiguration{
 		QueryParameters: &graphusers.UsersRequestBuilderGetQueryParameters{
 			Filter: &filter,
-			Select: []string{"id"},
+			Select: []string{"id", "displayName", "mail", "userPrincipalName"},
 			Top:    &top,
 		},
 	}
+
 	call := func(ctx context.Context) (sender.Response, error) {
 		return u.client.Users().Get(ctx, cfg)
 	}
+
 	resp, err := sender.SendRequest(ctx, call, u.techParams)
 	if err != nil {
 		return nil, err
 	}
+
 	col, ok := resp.(msmodels.UserCollectionResponseable)
 	if !ok {
 		return nil, newTypeError("UserCollectionResponseable")
 	}
+
 	values := col.GetValue()
 	if len(values) == 0 {
 		return nil, &sender.RequestError{Message: fmt.Sprintf("user not found by email=%q", email)}
@@ -103,10 +115,13 @@ func (u *usersAPI) findUserByEmail(ctx context.Context, email string) (msmodels.
 		return nil, &sender.RequestError{Message: fmt.Sprintf("email=%q is ambiguous (multiple users matched)", email)}
 	}
 
-	idPtr := values[0].GetId()
-	if idPtr == nil || strings.TrimSpace(*idPtr) == "" {
+	u0 := values[0]
+	if u0.GetId() == nil || strings.TrimSpace(*u0.GetId()) == "" {
 		return nil, &sender.RequestError{Message: fmt.Sprintf("matched user has empty id for email=%q", email)}
 	}
+	if u0.GetDisplayName() == nil || strings.TrimSpace(*u0.GetDisplayName()) == "" {
+		return nil, &sender.RequestError{Message: fmt.Sprintf("matched user has empty displayName for email=%q", email)}
+	}
 
-	return values[0], nil
+	return u0, nil
 }
