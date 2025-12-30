@@ -125,6 +125,9 @@ func (s *service) SendMessage(ctx context.Context, chatRef ChatRef, body models.
 	if len(body.Mentions) > 0 && body.ContentType != models.MessageContentTypeHTML {
 		return nil, fmt.Errorf("mentions can only be used with HTML content type")
 	}
+	if err := validateChatMentions(chatRef, body.Mentions); err != nil {
+		return nil, err
+	}
 	if err := mentions.ValidateAtTags(&body); err != nil {
 		return nil, err
 	}
@@ -253,4 +256,21 @@ func (s *service) resolveChatIDFromRef(ctx context.Context, chatRef ChatRef) (st
 	default:
 		return "", fmt.Errorf("unknown chat reference type")
 	}
+}
+
+func validateChatMentions(chatRef ChatRef, mentions []models.Mention) error {
+	isOneOnOne := false
+	switch chatRef.(type) {
+	case OneOnOneChatRef:
+		isOneOnOne = true
+	}
+	for i := range mentions {
+		m := mentions[i]
+		if m.Kind == models.MentionEveryone {
+			if isOneOnOne {
+				return fmt.Errorf("cannot mention everyone in one-on-one chat")
+			}
+		}
+	}
+	return nil
 }
