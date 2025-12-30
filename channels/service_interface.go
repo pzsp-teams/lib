@@ -13,6 +13,7 @@ type Service interface {
 	CreatePrivateChannel(ctx context.Context, teamRef, name string, memberRefs, ownerRefs []string) (*models.Channel, error)
 	Delete(ctx context.Context, teamRef, channelRef string) error
 	SendMessage(ctx context.Context, teamRef, channelRef string, body models.MessageBody) (*models.Message, error)
+	SendReply(ctx context.Context, teamRef, channelRef, messageID string, body models.MessageBody) (*models.Message, error)
 	ListMessages(ctx context.Context, teamRef, channelRef string, opts *models.ListMessagesOptions) ([]*models.Message, error)
 	GetMessage(ctx context.Context, teamRef, channelRef, messageID string) (*models.Message, error)
 	ListReplies(ctx context.Context, teamRef, channelRef, messageID string, top *int32) ([]*models.Message, error)
