@@ -375,7 +375,7 @@ func TestService_SendMessage_CreatesMessageAndMapsResult(t *testing.T) {
 		t.Errorf("expected content %q, got %q", msgContent, api.lastContent)
 	}
 	if api.lastContentType != "text" {
-		t.Errorf("expected content type 'text', got %q", string(api.lastContentType))
+		t.Errorf("expected content type 'text', got %q", api.lastContentType)
 	}
 }
 

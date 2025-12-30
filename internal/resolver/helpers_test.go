@@ -127,7 +127,7 @@ func TestResolveOneOnOneChatIDByUserRef_NoChatsAvailable(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expected error for no one-on-one chats, got nil")
 	}
-	if !strings.Contains(err.Error(), "no one-on-one chats avaliable") {
+	if !strings.Contains(err.Error(), "no one-on-one chats available") {
 		t.Errorf("unexpected error: %v", err)
 	}
 }
@@ -320,7 +320,7 @@ func newAadUserMember(id, userID, email string) msmodels.ConversationMemberable 
 	m := msmodels.NewAadUserConversationMember()
 	m.SetId(&id)
 	m.SetUserId(&userID)
-	m.GetBackingStore().Set("email", &email)
+	_ = m.GetBackingStore().Set("email", &email)
 	return m
 }
 
