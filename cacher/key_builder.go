@@ -17,7 +17,7 @@ const (
 	GroupChat       KeyType = "group-chat"
 	DirectChat      KeyType = "direct-chat"
 	GroupChatMember KeyType = "group-chat-member"
-	User		   	KeyType = "user"
+	User            KeyType = "user"
 )
 
 func formatKey(t KeyType, parts ...string) string {
