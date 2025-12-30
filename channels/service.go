@@ -20,7 +20,7 @@ type service struct {
 	channelAPI      api.ChannelAPI
 	teamResolver    resolver.TeamResolver
 	channelResolver resolver.ChannelResolver
-	userAPI 	  api.UsersAPI
+	userAPI         api.UsersAPI
 }
 
 // NewService will be used later
@@ -285,61 +285,80 @@ func (s *service) RemoveMember(ctx context.Context, teamRef, channelRef, userRef
 	return nil
 }
 
-func (s *service) GetMentions(ctx context.Context, teamRef, channelRef string, rawMentions []string) ([]models.Mention, error) {
+func (s *service) GetMentions(
+	ctx context.Context,
+	teamRef, channelRef string,
+	rawMentions []string,
+) ([]models.Mention, error) {
 	teamID, channelID, err := s.resolveTeamAndChannelID(ctx, teamRef, channelRef)
 	if err != nil {
 		return nil, err
 	}
+
 	out := make([]models.Mention, 0, len(rawMentions))
-	nextAtID := int32(0)
-	seen := map[string]struct{}{}
-	add := func(kind models.MentionKind, targetID, text, dedupKey string) {
-		if _, exists := seen[dedupKey]; exists {
-			return
-		}
-		seen[dedupKey] = struct{}{}
-		out = append(out, models.Mention{
-			TargetID: targetID, 
-			Kind: kind,
-			AtID: nextAtID,
-			Text: text,
-		})
-		nextAtID++
-	}
+	adder := util.NewMentionAdder(&out)
+
 	for _, raw := range rawMentions {
 		raw = strings.TrimSpace(raw)
 		if raw == "" {
 			continue
 		}
-		low := strings.ToLower(raw)
+
 		if util.IsLikelyEmail(raw) {
-			user, err := s.userAPI.GetUserByEmailOrUPN(ctx, raw)
-			if err != nil {
+			if err := s.addUserMention(ctx, adder, raw); err != nil {
 				return nil, err
 			}
-			if user.GetId() == nil || strings.TrimSpace(*user.GetId()) == "" {
-				return nil, fmt.Errorf("resolved user has empty id for mention reference: %s", raw)
-			}
-			if user.GetDisplayName() == nil || strings.TrimSpace(*user.GetDisplayName()) == "" {
-				return nil, fmt.Errorf("resolved user has empty display name for mention reference: %s", raw)
-			}
-			add(models.MentionUser, *user.GetId(), *user.GetDisplayName(), "user:"+*user.GetId())
 			continue
 		}
-			
-		if low == "team" || raw == teamRef || raw == teamID {
-			add(models.MentionTeam, teamID, teamRef, "team:"+teamID)
+
+		if s.tryAddTeamOrChannelMention(adder, raw, teamRef, teamID, channelRef, channelID) {
 			continue
 		}
-		if low == "channel" || channelRef == raw || channelID == raw {
-			add(models.MentionChannel, channelID, channelRef, "channel:"+channelID)
-			continue
-		}
+
 		return nil, fmt.Errorf("cannot resolve mention reference: %s", raw)
 	}
 
 	return out, nil
 }
+
+
+func (s *service) addUserMention(ctx context.Context, a *util.MentionAdder, email string) error {
+	user, reqErr := s.userAPI.GetUserByEmailOrUPN(ctx, email)
+	if reqErr != nil {
+		return reqErr
+	}
+
+	id, dn, err := util.ExtractUserIDAndDisplayName(user, email)
+	if err != nil {
+		return err
+	}
+
+	a.Add(models.MentionUser, id, dn, "user:"+id)
+	return nil
+}
+
+func (s *service) tryAddTeamOrChannelMention(a *util.MentionAdder, raw, teamRef, teamID, channelRef, channelID string) bool {
+	low := strings.ToLower(raw)
+
+	if isTeamRef(low, raw, teamRef, teamID) {
+		a.Add(models.MentionTeam, teamID, teamRef, "team:"+teamID)
+		return true
+	}
+	if isChannelRef(low, raw, channelRef, channelID) {
+		a.Add(models.MentionChannel, channelID, channelRef, "channel:"+channelID)
+		return true
+	}
+	return false
+}
+
+func isTeamRef(low, raw, teamRef, teamID string) bool {
+	return low == "team" || raw == teamRef || raw == teamID
+}
+
+func isChannelRef(low, raw, channelRef, channelID string) bool {
+	return low == "channel" || raw == channelRef || raw == channelID
+}
+
 
 func (s *service) resolveTeamAndChannelID(ctx context.Context, teamRef, channelRef string) (teamID, channelID string, err error) {
 	teamID, err = s.teamResolver.ResolveTeamRefToID(ctx, teamRef)
