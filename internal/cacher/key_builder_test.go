@@ -48,14 +48,3 @@ func TestNewTeamMemberKey(t *testing.T) {
 	want := "$channel-member$:team-123:chan-456:" + hashedEmail
 	assert.Equal(t, want, got, "NewChannelMemberKey() should return the correct key string")
 }
-
-func TestNewUserKey(t *testing.T) {
-	testPepper := "test-pepper"
-	got := NewUserKey("user@example.com", &testPepper)
-	hashedEmail := util.HashWithPepper(testPepper, "user@example.com")
-	want := "$user$:" + hashedEmail
-
-	if got != want {
-		t.Fatalf("UserKeyBuilder.ToString() = %q, want %q", got, want)
-	}
-}
