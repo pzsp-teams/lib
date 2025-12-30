@@ -112,14 +112,7 @@ func (s *service) SendMessage(ctx context.Context, teamRef, channelRef string, b
 		return nil, err
 	}
 
-	if len(body.Mentions) > 0 && body.ContentType != models.MessageContentTypeHTML {
-		return nil, fmt.Errorf("mentions can only be used with HTML content type")
-	}
-
-	if err := mentions.ValidateAtTags(&body); err != nil {
-		return nil, err
-	}
-	ments, err := mentions.MapMentions(body.Mentions)
+	ments, err := s.prepareMentions(&body)
 	if err != nil {
 		return nil, err
 	}
@@ -138,13 +131,7 @@ func (s *service) SendReply(ctx context.Context, teamRef, channelRef, messageID 
 		return nil, err
 	}
 
-	if len(body.Mentions) > 0 && body.ContentType != models.MessageContentTypeHTML {
-		return nil, fmt.Errorf("mentions can only be used with HTML content type")
-	}
-	if err := mentions.ValidateAtTags(&body); err != nil {
-		return nil, err
-	}
-	ments, err := mentions.MapMentions(body.Mentions)
+	ments, err := s.prepareMentions(&body)
 	if err != nil {
 		return nil, err
 	}
@@ -155,6 +142,16 @@ func (s *service) SendReply(ctx context.Context, teamRef, channelRef, messageID 
 	}
 
 	return adapter.MapGraphMessage(resp), nil
+}
+
+func (s *service) prepareMentions(body *models.MessageBody) ([]msmodels.ChatMessageMentionable, error) {
+	if len(body.Mentions) > 0 && body.ContentType != models.MessageContentTypeHTML {
+		return nil, fmt.Errorf("mentions can only be used with HTML content type")
+	}
+	if err := mentions.ValidateAtTags(body); err != nil {
+		return nil, err
+	}
+	return mentions.MapMentions(body.Mentions)
 }
 
 // ListMessages retrieves messages from a channel
