@@ -13,16 +13,17 @@ import (
 	"github.com/pzsp-teams/lib/models"
 )
 
-type Service struct {
+type service struct {
 	chatAPI      api.ChatAPI
 	chatResolver resolver.ChatResolver
 }
 
-func NewService(chatAPI api.ChatAPI, cr resolver.ChatResolver) *Service {
-	return &Service{chatAPI: chatAPI, chatResolver: cr}
+// NewService creates a new instance of the chat service.
+func NewService(chatAPI api.ChatAPI, cr resolver.ChatResolver) Service {
+	return &service{chatAPI: chatAPI, chatResolver: cr}
 }
 
-func (s *Service) CreateOneOneOne(ctx context.Context, recipientRef string) (*models.Chat, error) {
+func (s *service) CreateOneOneOne(ctx context.Context, recipientRef string) (*models.Chat, error) {
 	resp, requestErr := s.chatAPI.CreateOneOnOneChat(ctx, recipientRef)
 	if requestErr != nil {
 		return nil, snd.MapError(requestErr, snd.WithResource(snd.User, recipientRef))
@@ -31,7 +32,7 @@ func (s *Service) CreateOneOneOne(ctx context.Context, recipientRef string) (*mo
 	return adapter.MapGraphChat(resp), nil
 }
 
-func (s *Service) CreateGroup(ctx context.Context, recipientRefs []string, topic string, includeMe bool) (*models.Chat, error) {
+func (s *service) CreateGroup(ctx context.Context, recipientRefs []string, topic string, includeMe bool) (*models.Chat, error) {
 	resp, requestErr := s.chatAPI.CreateGroupChat(ctx, recipientRefs, topic, includeMe)
 	if requestErr != nil {
 		return nil, snd.MapError(requestErr, snd.WithResources(snd.User, recipientRefs))
@@ -40,21 +41,21 @@ func (s *Service) CreateGroup(ctx context.Context, recipientRefs []string, topic
 	return adapter.MapGraphChat(resp), nil
 }
 
-func (s *Service) AddMemberToGroupChat(ctx context.Context, chatRef GroupChatRef, memberRef string) (*models.Member, error) {
+func (s *service) AddMemberToGroupChat(ctx context.Context, chatRef GroupChatRef, userRef string) (*models.Member, error) {
 	chatID, err := s.resolveChatIDFromRef(ctx, chatRef)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, requestErr := s.chatAPI.AddMemberToGroupChat(ctx, chatID, memberRef)
+	resp, requestErr := s.chatAPI.AddMemberToGroupChat(ctx, chatID, userRef)
 	if requestErr != nil {
-		return nil, snd.MapError(requestErr, snd.WithResource(snd.Chat, chatID), snd.WithResource(snd.User, memberRef))
+		return nil, snd.MapError(requestErr, snd.WithResource(snd.Chat, chatID), snd.WithResource(snd.User, userRef))
 	}
 
 	return adapter.MapGraphMember(resp), nil
 }
 
-func (s *Service) RemoveMemberFromGroupChat(ctx context.Context, chatRef GroupChatRef, userRef string) error {
+func (s *service) RemoveMemberFromGroupChat(ctx context.Context, chatRef GroupChatRef, userRef string) error {
 	chatID, err := s.resolveChatIDFromRef(ctx, chatRef)
 	if err != nil {
 		return err
@@ -73,7 +74,7 @@ func (s *Service) RemoveMemberFromGroupChat(ctx context.Context, chatRef GroupCh
 	return nil
 }
 
-func (s *Service) ListGroupChatMembers(ctx context.Context, chatRef GroupChatRef) ([]*models.Member, error) {
+func (s *service) ListGroupChatMembers(ctx context.Context, chatRef GroupChatRef) ([]*models.Member, error) {
 	chatID, err := s.resolveChatIDFromRef(ctx, chatRef)
 	if err != nil {
 		return nil, err
@@ -87,7 +88,7 @@ func (s *Service) ListGroupChatMembers(ctx context.Context, chatRef GroupChatRef
 	return util.MapSlices(resp.GetValue(), adapter.MapGraphMember), nil
 }
 
-func (s *Service) UpdateGroupChatTopic(ctx context.Context, chatRef GroupChatRef, topic string) (*models.Chat, error) {
+func (s *service) UpdateGroupChatTopic(ctx context.Context, chatRef GroupChatRef, topic string) (*models.Chat, error) {
 	chatID, err := s.resolveChatIDFromRef(ctx, chatRef)
 	if err != nil {
 		return nil, err
@@ -101,7 +102,7 @@ func (s *Service) UpdateGroupChatTopic(ctx context.Context, chatRef GroupChatRef
 	return adapter.MapGraphChat(resp), nil
 }
 
-func (s *Service) ListMessages(ctx context.Context, chatRef ChatRef) ([]*models.Message, error) {
+func (s *service) ListMessages(ctx context.Context, chatRef ChatRef) ([]*models.Message, error) {
 	chatID, err := s.resolveChatIDFromRef(ctx, chatRef)
 	if err != nil {
 		return nil, err
@@ -115,7 +116,7 @@ func (s *Service) ListMessages(ctx context.Context, chatRef ChatRef) ([]*models.
 	return util.MapSlices(resp.GetValue(), adapter.MapGraphMessage), nil
 }
 
-func (s *Service) SendMessage(ctx context.Context, chatRef ChatRef, content string, contentType models.MessageContentType) (*models.Message, error) {
+func (s *service) SendMessage(ctx context.Context, chatRef ChatRef, content string, contentType models.MessageContentType) (*models.Message, error) {
 	chatID, err := s.resolveChatIDFromRef(ctx, chatRef)
 	if err != nil {
 		return nil, err
@@ -129,7 +130,7 @@ func (s *Service) SendMessage(ctx context.Context, chatRef ChatRef, content stri
 	return adapter.MapGraphMessage(resp), nil
 }
 
-func (s *Service) DeleteMessage(ctx context.Context, chatRef ChatRef, messageID string) error {
+func (s *service) DeleteMessage(ctx context.Context, chatRef ChatRef, messageID string) error {
 	chatID, err := s.resolveChatIDFromRef(ctx, chatRef)
 	if err != nil {
 		return err
@@ -143,7 +144,7 @@ func (s *Service) DeleteMessage(ctx context.Context, chatRef ChatRef, messageID 
 	return nil
 }
 
-func (s *Service) GetMessage(ctx context.Context, chatRef ChatRef, messageID string) (*models.Message, error) {
+func (s *service) GetMessage(ctx context.Context, chatRef ChatRef, messageID string) (*models.Message, error) {
 	chatID, err := s.resolveChatIDFromRef(ctx, chatRef)
 	if err != nil {
 		return nil, err
@@ -157,7 +158,7 @@ func (s *Service) GetMessage(ctx context.Context, chatRef ChatRef, messageID str
 	return adapter.MapGraphMessage(resp), nil
 }
 
-func (s *Service) ListChats(ctx context.Context, chatType *models.ChatType) ([]*models.Chat, error) {
+func (s *service) ListChats(ctx context.Context, chatType *models.ChatType) ([]*models.Chat, error) {
 	var apiType string
 
 	if chatType != nil {
@@ -177,7 +178,7 @@ func (s *Service) ListChats(ctx context.Context, chatType *models.ChatType) ([]*
 	return util.MapSlices(resp.GetValue(), adapter.MapGraphChat), nil
 }
 
-func (s *Service) ListAllMessages(ctx context.Context, startTime, endTime *time.Time, top *int32) ([]*models.Message, error) {
+func (s *service) ListAllMessages(ctx context.Context, startTime, endTime *time.Time, top *int32) ([]*models.Message, error) {
 	resp, requestErr := s.chatAPI.ListAllMessages(ctx, startTime, endTime, top)
 	if requestErr != nil {
 		return nil, snd.MapError(requestErr)
@@ -186,7 +187,7 @@ func (s *Service) ListAllMessages(ctx context.Context, startTime, endTime *time.
 	return util.MapSlices(resp.GetValue(), adapter.MapGraphMessage), nil
 }
 
-func (s *Service) ListPinnedMessages(ctx context.Context, chatRef ChatRef) ([]*models.Message, error) {
+func (s *service) ListPinnedMessages(ctx context.Context, chatRef ChatRef) ([]*models.Message, error) {
 	chatID, err := s.resolveChatIDFromRef(ctx, chatRef)
 	if err != nil {
 		return nil, err
@@ -200,7 +201,7 @@ func (s *Service) ListPinnedMessages(ctx context.Context, chatRef ChatRef) ([]*m
 	return util.MapSlices(resp.GetValue(), adapter.MapGraphMessage), nil
 }
 
-func (s *Service) PinMessage(ctx context.Context, chatRef ChatRef, messageID string) error {
+func (s *service) PinMessage(ctx context.Context, chatRef ChatRef, messageID string) error {
 	chatID, err := s.resolveChatIDFromRef(ctx, chatRef)
 	if err != nil {
 		return err
@@ -214,7 +215,7 @@ func (s *Service) PinMessage(ctx context.Context, chatRef ChatRef, messageID str
 	return nil
 }
 
-func (s *Service) UnpinMessage(ctx context.Context, chatRef ChatRef, pinnedMessageID string) error {
+func (s *service) UnpinMessage(ctx context.Context, chatRef ChatRef, pinnedMessageID string) error {
 	chatID, err := s.resolveChatIDFromRef(ctx, chatRef)
 	if err != nil {
 		return err
@@ -228,7 +229,7 @@ func (s *Service) UnpinMessage(ctx context.Context, chatRef ChatRef, pinnedMessa
 	return nil
 }
 
-func (s *Service) resolveChatIDFromRef(ctx context.Context, chatRef ChatRef) (string, error) {
+func (s *service) resolveChatIDFromRef(ctx context.Context, chatRef ChatRef) (string, error) {
 	switch ref := chatRef.(type) {
 	case GroupChatRef:
 		return s.chatResolver.ResolveGroupChatRefToID(ctx, ref.Ref)

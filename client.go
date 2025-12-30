@@ -19,7 +19,7 @@ import (
 type Client struct {
 	Channels channels.Service
 	Teams    teams.Service
-	Chats    *chats.Service
+	Chats    chats.Service
 	waitFns  []func()
 }
 
