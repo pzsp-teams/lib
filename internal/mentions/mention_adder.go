@@ -1,10 +1,12 @@
-package util
+package mentions
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
+	"github.com/pzsp-teams/lib/internal/api"
 	"github.com/pzsp-teams/lib/models"
 )
 
@@ -35,7 +37,7 @@ func (a *MentionAdder) Add(kind models.MentionKind, targetID, text, dedupKey str
 	a.nextAtID++
 }
 
-func ExtractUserIDAndDisplayName(user msmodels.Userable, raw string) (id string, displayName string, err error) {
+func ExtractUserIDAndDisplayName(user msmodels.Userable, raw string) (id, displayName string, err error) {
 	if user == nil {
 		return "", "", fmt.Errorf("resolved user is nil for mention reference: %s", raw)
 	}
@@ -48,4 +50,19 @@ func ExtractUserIDAndDisplayName(user msmodels.Userable, raw string) (id string,
 		return "", "", fmt.Errorf("resolved user has empty display name for mention reference: %s", raw)
 	}
 	return *idPtr, *dnPtr, nil
+}
+
+func (a *MentionAdder) AddUserMention(ctx context.Context, email string, userAPI api.UsersAPI) error {
+	user, reqErr := userAPI.GetUserByEmailOrUPN(ctx, email)
+	if reqErr != nil {
+		return reqErr
+	}
+
+	id, dn, err := ExtractUserIDAndDisplayName(user, email)
+	if err != nil {
+		return err
+	}
+
+	a.Add(models.MentionUser, id, dn, "user:"+id)
+	return nil
 }
