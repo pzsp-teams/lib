@@ -10,9 +10,9 @@ import (
 )
 
 type convCfg struct {
-	identityType      msmodels.TeamworkConversationIdentityType
-	validate func(string) bool
-	label    string
+	identityType msmodels.TeamworkConversationIdentityType
+	validate     func(string) bool
+	label        string
 }
 
 var convKinds = map[models.MentionKind]convCfg{
@@ -20,7 +20,6 @@ var convKinds = map[models.MentionKind]convCfg{
 	models.MentionTeam:     {msmodels.TEAM_TEAMWORKCONVERSATIONIDENTITYTYPE, util.IsLikelyGUID, "team mention"},
 	models.MentionEveryone: {msmodels.CHAT_TEAMWORKCONVERSATIONIDENTITYTYPE, util.IsLikelyThreadConversationID, "everyone mention (chatID)"},
 }
-
 
 func MapMentions(in []models.Mention) (mentions []msmodels.ChatMessageMentionable, err error) {
 	if len(in) == 0 {
