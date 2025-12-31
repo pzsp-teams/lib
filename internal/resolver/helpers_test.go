@@ -164,7 +164,7 @@ func TestResolveChannelIDByName(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			channels := tc.setupChannels()
-			id, err := resolveChannelIDByName(channels, tc.teamID, tc.channelName)
+			id, err := resolveChannelIDByName(channels, tc.channelName)
 
 			if tc.expectError {
 				require.Error(t, err)

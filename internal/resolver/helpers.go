@@ -44,7 +44,7 @@ func resolveTeamIDByName(list msmodels.TeamCollectionResponseable, ref string) (
 	}
 }
 
-func resolveChannelIDByName(chans msmodels.ChannelCollectionResponseable, teamID, ref string) (string, error) {
+func resolveChannelIDByName(chans msmodels.ChannelCollectionResponseable, ref string) (string, error) {
 	if chans == nil || chans.GetValue() == nil || len(chans.GetValue()) == 0 {
 		return "", &resourcesNotAvailableError{resourceType: resources.Channel}
 	}
