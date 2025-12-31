@@ -41,10 +41,21 @@ func TestNewGroupChatMemberKey(t *testing.T) {
 	assert.Equal(t, want, got, "NewGroupChatMemberKey() should return the correct key string")
 }
 
-func TestNewTeamMemberKey(t *testing.T) {
+func TestNewChannelMemberKey(t *testing.T) {
 	testPepper := "test-pepper"
 	got := NewChannelMemberKey("team-123", "chan-456", "user@example.com", &testPepper)
 	hashedEmail := util.HashWithPepper(testPepper, "user@example.com")
 	want := "$channel-member$:team-123:chan-456:" + hashedEmail
 	assert.Equal(t, want, got, "NewChannelMemberKey() should return the correct key string")
+}
+
+func TestNewTeamMemberKey(t *testing.T) {
+	testPepper := "test-pepper"
+	got := NewTeamMemberKey("team-123", "user@example.com", &testPepper)
+	hashedEmail := util.HashWithPepper(testPepper, "user@example.com")
+	want := "$team-member$:team-123:" + hashedEmail
+
+	if got != want {
+		t.Fatalf("TeamMemberKeyBuilder.ToString() = %q, want %q", got, want)
+	}
 }

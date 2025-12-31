@@ -17,7 +17,7 @@ const (
 	GroupChat       KeyType = "group-chat"
 	DirectChat      KeyType = "direct-chat"
 	GroupChatMember KeyType = "group-chat-member"
-	User            KeyType = "user"
+	TeamMember      KeyType = "team-member"
 )
 
 func formatKey(t KeyType, parts ...string) string {
@@ -49,6 +49,10 @@ func NewGroupChatMemberKey(chatID, userRef string, pep *string) string {
 
 func NewChannelMemberKey(teamID, channelID, userRef string, pep *string) string {
 	return formatKey(ChannelMember, teamID, channelID, hashRef(userRef, pep))
+}
+
+func NewTeamMemberKey(teamID, userRef string, pep *string) string {
+	return formatKey(TeamMember, teamID, hashRef(userRef, pep))
 }
 
 func hashRef(ref string, pep *string) string {
