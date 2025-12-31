@@ -11,11 +11,11 @@ func tryAddTeamOrChannelMention(a *mentions.MentionAdder, raw, teamRef, teamID, 
 	low := strings.ToLower(raw)
 
 	if isTeamRef(low, raw, teamRef, teamID) {
-		a.Add(models.MentionTeam, teamID, teamRef, "team:"+teamID)
+		a.Add(models.MentionTeam, teamID, teamRef)
 		return true
 	}
 	if isChannelRef(low, raw, channelRef, channelID) {
-		a.Add(models.MentionChannel, channelID, channelRef, "channel:"+channelID)
+		a.Add(models.MentionChannel, channelID, channelRef)
 		return true
 	}
 	return false

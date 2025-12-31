@@ -50,8 +50,8 @@ func TestMentionAdder_Add_AppendsAndIncrementsAtID(t *testing.T) {
 	out := []models.Mention{}
 	a := NewMentionAdder(&out)
 
-	a.Add(models.MentionUser, "u-1", "Alice", "user:u-1")
-	a.Add(models.MentionTeam, "t-1", "Team", "team:t-1")
+	a.Add(models.MentionUser, "u-1", "Alice")
+	a.Add(models.MentionTeam, "t-1", "Team")
 
 	if len(out) != 2 {
 		t.Fatalf("expected 2 mentions, got %d", len(out))
@@ -62,25 +62,6 @@ func TestMentionAdder_Add_AppendsAndIncrementsAtID(t *testing.T) {
 	}
 	if out[1].Kind != models.MentionTeam || out[1].TargetID != "t-1" || out[1].Text != "Team" || out[1].AtID != 1 {
 		t.Fatalf("unexpected second mention: %+v", out[1])
-	}
-}
-
-func TestMentionAdder_Add_DeduplicatesByKey(t *testing.T) {
-	out := []models.Mention{}
-	a := NewMentionAdder(&out)
-
-	a.Add(models.MentionUser, "u-1", "Alice", "user:u-1")
-	a.Add(models.MentionUser, "u-1", "Alice (dup)", "user:u-1")
-
-	if len(out) != 1 {
-		t.Fatalf("expected 1 mention after dedup, got %d", len(out))
-	}
-
-	if out[0].Text != "Alice" {
-		t.Fatalf("expected first value to stay, got %+v", out[0])
-	}
-	if out[0].AtID != 0 {
-		t.Fatalf("expected AtID=0, got %d", out[0].AtID)
 	}
 }
 
@@ -154,8 +135,8 @@ func TestMentionAdder_AddUserMention_Success_AddsMention(t *testing.T) {
 	if err := a.AddUserMention(ctx, "alice@example.com", fu); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if len(out) != 1 {
-		t.Fatalf("expected still 1 mention after second add, got %d", len(out))
+	if len(out) != 2 {
+		t.Fatalf("expected 2 mention after second add, got %d", len(out))
 	}
 }
 

@@ -19,21 +19,15 @@ import (
 type MentionAdder struct {
 	out      *[]models.Mention
 	nextAtID int32
-	seen     map[string]struct{}
 }
 
 func NewMentionAdder(out *[]models.Mention) *MentionAdder {
 	return &MentionAdder{
-		out:  out,
-		seen: make(map[string]struct{}),
+		out: out,
 	}
 }
 
-func (a *MentionAdder) Add(kind models.MentionKind, targetID, text, dedupKey string) {
-	if _, exists := a.seen[dedupKey]; exists {
-		return
-	}
-	a.seen[dedupKey] = struct{}{}
+func (a *MentionAdder) Add(kind models.MentionKind, targetID, text string) {
 	*a.out = append(*a.out, models.Mention{
 		TargetID: targetID,
 		Kind:     kind,
@@ -69,6 +63,6 @@ func (a *MentionAdder) AddUserMention(ctx context.Context, email string, userAPI
 		return err
 	}
 
-	a.Add(models.MentionUser, id, dn, "user:"+id)
+	a.Add(models.MentionUser, id, dn)
 	return nil
 }

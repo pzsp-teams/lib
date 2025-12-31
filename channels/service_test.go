@@ -898,7 +898,7 @@ func TestMapConversationMemberToChannelMember_UserMember(t *testing.T) {
 	}
 }
 
-func TestService_GetMentions_ResolvesUserTeamChannelAndDedups(t *testing.T) {
+func TestService_GetMentions_ResolvesUserTeamChannelDupsAllowed(t *testing.T) {
 	ctx := context.Background()
 
 	apiChan := &fakeChanAPI{}
@@ -924,8 +924,8 @@ func TestService_GetMentions_ResolvesUserTeamChannelAndDedups(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if len(got) != 3 {
-		t.Fatalf("expected 3 mentions (user/team/channel), got %d: %#v", len(got), got)
+	if len(got) != 5 {
+		t.Fatalf("expected 5 mentions, got %d: %#v", len(got), got)
 	}
 
 	if got[0].AtID != 0 || got[1].AtID != 1 || got[2].AtID != 2 {
