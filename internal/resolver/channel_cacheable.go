@@ -80,7 +80,7 @@ func (res *ChannelResolverCacheable) newChannelResolveContext(
 			return res.channelsAPI.ListChannels(ctx, teamID)
 		},
 		extract: func(data msmodels.ChannelCollectionResponseable) (string, error) {
-			return resolveChannelIDByName(data, teamID, ref)
+			return resolveChannelIDByName(data, ref)
 		},
 	}
 }

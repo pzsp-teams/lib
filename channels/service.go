@@ -132,7 +132,7 @@ func (s *service) SendReply(ctx context.Context, teamRef, channelRef, messageID 
 
 	resp, requestErr := s.channelAPI.SendReply(ctx, teamID, channelID, messageID, body.Content, string(body.ContentType), ments)
 	if requestErr != nil {
-		return nil, snd.MapError(requestErr, snd.WithResource(snd.Team, teamRef), snd.WithResource(snd.Channel, channelRef), snd.WithResource(snd.Message, messageID))
+		return nil, snd.MapError(requestErr, snd.WithResource(resources.Team, teamRef), snd.WithResource(resources.Channel, channelRef), snd.WithResource(resources.Message, messageID))
 	}
 
 	return adapter.MapGraphMessage(resp), nil
