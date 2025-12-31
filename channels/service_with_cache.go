@@ -12,40 +12,30 @@ import (
 
 type serviceWithCache struct {
 	svc             Service
-	cache           cacher.Cacher
 	teamResolver    resolver.TeamResolver
 	channelResolver resolver.ChannelResolver
-	runner          util.TaskRunner
+	cacheHandler    *cacher.CacheHandler
 }
 
-func newServiceWithCache(
+func NewServiceWithCache(
 	svc Service,
-	cache cacher.Cacher,
 	teamResolver resolver.TeamResolver,
 	channelResolver resolver.ChannelResolver,
-) *serviceWithCache {
+	cacheHandler *cacher.CacheHandler,
+) Service {
+	if cacheHandler == nil {
+		return svc
+	}
 	return &serviceWithCache{
 		svc:             svc,
-		cache:           cache,
 		teamResolver:    teamResolver,
 		channelResolver: channelResolver,
+		cacheHandler:    cacheHandler,
 	}
 }
 
-func NewSyncServiceWithCache(svc Service, cache cacher.Cacher, teamResolver resolver.TeamResolver, channelResolver resolver.ChannelResolver) Service {
-	newSvc := newServiceWithCache(svc, cache, teamResolver, channelResolver)
-	newSvc.runner = &util.SyncRunner{}
-	return newSvc
-}
-
-func NewAsyncServiceWithCache(svc Service, cache cacher.Cacher, teamResolver resolver.TeamResolver, channelResolver resolver.ChannelResolver) Service {
-	newSvc := newServiceWithCache(svc, cache, teamResolver, channelResolver)
-	newSvc.runner = &util.AsyncRunner{}
-	return newSvc
-}
-
 func (s *serviceWithCache) Wait() {
-	s.runner.Wait()
+	s.cacheHandler.Runner.Wait()
 }
 
 func (s *serviceWithCache) ListChannels(ctx context.Context, teamRef string) ([]*models.Channel, error) {
@@ -55,7 +45,7 @@ func (s *serviceWithCache) ListChannels(ctx context.Context, teamRef string) ([]
 		return nil, err
 	}
 	local := util.CopyNonNil(chans)
-	s.runner.Run(func() {
+	s.cacheHandler.Runner.Run(func() {
 		s.addChannelsToCache(teamRef, local...)
 	})
 	return chans, nil
@@ -69,7 +59,7 @@ func (s *serviceWithCache) Get(ctx context.Context, teamRef, channelRef string) 
 	}
 	if ch != nil {
 		local := *ch
-		s.runner.Run(func() {
+		s.cacheHandler.Runner.Run(func() {
 			s.addChannelsToCache(teamRef, local)
 		})
 	}
@@ -101,7 +91,7 @@ func (s *serviceWithCache) CreatePrivateChannel(
 }
 
 func (s *serviceWithCache) updateCacheAfterCreate(teamRef, name string, ch *models.Channel) {
-	s.runner.Run(func() {
+	s.cacheHandler.Runner.Run(func() {
 		s.removeChannelFromCache(teamRef, name)
 		if ch == nil {
 			return
@@ -116,7 +106,7 @@ func (s *serviceWithCache) Delete(ctx context.Context, teamRef, channelRef strin
 		s.onError()
 		return err
 	}
-	s.runner.Run(func() {
+	s.cacheHandler.Runner.Run(func() {
 		s.removeChannelFromCache(teamRef, channelRef)
 	})
 	return nil
@@ -190,7 +180,7 @@ func (s *serviceWithCache) ListMembers(
 		return nil, err
 	}
 	local := util.CopyNonNil(members)
-	s.runner.Run(func() {
+	s.cacheHandler.Runner.Run(func() {
 		s.addMembersToCache(teamRef, channelRef, local...)
 	})
 	return members, nil
@@ -208,7 +198,7 @@ func (s *serviceWithCache) AddMember(
 	}
 	if member != nil {
 		local := *member
-		s.runner.Run(func() {
+		s.cacheHandler.Runner.Run(func() {
 			s.addMembersToCache(teamRef, channelRef, local)
 		})
 	}
@@ -233,7 +223,7 @@ func (s *serviceWithCache) RemoveMember(
 		s.onError()
 		return err
 	}
-	s.runner.Run(func() {
+	s.cacheHandler.Runner.Run(func() {
 		s.invalidateMemberCache(teamRef, channelRef, userRef)
 	})
 	return nil
@@ -246,9 +236,6 @@ func (s *serviceWithCache) GetMentions(ctx context.Context, teamRef, channelRef 
 }
 
 func (s *serviceWithCache) addChannelsToCache(teamRef string, chans ...models.Channel) {
-	if s.cache == nil || len(chans) == 0 {
-		return
-	}
 	ctx := context.Background()
 	teamID, err := s.teamResolver.ResolveTeamRefToID(ctx, teamRef)
 	if err != nil {
@@ -260,14 +247,11 @@ func (s *serviceWithCache) addChannelsToCache(teamRef string, chans ...models.Ch
 			continue
 		}
 		key := cacher.NewChannelKey(teamID, name)
-		_ = s.cache.Set(key, ch.ID)
+		_ = s.cacheHandler.Cacher.Set(key, ch.ID)
 	}
 }
 
 func (s *serviceWithCache) removeChannelFromCache(teamRef, channelRef string) {
-	if s.cache == nil {
-		return
-	}
 	ref := strings.TrimSpace(channelRef)
 	if ref == "" || util.IsLikelyThreadConversationID(ref) {
 		return
@@ -278,13 +262,10 @@ func (s *serviceWithCache) removeChannelFromCache(teamRef, channelRef string) {
 		return
 	}
 	key := cacher.NewChannelKey(teamID, ref)
-	_ = s.cache.Invalidate(key)
+	_ = s.cacheHandler.Cacher.Invalidate(key)
 }
 
 func (s *serviceWithCache) addMembersToCache(teamRef, channelRef string, members ...models.Member) {
-	if s.cache == nil {
-		return
-	}
 	for _, member := range members {
 		ref := strings.TrimSpace(strings.TrimSpace(member.Email))
 		if ref == "" {
@@ -300,14 +281,11 @@ func (s *serviceWithCache) addMembersToCache(teamRef, channelRef string, members
 			continue
 		}
 		key := cacher.NewChannelMemberKey(ref, teamID, channelID, nil)
-		_ = s.cache.Set(key, member.ID)
+		_ = s.cacheHandler.Cacher.Set(key, member.ID)
 	}
 }
 
 func (s *serviceWithCache) invalidateMemberCache(teamRef, channelRef, userRef string) {
-	if s.cache == nil {
-		return
-	}
 	ref := strings.TrimSpace(userRef)
 	if ref == "" {
 		return
@@ -324,15 +302,12 @@ func (s *serviceWithCache) invalidateMemberCache(teamRef, channelRef, userRef st
 	}
 
 	key := cacher.NewChannelMemberKey(ref, teamID, channelID, nil)
-	_ = s.cache.Invalidate(key)
+	_ = s.cacheHandler.Cacher.Invalidate(key)
 }
 
 func (s *serviceWithCache) onError() {
-	if s.cache == nil {
-		return
-	}
-	s.runner.Run(func() {
-		_ = s.cache.Clear()
+	s.cacheHandler.Runner.Run(func() {
+		_ = s.cacheHandler.Cacher.Clear()
 	})
 }
 

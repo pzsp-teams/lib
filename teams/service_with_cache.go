@@ -11,29 +11,19 @@ import (
 )
 
 type serviceWithCache struct {
-	svc    Service
-	cache  cacher.Cacher
-	runner util.TaskRunner
+	svc          Service
+	cacheHandler *cacher.CacheHandler
 }
 
-func NewSyncServiceWithCache(svc Service, cache cacher.Cacher) *serviceWithCache {
-	return &serviceWithCache{
-		svc:    svc,
-		cache:  cache,
-		runner: &util.SyncRunner{},
+func NewServiceWithCache(svc Service, cacheHandler *cacher.CacheHandler) Service {
+	if cacheHandler == nil {
+		return svc
 	}
-}
-
-func NewAsyncServiceWithCache(svc Service, cache cacher.Cacher) *serviceWithCache {
-	return &serviceWithCache{
-		svc:    svc,
-		cache:  cache,
-		runner: &util.AsyncRunner{},
-	}
+	return &serviceWithCache{svc, cacheHandler}
 }
 
 func (s *serviceWithCache) Wait() {
-	s.runner.Wait()
+	s.cacheHandler.Runner.Wait()
 }
 
 func (s *serviceWithCache) Get(ctx context.Context, teamRef string) (*models.Team, error) {
@@ -42,7 +32,7 @@ func (s *serviceWithCache) Get(ctx context.Context, teamRef string) (*models.Tea
 		s.onError()
 		return nil, err
 	}
-	s.runner.Run(func() {
+	s.cacheHandler.Runner.Run(func() {
 		s.addTeamsToCache(*team)
 	})
 	return team, nil
@@ -55,7 +45,7 @@ func (s *serviceWithCache) ListMyJoined(ctx context.Context) ([]*models.Team, er
 		return nil, err
 	}
 	vals := util.CopyNonNil(teams)
-	s.runner.Run(func() {
+	s.cacheHandler.Runner.Run(func() {
 		s.addTeamsToCache(vals...)
 	})
 	return teams, nil
@@ -67,7 +57,7 @@ func (s *serviceWithCache) Update(ctx context.Context, teamRef string, patch *ms
 		s.onError()
 		return nil, err
 	}
-	s.runner.Run(func() {
+	s.cacheHandler.Runner.Run(func() {
 		s.removeTeamsFromCache(teamRef)
 		s.addTeamsToCache(*team)
 	})
@@ -80,7 +70,7 @@ func (s *serviceWithCache) CreateFromTemplate(ctx context.Context, displayName, 
 		s.onError()
 		return id, err
 	}
-	s.runner.Run(func() {
+	s.cacheHandler.Runner.Run(func() {
 		s.removeTeamsFromCache(displayName)
 	})
 	return id, err
@@ -92,7 +82,7 @@ func (s *serviceWithCache) CreateViaGroup(ctx context.Context, displayName, mail
 		s.onError()
 		return nil, err
 	}
-	s.runner.Run(func() {
+	s.cacheHandler.Runner.Run(func() {
 		s.removeTeamsFromCache(displayName)
 	})
 	return team, nil
@@ -104,7 +94,7 @@ func (s *serviceWithCache) Archive(ctx context.Context, teamRef string, spoReadO
 		s.onError()
 		return err
 	}
-	s.runner.Run(func() {
+	s.cacheHandler.Runner.Run(func() {
 		s.removeTeamsFromCache(teamRef)
 	})
 	return nil
@@ -116,7 +106,7 @@ func (s *serviceWithCache) Unarchive(ctx context.Context, teamRef string) error 
 		s.onError()
 		return err
 	}
-	s.runner.Run(func() {
+	s.cacheHandler.Runner.Run(func() {
 		s.removeTeamsFromCache(teamRef)
 	})
 	return nil
@@ -128,7 +118,7 @@ func (s *serviceWithCache) Delete(ctx context.Context, teamRef string) error {
 		s.onError()
 		return err
 	}
-	s.runner.Run(func() {
+	s.cacheHandler.Runner.Run(func() {
 		s.removeTeamsFromCache(teamRef)
 	})
 	return nil
@@ -141,34 +131,25 @@ func (s *serviceWithCache) RestoreDeleted(ctx context.Context, deletedGroupID st
 }
 
 func (s *serviceWithCache) addTeamsToCache(teams ...models.Team) {
-	if s.cache == nil || teams == nil {
-		return
-	}
 	for _, team := range teams {
 		key := cacher.NewTeamKey(strings.TrimSpace(team.DisplayName))
-		_ = s.cache.Set(key, team.ID)
+		_ = s.cacheHandler.Cacher.Set(key, team.ID)
 	}
 }
 
 func (s *serviceWithCache) removeTeamsFromCache(teamRefs ...string) {
-	if s.cache == nil {
-		return
-	}
 	for _, teamRef := range teamRefs {
 		if util.IsLikelyGUID(teamRef) {
 			continue
 		}
 		key := cacher.NewTeamKey(strings.TrimSpace(teamRef))
-		_ = s.cache.Invalidate(key)
+		_ = s.cacheHandler.Cacher.Invalidate(key)
 	}
 }
 
 func (s *serviceWithCache) onError() {
-	if s.cache == nil {
-		return
-	}
-	s.runner.Run(func() {
-		_ = s.cache.Clear()
+	s.cacheHandler.Runner.Run(func() {
+		_ = s.cacheHandler.Cacher.Clear()
 	})
 }
 
