@@ -9,6 +9,7 @@
 //   - ChannelRef is a reference (display name or ID) to a channel used in method parameters.
 //   - If teamRef or channelRef is a display and is not unique, an ambiguity error is returned.
 //   - The authenticated user (derived from MSAL) is the one making the API calls (appropriate scopes must be granted).
+//
 // If an async cached service is used, call Wait() to ensure all background cache updates are finished.
 package channels
 
