@@ -8,6 +8,7 @@
 //   - ChatRef and GroupChatRef are references to chats used in method parameters.
 //   - If chatRef is a topic and is not unique, an ambiguity error is returned.
 //   - The authenticated user (derived from MSAL) is the one making the API calls (appropriate scopes must be granted).
+//
 // If an async cached service is used, call Wait() to ensure all background cache updates are finished.
 package chats
 

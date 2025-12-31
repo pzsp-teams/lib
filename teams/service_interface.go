@@ -26,28 +26,28 @@ import (
 type Service interface {
 	// Get retrieves a specific team by its reference (ID or display name).
 	Get(ctx context.Context, teamRef string) (*models.Team, error)
-	
+
 	// ListMyJoined returns all teams the authenticated user has joined.
 	ListMyJoined(ctx context.Context) ([]*models.Team, error)
-	
+
 	// Update modifies a team's properties using a Graph patch object.
 	Update(ctx context.Context, teamRef string, patch *msmodels.Team) (*models.Team, error)
-	
+
 	// CreateViaGroup creates a new team associated with a Microsoft 365 group.
 	CreateViaGroup(ctx context.Context, displayName, mailNickname, visibility string) (*models.Team, error)
-	
+
 	// CreateFromTemplate creates a new team from a template.
 	CreateFromTemplate(ctx context.Context, displayName, description string, owners []string) (string, error)
-	
+
 	// Archive archives a team, optionally making SharePoint read-only for members.
 	Archive(ctx context.Context, teamRef string, spoReadOnlyForMembers *bool) error
-	
+
 	// Unarchive restores an archived team.
 	Unarchive(ctx context.Context, teamRef string) error
-	
+
 	// Delete removes a team.
 	Delete(ctx context.Context, teamRef string) error
-	
+
 	// RestoreDeleted restores a deleted team using the deleted group ID.
 	RestoreDeleted(ctx context.Context, deletedGroupID string) (string, error)
 }
