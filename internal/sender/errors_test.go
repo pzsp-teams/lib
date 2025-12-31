@@ -2,6 +2,7 @@ package sender
 
 import (
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/pzsp-teams/lib/internal/resources"
@@ -19,17 +20,17 @@ func TestErrData(t *testing.T) {
 	tests := []struct {
 		name string
 		ed   ErrData
-		want string
+		want []string
 	}{
 		{
 			name: "empty map",
 			ed:   ErrData{ResourceRefs: map[resources.Resource]string{}},
-			want: "",
+			want: []string{},
 		},
 		{
 			name: "single entry",
 			ed:   ErrData{ResourceRefs: map[resources.Resource]string{resources.Team: "z1"}},
-			want: "TEAM(z1)",
+			want: []string{"TEAM(z1)"},
 		},
 		{
 			name: "multiple entries",
@@ -37,15 +38,17 @@ func TestErrData(t *testing.T) {
 				resources.Team:    "z1",
 				resources.Channel: "general",
 			}},
-			want: "TEAM(z1), CHANNEL(general)",
+			want: []string{"TEAM(z1)", "CHANNEL(general)"},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := tt.ed.String()
-			if tt.want != "" {
-				assert.Equal(t, tt.want, got)
+			if len(tt.want) != 0 {
+				for _, w := range tt.want {
+					assert.True(t, strings.Contains(got, w))
+				}
 			}
 		})
 	}
