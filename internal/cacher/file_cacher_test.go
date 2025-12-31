@@ -15,9 +15,9 @@ func tempFilePath(t *testing.T) string {
 
 func TestNewJSONFileCacher_CreatesStruct(t *testing.T) {
 	path := "some-path.json"
-	c := NewJSONFileCacher(path)
+	c := newJSONFileCacher(path)
 
-	jfc, ok := c.(*JSONFileCacher)
+	jfc, ok := c.(*jSONFileCacher)
 	if !ok {
 		t.Fatalf("expected *JSONFileCacher, got %T", c)
 	}
@@ -35,7 +35,7 @@ func TestNewJSONFileCacher_CreatesStruct(t *testing.T) {
 
 func TestGet_FileDoesNotExist_ReturnsMissAndInitializesCache(t *testing.T) {
 	path := tempFilePath(t)
-	c := NewJSONFileCacher(path).(*JSONFileCacher)
+	c := newJSONFileCacher(path).(*jSONFileCacher)
 
 	val, hit, err := c.Get("$team$:z1")
 	if err != nil {
@@ -60,7 +60,7 @@ func TestGet_FileDoesNotExist_ReturnsMissAndInitializesCache(t *testing.T) {
 
 func TestGet_AfterSet_RoundTrip(t *testing.T) {
 	path := tempFilePath(t)
-	c := NewJSONFileCacher(path)
+	c := newJSONFileCacher(path)
 
 	key := "$team$:z1"
 	expectedID := "id1"
@@ -106,7 +106,7 @@ func TestGet_AfterSet_RoundTrip(t *testing.T) {
 
 func TestGet_WithLoadedCache_DoesNotReloadFile(t *testing.T) {
 	path := tempFilePath(t)
-	c := NewJSONFileCacher(path).(*JSONFileCacher)
+	c := newJSONFileCacher(path).(*jSONFileCacher)
 
 	c.cache = map[string]json.RawMessage{
 		"$team$:z1": mustRawMessage(t, []string{"id1"}),
@@ -132,7 +132,7 @@ func TestGet_WithLoadedCache_DoesNotReloadFile(t *testing.T) {
 
 func TestGet_InvalidJSONForKey_ReturnsError(t *testing.T) {
 	path := tempFilePath(t)
-	c := NewJSONFileCacher(path).(*JSONFileCacher)
+	c := newJSONFileCacher(path).(*jSONFileCacher)
 
 	c.cache = map[string]json.RawMessage{
 		"$team$:z1": json.RawMessage([]byte("this is not json array")),
@@ -158,7 +158,7 @@ func TestLoadCache_EmptyFile(t *testing.T) {
 		t.Fatalf("failed to create empty cache file: %v", err)
 	}
 
-	c := NewJSONFileCacher(path).(*JSONFileCacher)
+	c := newJSONFileCacher(path).(*jSONFileCacher)
 	if err := c.loadCache(); err != nil {
 		t.Fatalf("loadCache returned error: %v", err)
 	}
@@ -181,7 +181,7 @@ func TestLoadCache_InvalidJSON_ReturnsError(t *testing.T) {
 		t.Fatalf("failed to write invalid json: %v", err)
 	}
 
-	c := NewJSONFileCacher(path).(*JSONFileCacher)
+	c := newJSONFileCacher(path).(*jSONFileCacher)
 	err := c.loadCache()
 	if err == nil {
 		t.Fatalf("expected error for invalid JSON, got nil")
@@ -190,7 +190,7 @@ func TestLoadCache_InvalidJSON_ReturnsError(t *testing.T) {
 
 func TestLoadCache_OtherReadError_Propagates(t *testing.T) {
 	dir := t.TempDir()
-	c := NewJSONFileCacher(dir).(*JSONFileCacher)
+	c := newJSONFileCacher(dir).(*jSONFileCacher)
 
 	err := c.loadCache()
 	if err == nil {
@@ -200,7 +200,7 @@ func TestLoadCache_OtherReadError_Propagates(t *testing.T) {
 
 func TestSet_WhenLoadCacheFails_ReturnsError(t *testing.T) {
 	dir := t.TempDir()
-	c := NewJSONFileCacher(dir)
+	c := newJSONFileCacher(dir)
 
 	err := c.Set("$team$:z1", "id1")
 	if err == nil {
@@ -210,7 +210,7 @@ func TestSet_WhenLoadCacheFails_ReturnsError(t *testing.T) {
 
 func TestSet_NonStringValue_ReturnsError(t *testing.T) {
 	path := tempFilePath(t)
-	c := NewJSONFileCacher(path)
+	c := newJSONFileCacher(path)
 
 	err := c.Set("$team$:z1", []string{"id1"})
 	if err == nil {
@@ -220,7 +220,7 @@ func TestSet_NonStringValue_ReturnsError(t *testing.T) {
 
 func TestSet_DoesNotCreateDuplicatesForSameValue(t *testing.T) {
 	path := tempFilePath(t)
-	c := NewJSONFileCacher(path)
+	c := newJSONFileCacher(path)
 
 	key := "$team$:z1"
 
@@ -262,7 +262,7 @@ func TestSet_DoesNotCreateDuplicatesForSameValue(t *testing.T) {
 
 func TestSet_AppendsOnlyNewUniqueValues(t *testing.T) {
 	path := tempFilePath(t)
-	c := NewJSONFileCacher(path)
+	c := newJSONFileCacher(path)
 
 	key := "$team$:z1"
 
@@ -316,7 +316,7 @@ func TestSet_AppendsOnlyNewUniqueValues(t *testing.T) {
 
 func TestInvalidate_RemovesKeyAndUpdatesFile(t *testing.T) {
 	path := tempFilePath(t)
-	c := NewJSONFileCacher(path)
+	c := newJSONFileCacher(path)
 
 	key1 := "$team$:z1"
 	key2 := "$team$:z2"
@@ -391,7 +391,7 @@ func assertFileStateAfterInvalidate(t *testing.T, path, removedKey, keptKey, kep
 
 func TestInvalidate_WhenLoadCacheFails_ReturnsError(t *testing.T) {
 	dir := t.TempDir()
-	c := NewJSONFileCacher(dir)
+	c := newJSONFileCacher(dir)
 
 	err := c.Invalidate("$team$:z1")
 	if err == nil {
@@ -401,7 +401,7 @@ func TestInvalidate_WhenLoadCacheFails_ReturnsError(t *testing.T) {
 
 func TestClear_RemovesAllKeysAndUpdatesFile(t *testing.T) {
 	path := tempFilePath(t)
-	c := NewJSONFileCacher(path)
+	c := newJSONFileCacher(path)
 
 	if err := c.Set("$team$:z1", "id1"); err != nil {
 		t.Fatalf("Set error: %v", err)
@@ -445,7 +445,7 @@ func TestClear_RemovesAllKeysAndUpdatesFile(t *testing.T) {
 
 func TestClear_WriteFileError_ReturnsError(t *testing.T) {
 	dir := t.TempDir()
-	c := &JSONFileCacher{
+	c := &jSONFileCacher{
 		file:  dir,
 		cache: make(map[string]json.RawMessage),
 	}
