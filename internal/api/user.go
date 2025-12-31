@@ -9,6 +9,7 @@ import (
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
 	graphusers "github.com/microsoftgraph/msgraph-sdk-go/users"
 
+	"github.com/pzsp-teams/lib/config"
 	"github.com/pzsp-teams/lib/internal/sender"
 	"github.com/pzsp-teams/lib/internal/util"
 )
@@ -18,12 +19,12 @@ type UsersAPI interface {
 }
 
 type usersAPI struct {
-	client     *graph.GraphServiceClient
-	techParams sender.RequestTechParams
+	client    *graph.GraphServiceClient
+	snederCfg *config.SenderConfig
 }
 
-func NewUsers(client *graph.GraphServiceClient, techParams sender.RequestTechParams) UsersAPI {
-	return &usersAPI{client: client, techParams: techParams}
+func NewUsers(client *graph.GraphServiceClient, senderCfg *config.SenderConfig) UsersAPI {
+	return &usersAPI{client, senderCfg}
 }
 
 func (u *usersAPI) GetUserByEmailOrUPN(ctx context.Context, emailOrUPN string) (msmodels.Userable, *sender.RequestError) {
@@ -56,7 +57,7 @@ func (u *usersAPI) getUserByKey(ctx context.Context, key string) (msmodels.Usera
 		return u.client.Users().ByUserId(key).Get(ctx, cfg)
 	}
 
-	resp, err := sender.SendRequest(ctx, call, u.techParams)
+	resp, err := sender.SendRequest(ctx, call, u.snederCfg)
 	if err != nil {
 		return nil, err
 	}
@@ -97,7 +98,7 @@ func (u *usersAPI) findUserByEmail(ctx context.Context, email string) (msmodels.
 		return u.client.Users().Get(ctx, cfg)
 	}
 
-	resp, err := sender.SendRequest(ctx, call, u.techParams)
+	resp, err := sender.SendRequest(ctx, call, u.snederCfg)
 	if err != nil {
 		return nil, err
 	}
