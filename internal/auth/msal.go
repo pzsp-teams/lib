@@ -15,6 +15,7 @@ import (
 	"github.com/AzureAD/microsoft-authentication-extensions-for-go/cache"
 	"github.com/AzureAD/microsoft-authentication-extensions-for-go/cache/accessor"
 	"github.com/AzureAD/microsoft-authentication-library-for-go/apps/public"
+	"github.com/pzsp-teams/lib/config"
 )
 
 const (
@@ -22,24 +23,6 @@ const (
 )
 
 var errUserNotFound = errors.New("user not found in MSAL cache")
-
-// Method defines the authentication flow used when	acquiring tokens.
-type Method string
-
-const (
-	interactive Method = "INTERACTIVE"
-	deviceCode  Method = "DEVICE_CODE"
-)
-
-// MSALCredentials contains the configuration required to initialize
-// an MSAL-based token provider.
-type MSALCredentials struct {
-	ClientID   string
-	Tenant     string
-	Email      string
-	Scopes     []string
-	AuthMethod Method
-}
 
 // MSALTokenProvider implements azcore.TokenCredential using
 // the Microsoft Authentication Library (MSAL).
@@ -49,13 +32,13 @@ type MSALTokenProvider struct {
 	client     *public.Client
 	email      string
 	scopes     []string
-	authMethod Method
+	authMethod config.Method
 }
 
 // NewMSALTokenProvider creates a token provider backed by a persistent
 // MSAL cache stored in the user's cache directory.
-func NewMSALTokenProvider(config *MSALCredentials) (*MSALTokenProvider, error) {
-	storage, err := accessor.New(config.ClientID)
+func NewMSALTokenProvider(cfg *config.AuthConfig) (*MSALTokenProvider, error) {
+	storage, err := accessor.New(cfg.ClientID)
 	if err != nil {
 		return nil, fmt.Errorf("creating persistent storage: %w", err)
 	}
@@ -65,14 +48,14 @@ func NewMSALTokenProvider(config *MSALCredentials) (*MSALTokenProvider, error) {
 		return nil, fmt.Errorf("retrieving cache dir: %w", err)
 	}
 
-	cacheAccessor, err := cache.New(storage, filepath.Join(cacheDir, "pzsp-teams", config.ClientID))
+	cacheAccessor, err := cache.New(storage, filepath.Join(cacheDir, "pzsp-teams", cfg.ClientID))
 	if err != nil {
 		return nil, fmt.Errorf("creating cache: %w", err)
 	}
 
-	authority := authorityURL + config.Tenant
+	authority := authorityURL + cfg.Tenant
 	client, err := public.New(
-		config.ClientID,
+		cfg.ClientID,
 		public.WithAuthority(authority),
 		public.WithCache(cacheAccessor),
 	)
@@ -82,9 +65,9 @@ func NewMSALTokenProvider(config *MSALCredentials) (*MSALTokenProvider, error) {
 
 	return &MSALTokenProvider{
 		client:     &client,
-		email:      config.Email,
-		scopes:     config.Scopes,
-		authMethod: config.AuthMethod,
+		email:      cfg.Email,
+		scopes:     cfg.Scopes,
+		authMethod: cfg.AuthMethod,
 	}, nil
 }
 
@@ -117,7 +100,7 @@ func (p *MSALTokenProvider) GetToken(ctx context.Context, _ policy.TokenRequestO
 
 	if !userFound || len(accounts) == 0 {
 		switch p.authMethod {
-		case interactive:
+		case config.Interactive:
 			result, err = p.client.AcquireTokenInteractive(
 				ctx,
 				p.scopes,
@@ -126,7 +109,7 @@ func (p *MSALTokenProvider) GetToken(ctx context.Context, _ policy.TokenRequestO
 			if err != nil {
 				return nilToken, fmt.Errorf("acquiring token interactively: %w", err)
 			}
-		case deviceCode:
+		case config.DeviceCode:
 			deviceCode, err := p.client.AcquireTokenByDeviceCode(
 				ctx,
 				p.scopes,

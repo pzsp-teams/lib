@@ -7,6 +7,7 @@ import (
 
 	graph "github.com/microsoftgraph/msgraph-sdk-go"
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
+	"github.com/pzsp-teams/lib/config"
 	"github.com/pzsp-teams/lib/internal/sender"
 )
 
@@ -41,12 +42,12 @@ func messageToGraph(content, contentType string) msmodels.ItemBodyable {
 	return body
 }
 
-func getMe(ctx context.Context, client *graph.GraphServiceClient, techParams sender.RequestTechParams) (msmodels.Userable, *sender.RequestError) {
+func getMe(ctx context.Context, client *graph.GraphServiceClient, senderCfg *config.SenderConfig) (msmodels.Userable, *sender.RequestError) {
 	call := func(ctx context.Context) (sender.Response, error) {
 		return client.Me().Get(ctx, nil)
 	}
 
-	resp, err := sender.SendRequest(ctx, call, techParams)
+	resp, err := sender.SendRequest(ctx, call, senderCfg)
 	if err != nil {
 		return nil, err
 	}

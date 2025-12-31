@@ -8,6 +8,7 @@ import (
 	graph "github.com/microsoftgraph/msgraph-sdk-go"
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
 	graphusers "github.com/microsoftgraph/msgraph-sdk-go/users"
+	"github.com/pzsp-teams/lib/config"
 	"github.com/pzsp-teams/lib/internal/sender"
 )
 
@@ -38,12 +39,12 @@ type ChatAPI interface {
 }
 
 type chatsAPI struct {
-	client     *graph.GraphServiceClient
-	techParams sender.RequestTechParams
+	client    *graph.GraphServiceClient
+	senderCfg *config.SenderConfig
 }
 
-func NewChat(client *graph.GraphServiceClient, techParams sender.RequestTechParams) ChatAPI {
-	return &chatsAPI{client, techParams}
+func NewChat(client *graph.GraphServiceClient, senderCfg *config.SenderConfig) ChatAPI {
+	return &chatsAPI{client, senderCfg}
 }
 
 func (c *chatsAPI) CreateOneOnOneChat(ctx context.Context, userRef string) (msmodels.Chatable, *sender.RequestError) {
@@ -51,7 +52,7 @@ func (c *chatsAPI) CreateOneOnOneChat(ctx context.Context, userRef string) (msmo
 	chatType := msmodels.ONEONONE_CHATTYPE
 	body.SetChatType(&chatType)
 
-	me, err := getMe(ctx, c.client, c.techParams)
+	me, err := getMe(ctx, c.client, c.senderCfg)
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +66,7 @@ func (c *chatsAPI) CreateOneOnOneChat(ctx context.Context, userRef string) (msmo
 		return c.client.Chats().Post(ctx, body, nil)
 	}
 
-	resp, err := sender.SendRequest(ctx, call, c.techParams)
+	resp, err := sender.SendRequest(ctx, call, c.senderCfg)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +100,7 @@ func (c *chatsAPI) ListChats(ctx context.Context, chatType *string) (msmodels.Ch
 			Get(ctx, configuration)
 	}
 
-	resp, err := sender.SendRequest(ctx, call, c.techParams)
+	resp, err := sender.SendRequest(ctx, call, c.senderCfg)
 	if err != nil {
 		return nil, err
 	}
@@ -119,7 +120,7 @@ func (c *chatsAPI) CreateGroupChat(ctx context.Context, userRefs []string, topic
 	body.SetTopic(&topic)
 
 	if includeMe {
-		me, err := getMe(ctx, c.client, c.techParams)
+		me, err := getMe(ctx, c.client, c.senderCfg)
 		if err != nil {
 			return nil, err
 		}
@@ -134,7 +135,7 @@ func (c *chatsAPI) CreateGroupChat(ctx context.Context, userRefs []string, topic
 		return c.client.Chats().Post(ctx, body, nil)
 	}
 
-	resp, err := sender.SendRequest(ctx, call, c.techParams)
+	resp, err := sender.SendRequest(ctx, call, c.senderCfg)
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +158,7 @@ func (c *chatsAPI) AddMemberToGroupChat(ctx context.Context, chatID, userRef str
 		return c.client.Chats().ByChatId(chatID).Members().Post(ctx, chatMember, nil)
 	}
 
-	resp, err := sender.SendRequest(ctx, call, c.techParams)
+	resp, err := sender.SendRequest(ctx, call, c.senderCfg)
 	if err != nil {
 		return nil, err
 	}
@@ -179,7 +180,7 @@ func (c *chatsAPI) RemoveMemberFromGroupChat(ctx context.Context, chatID, member
 			Delete(ctx, nil)
 	}
 
-	_, err := sender.SendRequest(ctx, call, c.techParams)
+	_, err := sender.SendRequest(ctx, call, c.senderCfg)
 	return err
 }
 
@@ -188,7 +189,7 @@ func (c *chatsAPI) ListGroupChatMembers(ctx context.Context, chatID string) (msm
 		return c.client.Chats().ByChatId(chatID).Members().Get(ctx, nil)
 	}
 
-	resp, err := sender.SendRequest(ctx, call, c.techParams)
+	resp, err := sender.SendRequest(ctx, call, c.senderCfg)
 	if err != nil {
 		return nil, err
 	}
@@ -208,7 +209,7 @@ func (c *chatsAPI) UpdateGroupChatTopic(ctx context.Context, chatID, topic strin
 		return c.client.Chats().ByChatId(chatID).Patch(ctx, body, nil)
 	}
 
-	resp, err := sender.SendRequest(ctx, call, c.techParams)
+	resp, err := sender.SendRequest(ctx, call, c.senderCfg)
 	if err != nil {
 		return nil, err
 	}
@@ -225,7 +226,7 @@ func (c *chatsAPI) ListMessages(ctx context.Context, chatID string) (msmodels.Ch
 		return c.client.Chats().ByChatId(chatID).Messages().Get(ctx, nil)
 	}
 
-	resp, err := sender.SendRequest(ctx, call, c.techParams)
+	resp, err := sender.SendRequest(ctx, call, c.senderCfg)
 	if err != nil {
 		return nil, err
 	}
@@ -249,7 +250,7 @@ func (c *chatsAPI) SendMessage(ctx context.Context, chatID, content, contentType
 		return c.client.Chats().ByChatId(chatID).Messages().Post(ctx, msg, nil)
 	}
 
-	resp, err := sender.SendRequest(ctx, call, c.techParams)
+	resp, err := sender.SendRequest(ctx, call, c.senderCfg)
 	if err != nil {
 		return nil, err
 	}
@@ -273,7 +274,7 @@ func (c *chatsAPI) DeleteMessage(ctx context.Context, chatID, messageID string) 
 			Post(ctx, nil)
 	}
 
-	_, err := sender.SendRequest(ctx, call, c.techParams)
+	_, err := sender.SendRequest(ctx, call, c.senderCfg)
 	return err
 }
 
@@ -287,7 +288,7 @@ func (c *chatsAPI) GetMessage(ctx context.Context, chatID, messageID string) (ms
 			Get(ctx, nil)
 	}
 
-	resp, err := sender.SendRequest(ctx, call, c.techParams)
+	resp, err := sender.SendRequest(ctx, call, c.senderCfg)
 	if err != nil {
 		return nil, err
 	}
@@ -322,7 +323,7 @@ func (c *chatsAPI) ListAllMessages(ctx context.Context, startTime, endTime *time
 		return c.client.Me().Chats().GetAllMessages().GetAsGetAllMessagesGetResponse(ctx, configuration)
 	}
 
-	resp, err := sender.SendRequest(ctx, call, c.techParams)
+	resp, err := sender.SendRequest(ctx, call, c.senderCfg)
 	if err != nil {
 		return nil, err
 	}
@@ -340,7 +341,7 @@ func (c *chatsAPI) ListPinnedMessages(ctx context.Context, chatID string) (msmod
 		return c.client.Chats().ByChatId(chatID).PinnedMessages().Get(ctx, nil)
 	}
 
-	resp, err := sender.SendRequest(ctx, call, c.techParams)
+	resp, err := sender.SendRequest(ctx, call, c.senderCfg)
 	if err != nil {
 		return nil, err
 	}
@@ -367,7 +368,7 @@ func (c *chatsAPI) PinMessage(ctx context.Context, chatID, messageID string) *se
 			Post(ctx, pinned, nil)
 	}
 
-	_, err := sender.SendRequest(ctx, call, c.techParams)
+	_, err := sender.SendRequest(ctx, call, c.senderCfg)
 	if err != nil {
 		return err
 	}
@@ -385,6 +386,6 @@ func (c *chatsAPI) UnpinMessage(ctx context.Context, chatID, pinnedID string) *s
 			Delete(ctx, nil)
 	}
 
-	_, err := sender.SendRequest(ctx, call, c.techParams)
+	_, err := sender.SendRequest(ctx, call, c.senderCfg)
 	return err
 }

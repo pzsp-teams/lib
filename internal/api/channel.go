@@ -12,6 +12,7 @@ import (
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
 	graphteams "github.com/microsoftgraph/msgraph-sdk-go/teams"
 
+	"github.com/pzsp-teams/lib/config"
 	"github.com/pzsp-teams/lib/internal/sender"
 )
 
@@ -34,12 +35,12 @@ type ChannelAPI interface {
 }
 
 type channelAPI struct {
-	client     *graph.GraphServiceClient
-	techParams sender.RequestTechParams
+	client    *graph.GraphServiceClient
+	senderCfg *config.SenderConfig
 }
 
-func NewChannels(client *graph.GraphServiceClient, techParams sender.RequestTechParams) ChannelAPI {
-	return &channelAPI{client, techParams}
+func NewChannels(client *graph.GraphServiceClient, senderCfg *config.SenderConfig) ChannelAPI {
+	return &channelAPI{client, senderCfg}
 }
 
 func (c *channelAPI) ListChannels(ctx context.Context, teamID string) (msmodels.ChannelCollectionResponseable, *sender.RequestError) {
@@ -51,7 +52,7 @@ func (c *channelAPI) ListChannels(ctx context.Context, teamID string) (msmodels.
 			Get(ctx, nil)
 	}
 
-	resp, err := sender.SendRequest(ctx, call, c.techParams)
+	resp, err := sender.SendRequest(ctx, call, c.senderCfg)
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +75,7 @@ func (c *channelAPI) GetChannel(ctx context.Context, teamID, channelID string) (
 			Get(ctx, nil)
 	}
 
-	resp, err := sender.SendRequest(ctx, call, c.techParams)
+	resp, err := sender.SendRequest(ctx, call, c.senderCfg)
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +97,7 @@ func (c *channelAPI) CreateStandardChannel(ctx context.Context, teamID string, c
 			Post(ctx, channel, nil)
 	}
 
-	resp, err := sender.SendRequest(ctx, call, c.techParams)
+	resp, err := sender.SendRequest(ctx, call, c.senderCfg)
 	if err != nil {
 		return nil, err
 	}
@@ -127,7 +128,7 @@ func (c *channelAPI) CreatePrivateChannelWithMembers(ctx context.Context, teamID
 			Post(ctx, ch, nil)
 	}
 
-	resp, err := sender.SendRequest(ctx, call, c.techParams)
+	resp, err := sender.SendRequest(ctx, call, c.senderCfg)
 	if err != nil {
 		return nil, err
 	}
@@ -151,7 +152,7 @@ func (c *channelAPI) DeleteChannel(ctx context.Context, teamID, channelID string
 		return nil, err
 	}
 
-	_, err := sender.SendRequest(ctx, call, c.techParams)
+	_, err := sender.SendRequest(ctx, call, c.senderCfg)
 	return err
 }
 
@@ -172,7 +173,7 @@ func (c *channelAPI) SendMessage(ctx context.Context, teamID, channelID, content
 			Post(ctx, message, nil)
 	}
 
-	resp, err := sender.SendRequest(ctx, call, c.techParams)
+	resp, err := sender.SendRequest(ctx, call, c.senderCfg)
 	if err != nil {
 		return nil, err
 	}
@@ -204,7 +205,7 @@ func (c *channelAPI) SendReply(ctx context.Context, teamID, channelID, messageID
 			Post(ctx, reply, nil)
 	}
 
-	resp, err := sender.SendRequest(ctx, call, c.techParams)
+	resp, err := sender.SendRequest(ctx, call, c.senderCfg)
 	if err != nil {
 		return nil, err
 	}
@@ -234,7 +235,7 @@ func (c *channelAPI) ListMessages(ctx context.Context, teamID, channelID string,
 			})
 	}
 
-	resp, err := sender.SendRequest(ctx, call, c.techParams)
+	resp, err := sender.SendRequest(ctx, call, c.senderCfg)
 	if err != nil {
 		return nil, err
 	}
@@ -259,7 +260,7 @@ func (c *channelAPI) GetMessage(ctx context.Context, teamID, channelID, messageI
 			Get(ctx, nil)
 	}
 
-	resp, err := sender.SendRequest(ctx, call, c.techParams)
+	resp, err := sender.SendRequest(ctx, call, c.senderCfg)
 	if err != nil {
 		return nil, err
 	}
@@ -291,7 +292,7 @@ func (c *channelAPI) ListReplies(ctx context.Context, teamID, channelID, message
 			})
 	}
 
-	resp, err := sender.SendRequest(ctx, call, c.techParams)
+	resp, err := sender.SendRequest(ctx, call, c.senderCfg)
 	if err != nil {
 		return nil, err
 	}
@@ -318,7 +319,7 @@ func (c *channelAPI) GetReply(ctx context.Context, teamID, channelID, messageID,
 			Get(ctx, nil)
 	}
 
-	resp, err := sender.SendRequest(ctx, call, c.techParams)
+	resp, err := sender.SendRequest(ctx, call, c.senderCfg)
 	if err != nil {
 		return nil, err
 	}
@@ -342,7 +343,7 @@ func (c *channelAPI) ListMembers(ctx context.Context, teamID, channelID string) 
 			Get(ctx, nil)
 	}
 
-	resp, err := sender.SendRequest(ctx, call, c.techParams)
+	resp, err := sender.SendRequest(ctx, call, c.senderCfg)
 	if err != nil {
 		return nil, err
 	}
@@ -371,7 +372,7 @@ func (c *channelAPI) AddMember(ctx context.Context, teamID, channelID, userRef, 
 			Post(ctx, member, nil)
 	}
 
-	resp, err := sender.SendRequest(ctx, call, c.techParams)
+	resp, err := sender.SendRequest(ctx, call, c.senderCfg)
 	if err != nil {
 		return nil, err
 	}
@@ -398,7 +399,7 @@ func (c *channelAPI) UpdateMemberRole(ctx context.Context, teamID, channelID, me
 			Patch(ctx, member, nil)
 	}
 
-	resp, err := sender.SendRequest(ctx, call, c.techParams)
+	resp, err := sender.SendRequest(ctx, call, c.senderCfg)
 	if err != nil {
 		return nil, err
 	}
@@ -424,6 +425,6 @@ func (c *channelAPI) RemoveMember(ctx context.Context, teamID, channelID, member
 		return nil, err
 	}
 
-	_, err := sender.SendRequest(ctx, call, c.techParams)
+	_, err := sender.SendRequest(ctx, call, c.senderCfg)
 	return err
 }

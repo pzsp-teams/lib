@@ -11,15 +11,10 @@ import (
 	"time"
 
 	"github.com/microsoftgraph/msgraph-sdk-go/models/odataerrors"
+	"github.com/pzsp-teams/lib/config"
 )
 
 type GraphCall func(ctx context.Context) (Response, error)
-
-type RequestTechParams struct {
-	MaxRetries     int
-	NextRetryDelay int // in seconds
-	Timeout        int // in seconds
-}
 
 func withTimeout(timeout time.Duration, call GraphCall) GraphCall {
 	return func(ctx context.Context) (Response, error) {
@@ -45,11 +40,11 @@ func retry(ctx context.Context, attempts int, delay time.Duration, call GraphCal
 	return nil, err
 }
 
-func SendRequest(ctx context.Context, call GraphCall, techParams RequestTechParams) (Response, *RequestError) {
-	timeout := time.Duration(techParams.Timeout) * time.Second
-	delay := time.Duration(techParams.NextRetryDelay) * time.Second
+func SendRequest(ctx context.Context, call GraphCall, cfg *config.SenderConfig) (Response, *RequestError) {
+	timeout := time.Duration(cfg.Timeout) * time.Second
+	delay := time.Duration(cfg.NextRetryDelay) * time.Second
 	call = withTimeout(timeout, call)
-	res, err := retry(ctx, techParams.MaxRetries, delay, call)
+	res, err := retry(ctx, cfg.MaxRetries, delay, call)
 	if err != nil {
 		return nil, convertGraphError(err)
 	}
