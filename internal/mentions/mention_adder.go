@@ -1,3 +1,9 @@
+// Package mentions provides helpers for building, validating, and mapping Microsoft Teams @mentions.
+//
+// It supports user mentions and conversation mentions (team/channel/everyone) by:
+//   - collecting mentions with stable <at id="..."> numbering and optional de-duplication,
+//   - validating HTML bodies for required <at> tags,
+//   - converting internal mention models to Microsoft Graph ChatMessageMention payloads.
 package mentions
 
 import (
