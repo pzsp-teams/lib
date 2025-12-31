@@ -29,9 +29,8 @@ func NewCacheHandler(cfg *config.CacheConfig) *CacheHandler {
 	}
 
 	var cacher Cacher
-	switch cfg.Provider {
-	case config.CacheProviderJSONFile:
-		cacher = NewJSONFileCacher(*cfg.Path)
+	if cfg.Provider == config.CacheProviderJSONFile {
+		cacher = newJSONFileCacher(*cfg.Path)
 	}
 
 	return &CacheHandler{

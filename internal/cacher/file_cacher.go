@@ -8,20 +8,20 @@ import (
 	"sync"
 )
 
-type JSONFileCacher struct {
+type jSONFileCacher struct {
 	mu     sync.Mutex
 	file   string
 	cache  map[string]json.RawMessage
 	loaded bool
 }
 
-func NewJSONFileCacher(path string) Cacher {
-	return &JSONFileCacher{
+func newJSONFileCacher(path string) Cacher {
+	return &jSONFileCacher{
 		file: path,
 	}
 }
 
-func (c *JSONFileCacher) Get(key string) (value any, found bool, err error) {
+func (c *jSONFileCacher) Get(key string) (value any, found bool, err error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.loaded {
@@ -33,7 +33,7 @@ func (c *JSONFileCacher) Get(key string) (value any, found bool, err error) {
 	return c.getFromCache(key)
 }
 
-func (c *JSONFileCacher) getFromCache(key string) (value any, found bool, err error) {
+func (c *jSONFileCacher) getFromCache(key string) (value any, found bool, err error) {
 	data, ok := c.cache[key]
 	if !ok {
 		return nil, false, nil
@@ -45,7 +45,7 @@ func (c *JSONFileCacher) getFromCache(key string) (value any, found bool, err er
 	return result, true, nil
 }
 
-func (c *JSONFileCacher) loadCache() error {
+func (c *jSONFileCacher) loadCache() error {
 	data, err := os.ReadFile(c.file)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -66,7 +66,7 @@ func (c *JSONFileCacher) loadCache() error {
 	return nil
 }
 
-func (c *JSONFileCacher) Set(key string, value any) error {
+func (c *jSONFileCacher) Set(key string, value any) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if err := c.ensureLoadedLocked(); err != nil {
@@ -94,7 +94,7 @@ func (c *JSONFileCacher) Set(key string, value any) error {
 	return c.persistLocked()
 }
 
-func (c *JSONFileCacher) Invalidate(key string) error {
+func (c *jSONFileCacher) Invalidate(key string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if err := c.ensureLoadedLocked(); err != nil {
@@ -104,7 +104,7 @@ func (c *JSONFileCacher) Invalidate(key string) error {
 	return c.persistLocked()
 }
 
-func (c *JSONFileCacher) Clear() error {
+func (c *jSONFileCacher) Clear() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.cache = make(map[string]json.RawMessage)
@@ -112,14 +112,14 @@ func (c *JSONFileCacher) Clear() error {
 	return c.persistLocked()
 }
 
-func (c *JSONFileCacher) ensureLoadedLocked() error {
+func (c *jSONFileCacher) ensureLoadedLocked() error {
 	if c.loaded {
 		return nil
 	}
 	return c.loadCache()
 }
 
-func (c *JSONFileCacher) persistLocked() error {
+func (c *jSONFileCacher) persistLocked() error {
 	data, err := json.MarshalIndent(c.cache, "", "  ")
 	if err != nil {
 		return err
