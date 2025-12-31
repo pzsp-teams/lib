@@ -42,6 +42,21 @@ func (m *MockTeamAPI) EXPECT() *MockTeamAPIMockRecorder {
 	return m.recorder
 }
 
+// AddMember mocks base method.
+func (m *MockTeamAPI) AddMember(ctx context.Context, teamID string, member models.ConversationMemberable) (models.ConversationMemberable, *sender.RequestError) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AddMember", ctx, teamID, member)
+	ret0, _ := ret[0].(models.ConversationMemberable)
+	ret1, _ := ret[1].(*sender.RequestError)
+	return ret0, ret1
+}
+
+// AddMember indicates an expected call of AddMember.
+func (mr *MockTeamAPIMockRecorder) AddMember(ctx, teamID, member interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddMember", reflect.TypeOf((*MockTeamAPI)(nil).AddMember), ctx, teamID, member)
+}
+
 // Archive mocks base method.
 func (m *MockTeamAPI) Archive(ctx context.Context, teamID string, spoReadOnlyForMembers *bool) *sender.RequestError {
 	m.ctrl.T.Helper()
@@ -115,6 +130,36 @@ func (mr *MockTeamAPIMockRecorder) Get(ctx, teamID any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockTeamAPI)(nil).Get), ctx, teamID)
 }
 
+// GetMember mocks base method.
+func (m *MockTeamAPI) GetMember(ctx context.Context, teamID, memberID string) (models.ConversationMemberable, *sender.RequestError) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetMember", ctx, teamID, memberID)
+	ret0, _ := ret[0].(models.ConversationMemberable)
+	ret1, _ := ret[1].(*sender.RequestError)
+	return ret0, ret1
+}
+
+// GetMember indicates an expected call of GetMember.
+func (mr *MockTeamAPIMockRecorder) GetMember(ctx, teamID, memberID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMember", reflect.TypeOf((*MockTeamAPI)(nil).GetMember), ctx, teamID, memberID)
+}
+
+// ListMembers mocks base method.
+func (m *MockTeamAPI) ListMembers(ctx context.Context, teamID string) (models.ConversationMemberCollectionResponseable, *sender.RequestError) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListMembers", ctx, teamID)
+	ret0, _ := ret[0].(models.ConversationMemberCollectionResponseable)
+	ret1, _ := ret[1].(*sender.RequestError)
+	return ret0, ret1
+}
+
+// ListMembers indicates an expected call of ListMembers.
+func (mr *MockTeamAPIMockRecorder) ListMembers(ctx, teamID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListMembers", reflect.TypeOf((*MockTeamAPI)(nil).ListMembers), ctx, teamID)
+}
+
 // ListMyJoined mocks base method.
 func (m *MockTeamAPI) ListMyJoined(ctx context.Context) (models.TeamCollectionResponseable, *sender.RequestError) {
 	m.ctrl.T.Helper()
@@ -128,6 +173,20 @@ func (m *MockTeamAPI) ListMyJoined(ctx context.Context) (models.TeamCollectionRe
 func (mr *MockTeamAPIMockRecorder) ListMyJoined(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListMyJoined", reflect.TypeOf((*MockTeamAPI)(nil).ListMyJoined), ctx)
+}
+
+// RemoveMember mocks base method.
+func (m *MockTeamAPI) RemoveMember(ctx context.Context, teamID, memberID string) *sender.RequestError {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RemoveMember", ctx, teamID, memberID)
+	ret0, _ := ret[0].(*sender.RequestError)
+	return ret0
+}
+
+// RemoveMember indicates an expected call of RemoveMember.
+func (mr *MockTeamAPIMockRecorder) RemoveMember(ctx, teamID, memberID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveMember", reflect.TypeOf((*MockTeamAPI)(nil).RemoveMember), ctx, teamID, memberID)
 }
 
 // RestoreDeleted mocks base method.
@@ -172,4 +231,18 @@ func (m *MockTeamAPI) Update(ctx context.Context, teamID string, patch *models.T
 func (mr *MockTeamAPIMockRecorder) Update(ctx, teamID, patch any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Update", reflect.TypeOf((*MockTeamAPI)(nil).Update), ctx, teamID, patch)
+}
+
+// UpdateMemberRoles mocks base method.
+func (m *MockTeamAPI) UpdateMemberRoles(ctx context.Context, teamID, memberID string, roles []string) *sender.RequestError {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateMemberRoles", ctx, teamID, memberID, roles)
+	ret0, _ := ret[0].(*sender.RequestError)
+	return ret0
+}
+
+// UpdateMemberRoles indicates an expected call of UpdateMemberRoles.
+func (mr *MockTeamAPIMockRecorder) UpdateMemberRoles(ctx, teamID, memberID, roles interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateMemberRoles", reflect.TypeOf((*MockTeamAPI)(nil).UpdateMemberRoles), ctx, teamID, memberID, roles)
 }
