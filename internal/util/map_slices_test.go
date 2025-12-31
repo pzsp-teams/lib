@@ -26,13 +26,13 @@ func TestMapSlices(t *testing.T) {
 		{
 			name: "nil slice",
 			in:   nil,
-			fn:   func(v int) string { return strconv.Itoa(v) },
+			fn:   strconv.Itoa,
 			want: []string{},
 		},
 		{
 			name: "empty slice",
 			in:   []int{},
-			fn:   func(v int) string { return strconv.Itoa(v) },
+			fn:   strconv.Itoa,
 			want: []string{},
 		},
 	}
@@ -62,6 +62,6 @@ func TestMapSlices_MapperCalledForEachElement(t *testing.T) {
 	assert.Equal(t, len(in), calls, "mapper should be called for each element")
 	for i, elem := range in {
 		expected := elem * 2
-		assert.Equal(t, expected, out[i], "mapped value should be correct")
+		assert.Equal(t, expected, out[i], "different output value at index %d", i)
 	}
 }

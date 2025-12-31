@@ -86,7 +86,7 @@ func TestResolveTeamIDByName(t *testing.T) {
 			}
 
 			require.NoError(t, err)
-			require.Equal(t, tc.expectedID, id, "resolved team ID does not match expected")
+			require.Equal(t, tc.expectedID, id)
 		})
 	}
 }
@@ -173,7 +173,7 @@ func TestResolveChannelIDByName(t *testing.T) {
 			}
 
 			require.NoError(t, err)
-			require.Equal(t, tc.expectedID, id, "resolved channel ID does not match expected")
+			require.Equal(t, tc.expectedID, id)
 		})
 	}
 }
@@ -271,7 +271,7 @@ func TestResolveOneonOneChatIDByUserRef(t *testing.T) {
 			}
 
 			require.NoError(t, err)
-			require.Equal(t, tc.expectedID, id, "resolved chat ID does not match expected")
+			require.Equal(t, tc.expectedID, id)
 		})
 	}
 }
@@ -361,7 +361,7 @@ func TestResolveGroupChatID(t *testing.T) {
 			}
 
 			require.NoError(t, err)
-			require.Equal(t, tc.expectedID, id, "resolved chat ID does not match expected")
+			require.Equal(t, tc.expectedID, id)
 		})
 	}
 }
@@ -445,7 +445,7 @@ func TestResolveMemberID(t *testing.T) {
 			}
 
 			require.NoError(t, err)
-			require.Equal(t, tc.expectedID, id, "resolved member ID does not match expected")
+			require.Equal(t, tc.expectedID, id)
 		})
 	}
 }
