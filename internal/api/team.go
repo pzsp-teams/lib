@@ -23,6 +23,11 @@ type TeamAPI interface {
 	Unarchive(ctx context.Context, teamID string) *sender.RequestError
 	Delete(ctx context.Context, teamID string) *sender.RequestError
 	RestoreDeleted(ctx context.Context, deletedGroupID string) (msmodels.DirectoryObjectable, *sender.RequestError)
+	ListMembers(ctx context.Context, teamID string) (msmodels.ConversationMemberCollectionResponseable, *sender.RequestError)
+	GetMember(ctx context.Context, teamID, memberID string) (msmodels.ConversationMemberable, *sender.RequestError)
+	AddMember(ctx context.Context, teamID string, member msmodels.ConversationMemberable) (msmodels.ConversationMemberable, *sender.RequestError)
+	RemoveMember(ctx context.Context, teamID, memberID string) *sender.RequestError
+	UpdateMemberRoles(ctx context.Context, teamID, memberID string, roles []string) *sender.RequestError
 }
 
 type teamAPI struct {
@@ -208,4 +213,90 @@ func (t *teamAPI) RestoreDeleted(ctx context.Context, deletedGroupID string) (ms
 		return nil, newTypeError("DirectoryObjectable")
 	}
 	return out, nil
+}
+
+func (t *teamAPI) ListMembers(ctx context.Context, teamID string) (msmodels.ConversationMemberCollectionResponseable, *sender.RequestError) {
+	call := func(ctx context.Context) (sender.Response, error) {
+		return t.client.
+			Teams().
+			ByTeamId(teamID).
+			Members().
+			Get(ctx, nil)
+	}
+	resp, err := sender.SendRequest(ctx, call, t.techParams)
+	if err != nil {
+		return nil, err
+	}
+	out, ok := resp.(msmodels.ConversationMemberCollectionResponseable)
+	if !ok {
+		return nil, newTypeError("ConversationMemberCollectionResponseable")
+	}
+	return out, nil
+}
+
+func (t *teamAPI) GetMember(ctx context.Context, teamID, memberID string) (msmodels.ConversationMemberable, *sender.RequestError) {
+	call := func(ctx context.Context) (sender.Response, error) {
+		return t.client.
+			Teams().
+			ByTeamId(teamID).
+			Members().
+			ByConversationMemberId(memberID).
+			Get(ctx, nil)
+	}
+	resp, err := sender.SendRequest(ctx, call, t.techParams)
+	if err != nil {
+		return nil, err
+	}
+	out, ok := resp.(msmodels.ConversationMemberable)
+	if !ok {
+		return nil, newTypeError("ConversationMemberable")
+	}
+	return out, nil
+}
+
+func (t *teamAPI) AddMember(ctx context.Context, teamID string, member msmodels.ConversationMemberable) (msmodels.ConversationMemberable, *sender.RequestError) {
+	call := func(ctx context.Context) (sender.Response, error) {
+		return t.client.
+			Teams().
+			ByTeamId(teamID).
+			Members().
+			Post(ctx, member, nil)
+	}
+	resp, err := sender.SendRequest(ctx, call, t.techParams)
+	if err != nil {
+		return nil, err
+	}
+	out, ok := resp.(msmodels.ConversationMemberable)
+	if !ok {
+		return nil, newTypeError("ConversationMemberable")
+	}
+	return out, nil
+}
+
+func (t *teamAPI) RemoveMember(ctx context.Context, teamID, memberID string) *sender.RequestError {
+	call := func(ctx context.Context) (sender.Response, error) {
+		return nil, t.client.
+			Teams().
+			ByTeamId(teamID).
+			Members().
+			ByConversationMemberId(memberID).
+			Delete(ctx, nil)
+	}
+	_, err := sender.SendRequest(ctx, call, t.techParams)
+	return err
+}
+
+func (t *teamAPI) UpdateMemberRoles(ctx context.Context, teamID, memberID string, roles []string) *sender.RequestError {
+	patch := msmodels.NewConversationMember()
+	patch.SetRoles(roles)
+	call := func(ctx context.Context) (sender.Response, error) {
+		return t.client.
+			Teams().
+			ByTeamId(teamID).
+			Members().
+			ByConversationMemberId(memberID).
+			Patch(ctx, patch, nil)
+	}
+	_, err := sender.SendRequest(ctx, call, t.techParams)
+	return err
 }

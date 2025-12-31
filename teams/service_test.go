@@ -88,6 +88,63 @@ func (f *fakeTeamsAPI) RestoreDeleted(ctx context.Context, deletedGroupID string
 	return f.restoreObj, f.restoreErr
 }
 
+func (f *fakeTeamsAPI) AddMember(ctx context.Context, teamID string, member msmodels.ConversationMemberable) (msmodels.ConversationMemberable, *sender.RequestError) {
+	return nil, nil
+}
+
+func (f *fakeTeamsAPI) GetMember(ctx context.Context, teamID, memberID string) (msmodels.ConversationMemberable, *sender.RequestError) {
+	return nil, nil
+}
+
+func (f *fakeTeamsAPI) ListMembers(ctx context.Context, teamID string) (msmodels.ConversationMemberCollectionResponseable, *sender.RequestError) {
+	return nil, nil
+}
+
+func (f *fakeTeamsAPI) RemoveMember(ctx context.Context, teamID, memberID string) *sender.RequestError {
+	return nil
+}
+
+func (f *fakeTeamsAPI) UpdateMemberRoles(ctx context.Context, teamID, memberID string, roles []string) *sender.RequestError {
+	return nil
+}
+
+func TestService_ListMyJoined_MapsTeams(t *testing.T) {
+	ctx := context.Background()
+	col := msmodels.NewTeamCollectionResponse()
+	a := newGraphTeam("1", "Alpha")
+	b := newGraphTeam("2", "Beta")
+	col.SetValue([]msmodels.Teamable{a, b})
+
+	api := &fakeTeamsAPI{listResp: col}
+	svc := NewService(api, &fakeResolver{})
+
+	got, err := svc.ListMyJoined(ctx)
+	if err != nil {
+		t.Fatalf("unexpected err: %v", err)
+	}
+	if len(got) != 2 || got[0].ID != "1" || got[1].DisplayName != "Beta" {
+		t.Fatalf("bad mapping: %#v", got)
+	}
+}
+
+func TestService_Get_MapsTeam(t *testing.T) {
+	ctx := context.Background()
+	api := &fakeTeamsAPI{getResp: newGraphTeam("42", "X")}
+	m := &fakeResolver{}
+	svc := NewService(api, m)
+
+	got, err := svc.Get(ctx, "team-name-42")
+	if err != nil {
+		t.Fatalf("unexpected err: %v", err)
+	}
+	if got.ID != "42" || got.DisplayName != "X" {
+		t.Fatalf("bad mapping: %#v", got)
+	}
+	if m.lastTeamName != "team-name-42" {
+		t.Errorf("expected resolver called with 'team-name-42', got %q", m.lastTeamName)
+	}
+}
+
 func TestService_Delete_MapsError(t *testing.T) {
 	ctx := context.Background()
 	api := &fakeTeamsAPI{
