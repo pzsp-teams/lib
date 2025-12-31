@@ -15,7 +15,6 @@ import (
 	"github.com/pzsp-teams/lib/models"
 )
 
-// Service will be used later
 type service struct {
 	channelAPI      api.ChannelAPI
 	teamResolver    resolver.TeamResolver
@@ -23,12 +22,11 @@ type service struct {
 	userAPI         api.UsersAPI
 }
 
-// NewService will be used later
+// NewService creates a new channels Service instance
 func NewService(channelsAPI api.ChannelAPI, tr resolver.TeamResolver, cr resolver.ChannelResolver, userAPI api.UsersAPI) Service {
 	return &service{channelAPI: channelsAPI, teamResolver: tr, channelResolver: cr, userAPI: userAPI}
 }
 
-// ListChannels will be used later
 func (s *service) ListChannels(ctx context.Context, teamRef string) ([]*models.Channel, error) {
 	teamID, err := s.teamResolver.ResolveTeamRefToID(ctx, teamRef)
 	if err != nil {
@@ -42,7 +40,6 @@ func (s *service) ListChannels(ctx context.Context, teamRef string) ([]*models.C
 	return util.MapSlices(resp.GetValue(), adapter.MapGraphChannel), nil
 }
 
-// Get will be used later
 func (s *service) Get(ctx context.Context, teamRef, channelRef string) (*models.Channel, error) {
 	teamID, channelID, err := s.resolveTeamAndChannelID(ctx, teamRef, channelRef)
 	if err != nil {
@@ -57,7 +54,6 @@ func (s *service) Get(ctx context.Context, teamRef, channelRef string) (*models.
 	return adapter.MapGraphChannel(resp), nil
 }
 
-// CreateStandardChannel creates a standard channel in a team. All members of the team will have access to the channel.
 func (s *service) CreateStandardChannel(ctx context.Context, teamRef, name string) (*models.Channel, error) {
 	teamID, err := s.teamResolver.ResolveTeamRefToID(ctx, teamRef)
 	if err != nil {
@@ -75,7 +71,6 @@ func (s *service) CreateStandardChannel(ctx context.Context, teamRef, name strin
 	return adapter.MapGraphChannel(created), nil
 }
 
-// CreatePrivateChannel creates a private channel in a team with specified members and owners.
 func (s *service) CreatePrivateChannel(ctx context.Context, teamRef, name string, memberRefs, ownerRefs []string) (*models.Channel, error) {
 	teamID, err := s.teamResolver.ResolveTeamRefToID(ctx, teamRef)
 	if err != nil {
@@ -90,7 +85,6 @@ func (s *service) CreatePrivateChannel(ctx context.Context, teamRef, name string
 	return adapter.MapGraphChannel(created), nil
 }
 
-// Delete will be used later
 func (s *service) Delete(ctx context.Context, teamRef, channelRef string) error {
 	teamID, channelID, err := s.resolveTeamAndChannelID(ctx, teamRef, channelRef)
 	if err != nil {
@@ -105,7 +99,6 @@ func (s *service) Delete(ctx context.Context, teamRef, channelRef string) error 
 	return nil
 }
 
-// SendMessage will be used later
 func (s *service) SendMessage(ctx context.Context, teamRef, channelRef string, body models.MessageBody) (*models.Message, error) {
 	teamID, channelID, err := s.resolveTeamAndChannelID(ctx, teamRef, channelRef)
 	if err != nil {
@@ -144,7 +137,6 @@ func (s *service) SendReply(ctx context.Context, teamRef, channelRef, messageID 
 	return adapter.MapGraphMessage(resp), nil
 }
 
-// ListMessages retrieves messages from a channel
 func (s *service) ListMessages(ctx context.Context, teamRef, channelRef string, opts *models.ListMessagesOptions) ([]*models.Message, error) {
 	teamID, channelID, err := s.resolveTeamAndChannelID(ctx, teamRef, channelRef)
 	if err != nil {
@@ -161,7 +153,6 @@ func (s *service) ListMessages(ctx context.Context, teamRef, channelRef string, 
 	return util.MapSlices(resp.GetValue(), adapter.MapGraphMessage), nil
 }
 
-// GetMessage retrieves a specific message from a channel
 func (s *service) GetMessage(ctx context.Context, teamRef, channelRef, messageID string) (*models.Message, error) {
 	teamID, channelID, err := s.resolveTeamAndChannelID(ctx, teamRef, channelRef)
 	if err != nil {
@@ -176,7 +167,6 @@ func (s *service) GetMessage(ctx context.Context, teamRef, channelRef, messageID
 	return adapter.MapGraphMessage(resp), nil
 }
 
-// ListReplies retrieves replies to a specific message
 func (s *service) ListReplies(ctx context.Context, teamRef, channelRef, messageID string, top *int32) ([]*models.Message, error) {
 	teamID, channelID, err := s.resolveTeamAndChannelID(ctx, teamRef, channelRef)
 	if err != nil {
@@ -190,7 +180,6 @@ func (s *service) ListReplies(ctx context.Context, teamRef, channelRef, messageI
 	return util.MapSlices(resp.GetValue(), adapter.MapGraphMessage), nil
 }
 
-// GetReply retrieves a specific reply to a message
 func (s *service) GetReply(ctx context.Context, teamRef, channelRef, messageID, replyID string) (*models.Message, error) {
 	teamID, channelID, err := s.resolveTeamAndChannelID(ctx, teamRef, channelRef)
 	if err != nil {
