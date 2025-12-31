@@ -56,14 +56,15 @@ func TestErrData(t *testing.T) {
 
 func TestErrAccessForbidden(t *testing.T) {
 	e := ErrAccessForbidden{
-		Code: http.StatusForbidden,
+		Code:            http.StatusForbidden,
+		OriginalMessage: "Bad scopes",
 		ErrData: ErrData{ResourceRefs: map[resources.Resource]string{
 			resources.Team: "z1",
 		}},
 	}
 
 	got := e.Error()
-	want := "[CODE: 403]: access forbidden to one or more resources among: TEAM(z1)"
+	want := "[CODE: 403]: access forbidden to one or more resources among: TEAM(z1) (Bad scopes)"
 	assert.Equal(t, want, got)
 
 	assert.ErrorIs(t, e, ErrAccessForbidden{Code: http.StatusForbidden})
@@ -73,14 +74,15 @@ func TestErrAccessForbidden(t *testing.T) {
 
 func TestErrResourceNotFound_Table(t *testing.T) {
 	e := ErrResourceNotFound{
-		Code: http.StatusNotFound,
+		Code:            http.StatusNotFound,
+		OriginalMessage: "Bad scopes",
 		ErrData: ErrData{ResourceRefs: map[resources.Resource]string{
 			resources.Channel: "general",
 		}},
 	}
 
 	got := e.Error()
-	want := "[CODE: 404]: one or more resources not found among: CHANNEL(general)"
+	want := "[CODE: 404]: one or more resources not found among: CHANNEL(general) (Bad scopes)"
 	assert.Equal(t, want, got)
 
 	assert.ErrorIs(t, e, ErrResourceNotFound{Code: http.StatusNotFound})

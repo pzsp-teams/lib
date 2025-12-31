@@ -35,10 +35,10 @@ func MapError(e *RequestError, opts ...Option) error {
 	}
 	switch e.Code {
 	case http.StatusForbidden:
-		return ErrAccessForbidden{e.Code, *data}
+		return ErrAccessForbidden{e.Code, e.Message, *data}
 
 	case http.StatusNotFound:
-		return ErrResourceNotFound{e.Code, *data}
+		return ErrResourceNotFound{e.Code, e.Message, *data}
 
 	default:
 		return *e

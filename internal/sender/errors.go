@@ -31,7 +31,8 @@ func (ed *ErrData) String() string {
 }
 
 type ErrAccessForbidden struct {
-	Code int
+	Code            int
+	OriginalMessage string
 	ErrData
 }
 
@@ -39,7 +40,7 @@ func (e ErrAccessForbidden) Error() string {
 	return fmt.Sprintf(
 		errTemplate,
 		e.Code,
-		fmt.Sprintf("access forbidden to one or more resources among: %s", e.String()),
+		fmt.Sprintf("access forbidden to one or more resources among: %s (%s)", e.String(), e.OriginalMessage),
 	)
 }
 
@@ -49,7 +50,8 @@ func (e ErrAccessForbidden) Is(target error) bool {
 }
 
 type ErrResourceNotFound struct {
-	Code int
+	Code            int
+	OriginalMessage string
 	ErrData
 }
 
@@ -57,7 +59,7 @@ func (e ErrResourceNotFound) Error() string {
 	return fmt.Sprintf(
 		errTemplate,
 		e.Code,
-		fmt.Sprintf("one or more resources not found among: %s", e.String()),
+		fmt.Sprintf("one or more resources not found among: %s (%s)", e.String(), e.OriginalMessage),
 	)
 }
 
