@@ -25,8 +25,7 @@ type resolverContext[T any] struct {
 
 func (r *resolverContext[T]) resolveWithCache(
 	ctx context.Context,
-	c cacher.Cacher,
-	cacheEnabled bool,
+	cacheHandler *cacher.CacheHandler,
 ) (string, error) {
 	if r.ref == "" {
 		return "", fmt.Errorf("empty ref")
@@ -36,8 +35,8 @@ func (r *resolverContext[T]) resolveWithCache(
 		return r.ref, nil
 	}
 
-	if cacheEnabled && c != nil {
-		value, found, err := c.Get(r.cacheKey)
+	if cacheHandler != nil {
+		value, found, err := cacheHandler.Cacher.Get(r.cacheKey)
 		if err == nil && found {
 			if ids, ok := value.([]string); ok && len(ids) == 1 {
 				return ids[0], nil
@@ -55,8 +54,10 @@ func (r *resolverContext[T]) resolveWithCache(
 		return "", err
 	}
 
-	if cacheEnabled && c != nil {
-		_ = c.Set(r.cacheKey, id)
+	if cacheHandler != nil {
+		cacheHandler.Runner.Run(func() {
+			_ = cacheHandler.Cacher.Set(r.cacheKey, id)
+		})
 	}
 
 	return id, nil

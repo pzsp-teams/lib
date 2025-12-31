@@ -39,20 +39,17 @@ type ChatResolver interface {
 // and optionally caches successful resolutions.
 type ChatResolverCacheable struct {
 	chatsAPI     api.ChatAPI
-	cacher       cacher.Cacher
-	cacheEnabled bool
+	cacheHandler *cacher.CacheHandler
 }
 
 // NewChatResolverCacheable creates a new ChatResolverCacheable.
 func NewChatResolverCacheable(
 	chatsAPI api.ChatAPI,
-	c cacher.Cacher,
-	cacheEnabled bool,
+	cacheHandler *cacher.CacheHandler,
 ) ChatResolver {
 	return &ChatResolverCacheable{
 		chatsAPI:     chatsAPI,
-		cacher:       c,
-		cacheEnabled: cacheEnabled,
+		cacheHandler: cacheHandler,
 	}
 }
 
@@ -62,7 +59,7 @@ func (m *ChatResolverCacheable) ResolveOneOnOneChatRefToID(
 	userRef string,
 ) (string, error) {
 	rCtx := m.newOneOnOneResolveContext(userRef)
-	return rCtx.resolveWithCache(ctx, m.cacher, m.cacheEnabled)
+	return rCtx.resolveWithCache(ctx, m.cacheHandler)
 }
 
 // ResolveChatMemberRefToID implements ChatResolver.
@@ -71,7 +68,7 @@ func (m *ChatResolverCacheable) ResolveChatMemberRefToID(
 	chatID, userRef string,
 ) (string, error) {
 	rCtx := m.newChatMemberResolveContext(chatID, userRef)
-	return rCtx.resolveWithCache(ctx, m.cacher, m.cacheEnabled)
+	return rCtx.resolveWithCache(ctx, m.cacheHandler)
 }
 
 // ResolveGroupChatRefToID implements ChatResolver.
@@ -80,7 +77,7 @@ func (m *ChatResolverCacheable) ResolveGroupChatRefToID(
 	chatRef string,
 ) (string, error) {
 	rCtx := m.newGroupChatResolveContext(chatRef)
-	return rCtx.resolveWithCache(ctx, m.cacher, m.cacheEnabled)
+	return rCtx.resolveWithCache(ctx, m.cacheHandler)
 }
 
 func (m *ChatResolverCacheable) newOneOnOneResolveContext(

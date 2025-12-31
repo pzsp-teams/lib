@@ -33,20 +33,17 @@ type ChannelResolver interface {
 // and optionally caches successful resolutions.
 type ChannelResolverCacheable struct {
 	channelsAPI  api.ChannelAPI
-	cacher       cacher.Cacher
-	cacheEnabled bool
+	cacheHandler *cacher.CacheHandler
 }
 
 // NewChannelResolverCacheable creates a new ChannelResolverCacheable.
 func NewChannelResolverCacheable(
 	channelAPI api.ChannelAPI,
-	c cacher.Cacher,
-	cacheEnabled bool,
+	cacheHandler *cacher.CacheHandler,
 ) ChannelResolver {
 	return &ChannelResolverCacheable{
 		channelsAPI:  channelAPI,
-		cacher:       c,
-		cacheEnabled: cacheEnabled,
+		cacheHandler: cacheHandler,
 	}
 }
 
@@ -56,7 +53,7 @@ func (res *ChannelResolverCacheable) ResolveChannelRefToID(
 	teamID, channelRef string,
 ) (string, error) {
 	rCtx := res.newChannelResolveContext(teamID, channelRef)
-	return rCtx.resolveWithCache(ctx, res.cacher, res.cacheEnabled)
+	return rCtx.resolveWithCache(ctx, res.cacheHandler)
 }
 
 // ResolveChannelMemberRefToID implements ChannelResolver.
@@ -65,7 +62,7 @@ func (res *ChannelResolverCacheable) ResolveChannelMemberRefToID(
 	teamID, channelID, userRef string,
 ) (string, error) {
 	rCtx := res.newChannelMemberResolveContext(teamID, channelID, userRef)
-	return rCtx.resolveWithCache(ctx, res.cacher, res.cacheEnabled)
+	return rCtx.resolveWithCache(ctx, res.cacheHandler)
 }
 
 func (res *ChannelResolverCacheable) newChannelResolveContext(

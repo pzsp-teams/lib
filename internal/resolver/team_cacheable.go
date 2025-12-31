@@ -25,20 +25,17 @@ type TeamResolver interface {
 // and optionally caches successful resolutions.
 type TeamResolverCacheable struct {
 	teamsAPI     api.TeamAPI
-	cacher       cacher.Cacher
-	cacheEnabled bool
+	cacheHandler *cacher.CacheHandler
 }
 
 // NewTeamResolverCacheable creates a new TeamResolverCacheable.
 func NewTeamResolverCacheable(
 	teamsAPI api.TeamAPI,
-	c cacher.Cacher,
-	cacheEnabled bool,
+	cacheHandler *cacher.CacheHandler,
 ) TeamResolver {
 	return &TeamResolverCacheable{
 		teamsAPI:     teamsAPI,
-		cacher:       c,
-		cacheEnabled: cacheEnabled,
+		cacheHandler: cacheHandler,
 	}
 }
 
@@ -48,7 +45,7 @@ func (r *TeamResolverCacheable) ResolveTeamRefToID(
 	teamRef string,
 ) (string, error) {
 	rCtx := r.newTeamResolveContext(teamRef)
-	return rCtx.resolveWithCache(ctx, r.cacher, r.cacheEnabled)
+	return rCtx.resolveWithCache(ctx, r.cacheHandler)
 }
 
 func (r *TeamResolverCacheable) newTeamResolveContext(
