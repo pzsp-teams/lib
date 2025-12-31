@@ -157,26 +157,6 @@ func TestTryAddTeamOrChannelMention_ReturnsFalseAndDoesNotAdd(t *testing.T) {
 	}
 }
 
-func TestTryAddTeamOrChannelMention_DeduplicatesViaMentionAdder(t *testing.T) {
-	teamRef := "team-A"
-	teamID := "tid-1"
-	channelRef := "General"
-	channelID := "cid-1"
-
-	out := make([]models.Mention, 0)
-	adder := mentions.NewMentionAdder(&out)
-
-	ok1 := tryAddTeamOrChannelMention(adder, "team", teamRef, teamID, channelRef, channelID)
-	ok2 := tryAddTeamOrChannelMention(adder, "TEAM", teamRef, teamID, channelRef, channelID)
-
-	if !ok1 || !ok2 {
-		t.Fatalf("expected both calls to return ok=true")
-	}
-	if len(out) != 1 {
-		t.Fatalf("expected 1 mention due to dedup, got %d", len(out))
-	}
-}
-
 func TestMemberRole(t *testing.T) {
 	if got := memberRole(true); got != "owner" {
 		t.Fatalf("expected owner, got %q", got)

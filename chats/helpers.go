@@ -27,6 +27,6 @@ func tryAddEveryoneMention(adder *mentions.MentionAdder, chatID string, isGroup 
 	if !isGroup {
 		return false, fmt.Errorf("cannot mention everyone in one-on-one chat")
 	}
-	adder.Add(models.MentionEveryone, chatID, "Everyone", "everyone:"+chatID)
+	adder.Add(models.MentionEveryone, chatID, "Everyone")
 	return true, nil
 }

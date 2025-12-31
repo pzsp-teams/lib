@@ -99,7 +99,7 @@ func TestTryAddEveryoneMention_OneOnOneChat_ReturnsErrorAndDoesNotAdd(t *testing
 	}
 }
 
-func TestTryAddEveryoneMention_DeduplicatesByDedupKey(t *testing.T) {
+func TestTryAddEveryoneMention_DuplicatesAllowed(t *testing.T) {
 	out := make([]models.Mention, 0)
 	adder := mentions.NewMentionAdder(&out)
 
@@ -116,8 +116,8 @@ func TestTryAddEveryoneMention_DeduplicatesByDedupKey(t *testing.T) {
 		t.Fatalf("expected ok=true (it recognized everyone), got false")
 	}
 
-	if len(out) != 1 {
-		t.Fatalf("expected dedup to keep 1 mention, got %d", len(out))
+	if len(out) != 2 {
+		t.Fatalf("expected dedup to keep 2 mentions, got %d", len(out))
 	}
 
 	if out[0].AtID != 0 {
