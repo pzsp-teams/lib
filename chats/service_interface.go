@@ -8,6 +8,7 @@
 //   - ChatRef and GroupChatRef are references to chats used in method parameters.
 //   - If chatRef is a topic and is not unique, an ambiguity error is returned.
 //   - The authenticated user (derived from MSAL) is the one making the API calls (appropriate scopes must be granted).
+// If an async cached service is used, call Wait() to ensure all background cache updates are finished.
 package chats
 
 import (
@@ -43,7 +44,7 @@ type Service interface {
 	// ListMessages returns all messages in a chat.
 	ListMessages(ctx context.Context, chatRef ChatRef) ([]*models.Message, error)
 
-	// SendMessage sends a message to a chat. 
+	// SendMessage sends a message to a chat.
 	// Body parameter is the body of the message. It includes:
 	//   - Content: the text or html content of the message.
 	//   - ContentType: the type of content (text or html).

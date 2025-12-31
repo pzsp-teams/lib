@@ -1,3 +1,7 @@
+// Package cacher contains caching utilities for the library, including:
+//   - the Cacher interface,
+//   - a JSON file-backed cacher,
+//   - key builders for teams, channels, chats and members.
 package cacher
 
 type Cacher interface {

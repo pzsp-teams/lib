@@ -1,3 +1,8 @@
+// Package pepper provides helpers for obtaining and persisting a secret "pepper" value.
+//
+// The pepper is stored in the system keyring and is used as an additional secret when
+// hashing or deriving cache keys. If the value is missing, the user is prompted on stdin
+// and the result is saved to the keyring.
 package pepper
 
 import (

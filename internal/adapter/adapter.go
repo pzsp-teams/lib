@@ -1,3 +1,7 @@
+// Package adapter contains mapping helpers that convert Microsoft Graph SDK models into the library's simplified internal models.
+//
+// The functions in this package translate Graph types (e.g. Teamable, Channelable,
+// ChatMessageable) into corresponding models used by the higher-level APIs.
 package adapter
 
 import (

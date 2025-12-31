@@ -1,3 +1,7 @@
+// Package api provides interfaces and implementations for Microsoft Teams operations backed by Microsoft Graph.
+//
+// The package groups functionality into APIs for teams, channels, chats, users, and messaging,
+// and returns Graph model types along with request errors from the internal sender layer.
 package api
 
 import (
@@ -11,7 +15,6 @@ import (
 	"github.com/pzsp-teams/lib/internal/sender"
 )
 
-// ChannelAPI will be used later
 type ChannelAPI interface {
 	ListChannels(ctx context.Context, teamID string) (msmodels.ChannelCollectionResponseable, *sender.RequestError)
 	GetChannel(ctx context.Context, teamID, channelID string) (msmodels.Channelable, *sender.RequestError)
@@ -35,12 +38,10 @@ type channelAPI struct {
 	techParams sender.RequestTechParams
 }
 
-// NewChannels will be used later
 func NewChannels(client *graph.GraphServiceClient, techParams sender.RequestTechParams) ChannelAPI {
 	return &channelAPI{client, techParams}
 }
 
-// ListChannels will be used later
 func (c *channelAPI) ListChannels(ctx context.Context, teamID string) (msmodels.ChannelCollectionResponseable, *sender.RequestError) {
 	call := func(ctx context.Context) (sender.Response, error) {
 		return c.client.
@@ -63,7 +64,6 @@ func (c *channelAPI) ListChannels(ctx context.Context, teamID string) (msmodels.
 	return out, nil
 }
 
-// GetChannel will be used later
 func (c *channelAPI) GetChannel(ctx context.Context, teamID, channelID string) (msmodels.Channelable, *sender.RequestError) {
 	call := func(ctx context.Context) (sender.Response, error) {
 		return c.client.
@@ -87,7 +87,6 @@ func (c *channelAPI) GetChannel(ctx context.Context, teamID, channelID string) (
 	return out, nil
 }
 
-// CreateStandardChannel creates a standard channel in a team. All members of the team will have access to the channel.
 func (c *channelAPI) CreateStandardChannel(ctx context.Context, teamID string, channel msmodels.Channelable) (msmodels.Channelable, *sender.RequestError) {
 	call := func(ctx context.Context) (sender.Response, error) {
 		return c.client.
@@ -110,7 +109,6 @@ func (c *channelAPI) CreateStandardChannel(ctx context.Context, teamID string, c
 	return out, nil
 }
 
-// CreatePrivateChannelWithMembers creates a private channel in a team with specified members and owners.
 func (c *channelAPI) CreatePrivateChannelWithMembers(ctx context.Context, teamID, displayName string, memberRefs, ownerRefs []string) (msmodels.Channelable, *sender.RequestError) {
 	ch := msmodels.NewChannel()
 	ch.SetDisplayName(&displayName)
@@ -142,7 +140,6 @@ func (c *channelAPI) CreatePrivateChannelWithMembers(ctx context.Context, teamID
 	return out, nil
 }
 
-// DeleteChannel will be used later
 func (c *channelAPI) DeleteChannel(ctx context.Context, teamID, channelID string) *sender.RequestError {
 	call := func(ctx context.Context) (sender.Response, error) {
 		err := c.client.
@@ -158,7 +155,6 @@ func (c *channelAPI) DeleteChannel(ctx context.Context, teamID, channelID string
 	return err
 }
 
-// SendMessage will be used later
 func (c *channelAPI) SendMessage(ctx context.Context, teamID, channelID, content, contentType string, mentions []msmodels.ChatMessageMentionable) (msmodels.ChatMessageable, *sender.RequestError) {
 	message := msmodels.NewChatMessage()
 	message.SetBody(messageToGraph(content, contentType))
@@ -189,7 +185,6 @@ func (c *channelAPI) SendMessage(ctx context.Context, teamID, channelID, content
 	return out, nil
 }
 
-// SendReply will be used later
 func (c *channelAPI) SendReply(ctx context.Context, teamID, channelID, messageID, content, contentType string, mentions []msmodels.ChatMessageMentionable) (msmodels.ChatMessageable, *sender.RequestError) {
 	reply := msmodels.NewChatMessage()
 	reply.SetBody(messageToGraph(content, contentType))
@@ -222,7 +217,6 @@ func (c *channelAPI) SendReply(ctx context.Context, teamID, channelID, messageID
 	return out, nil
 }
 
-// ListMessages will be used later
 func (c *channelAPI) ListMessages(ctx context.Context, teamID, channelID string, top *int32) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError) {
 	call := func(ctx context.Context) (sender.Response, error) {
 		queryParameters := &graphteams.ItemChannelsItemMessagesRequestBuilderGetQueryParameters{}
@@ -253,7 +247,6 @@ func (c *channelAPI) ListMessages(ctx context.Context, teamID, channelID string,
 	return out, nil
 }
 
-// GetMessage will be used later
 func (c *channelAPI) GetMessage(ctx context.Context, teamID, channelID, messageID string) (msmodels.ChatMessageable, *sender.RequestError) {
 	call := func(ctx context.Context) (sender.Response, error) {
 		return c.client.
@@ -279,7 +272,6 @@ func (c *channelAPI) GetMessage(ctx context.Context, teamID, channelID, messageI
 	return out, nil
 }
 
-// ListReplies will be used later
 func (c *channelAPI) ListReplies(ctx context.Context, teamID, channelID, messageID string, top *int32) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError) {
 	call := func(ctx context.Context) (sender.Response, error) {
 		queryParameters := &graphteams.ItemChannelsItemMessagesItemRepliesRequestBuilderGetQueryParameters{}
@@ -312,7 +304,6 @@ func (c *channelAPI) ListReplies(ctx context.Context, teamID, channelID, message
 	return out, nil
 }
 
-// GetReply will be used later
 func (c *channelAPI) GetReply(ctx context.Context, teamID, channelID, messageID, replyID string) (msmodels.ChatMessageable, *sender.RequestError) {
 	call := func(ctx context.Context) (sender.Response, error) {
 		return c.client.

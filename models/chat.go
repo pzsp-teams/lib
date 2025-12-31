@@ -1,3 +1,4 @@
+// Package models contains simplified Microsoft Teams domain types used by this library.
 package models
 
 /*

@@ -1,3 +1,7 @@
+// Package sender provides helpers for executing Microsoft Graph requests with retries and timeouts.
+//
+// It defines GraphCall and SendRequest, converts Graph/OData errors into library-specific error types,
+// and can enrich errors with resource context (e.g. TEAM/CHANNEL/CHAT refs) for easier debugging.
 package sender
 
 import (
@@ -9,10 +13,8 @@ import (
 	"github.com/microsoftgraph/msgraph-sdk-go/models/odataerrors"
 )
 
-// GraphCall will be used later by other packages
 type GraphCall func(ctx context.Context) (Response, error)
 
-// RequestTechParams will be used later by other packages
 type RequestTechParams struct {
 	MaxRetries     int
 	NextRetryDelay int // in seconds
@@ -43,7 +45,6 @@ func retry(ctx context.Context, attempts int, delay time.Duration, call GraphCal
 	return nil, err
 }
 
-// SendRequest will be used later by other packages
 func SendRequest(ctx context.Context, call GraphCall, techParams RequestTechParams) (Response, *RequestError) {
 	timeout := time.Duration(techParams.Timeout) * time.Second
 	delay := time.Duration(techParams.NextRetryDelay) * time.Second

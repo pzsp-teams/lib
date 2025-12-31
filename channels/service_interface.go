@@ -9,6 +9,7 @@
 //   - ChannelRef is a reference (display name or ID) to a channel used in method parameters.
 //   - If teamRef or channelRef is a display and is not unique, an ambiguity error is returned.
 //   - The authenticated user (derived from MSAL) is the one making the API calls (appropriate scopes must be granted).
+// If an async cached service is used, call Wait() to ensure all background cache updates are finished.
 package channels
 
 import (
@@ -34,7 +35,7 @@ type Service interface {
 	// Private channels are restricted to specific members.
 	// At least one owner must be specified.
 	CreatePrivateChannel(ctx context.Context, teamRef, name string, memberRefs, ownerRefs []string) (*models.Channel, error)
-	
+
 	// Delete removes a channel from a team.
 	Delete(ctx context.Context, teamRef, channelRef string) error
 
@@ -44,7 +45,7 @@ type Service interface {
 	//   - ContentType: the type of content (text or html).
 	//   - Mentions: optional mentions to include in the message.
 	SendMessage(ctx context.Context, teamRef, channelRef string, body models.MessageBody) (*models.Message, error)
-	
+
 	// SendReply sends a reply to a specific message in a channel.
 	// Body parameter is the body of the reply message. It includes:
 	//   - Content: the text or html content of the message.
@@ -54,28 +55,28 @@ type Service interface {
 
 	// ListMessages returns all messages in a channel.
 	ListMessages(ctx context.Context, teamRef, channelRef string, opts *models.ListMessagesOptions) ([]*models.Message, error)
-	
+
 	// GetMessage retrieves a specific message from a channel by its ID.
 	GetMessage(ctx context.Context, teamRef, channelRef, messageID string) (*models.Message, error)
 
 	// ListReplies returns all replies to a specific message in a channel.
 	ListReplies(ctx context.Context, teamRef, channelRef, messageID string, top *int32) ([]*models.Message, error)
-	
+
 	// GetReply retrieves a specific reply to a message in a channel by its ID.
 	GetReply(ctx context.Context, teamRef, channelRef, messageID, replyID string) (*models.Message, error)
-	
+
 	// ListMembers returns all members of a channel.
 	ListMembers(ctx context.Context, teamRef, channelRef string) ([]*models.Member, error)
-	
+
 	// AddMember adds a user to a channel.
 	AddMember(ctx context.Context, teamRef, channelRef, userRef string, isOwner bool) (*models.Member, error)
-	
+
 	// UpdateMemberRole updates the role of a member in a channel.
 	UpdateMemberRole(ctx context.Context, teamRef, channelRef, userRef string, isOwner bool) (*models.Member, error)
-	
+
 	// RemoveMember removes a user from a channel.
 	RemoveMember(ctx context.Context, teamRef, channelRef, userRef string) error
-	
+
 	// GetMentions resolves raw mention strings to Mention objects in the context of a channel. Raw mentions can be:
 	//   - Emails
 	//   - Channel (only the same channel as channelRef can be mentioned). It can be used by specifying "channel" or channel display name as raw mention.
