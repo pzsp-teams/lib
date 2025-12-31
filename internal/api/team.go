@@ -32,7 +32,7 @@ type TeamAPI interface {
 
 type teamAPI struct {
 	client    *graph.GraphServiceClient
-	snederCfg *config.SenderConfig
+	senderCfg *config.SenderConfig
 }
 
 func NewTeams(client *graph.GraphServiceClient, senderCfg *config.SenderConfig) TeamAPI {
@@ -51,7 +51,7 @@ func (t *teamAPI) CreateFromTemplate(ctx context.Context, displayName, descripti
 	call := func(ctx context.Context) (sender.Response, error) {
 		return t.client.Teams().Post(ctx, body, nil)
 	}
-	resp, err := sender.SendRequest(ctx, call, t.snederCfg)
+	resp, err := sender.SendRequest(ctx, call, t.senderCfg)
 	if err != nil {
 		return "", err
 	}
@@ -73,7 +73,7 @@ func (t *teamAPI) CreateViaGroup(ctx context.Context, displayName, mailNickname,
 	createGroup := func(ctx context.Context) (sender.Response, error) {
 		return t.client.Groups().Post(ctx, grp, nil)
 	}
-	gresp, gerr := sender.SendRequest(ctx, createGroup, t.snederCfg)
+	gresp, gerr := sender.SendRequest(ctx, createGroup, t.senderCfg)
 	if gerr != nil {
 		return "", gerr
 	}
@@ -86,7 +86,7 @@ func (t *teamAPI) CreateViaGroup(ctx context.Context, displayName, mailNickname,
 	putTeam := func(ctx context.Context) (sender.Response, error) {
 		return t.client.Groups().ByGroupId(groupID).Team().Put(ctx, body, nil)
 	}
-	if _, err := sender.SendRequest(ctx, putTeam, t.snederCfg); err != nil {
+	if _, err := sender.SendRequest(ctx, putTeam, t.senderCfg); err != nil {
 		return "", err
 	}
 	if err := t.waitTeamReady(ctx, groupID, 30*time.Second); err != nil {
@@ -101,7 +101,7 @@ func (t *teamAPI) waitTeamReady(ctx context.Context, teamID string, timeout time
 		call := func(ctx context.Context) (sender.Response, error) {
 			return t.client.Teams().ByTeamId(teamID).Get(ctx, nil)
 		}
-		if _, err := sender.SendRequest(ctx, call, t.snederCfg); err == nil {
+		if _, err := sender.SendRequest(ctx, call, t.senderCfg); err == nil {
 			return nil
 		}
 		if time.Now().After(deadline) {
@@ -115,7 +115,7 @@ func (t *teamAPI) Get(ctx context.Context, teamID string) (msmodels.Teamable, *s
 	call := func(ctx context.Context) (sender.Response, error) {
 		return t.client.Teams().ByTeamId(teamID).Get(ctx, nil)
 	}
-	resp, err := sender.SendRequest(ctx, call, t.snederCfg)
+	resp, err := sender.SendRequest(ctx, call, t.senderCfg)
 	if err != nil {
 		return nil, err
 	}
@@ -130,7 +130,7 @@ func (t *teamAPI) ListMyJoined(ctx context.Context) (msmodels.TeamCollectionResp
 	call := func(ctx context.Context) (sender.Response, error) {
 		return t.client.Me().JoinedTeams().Get(ctx, nil)
 	}
-	resp, err := sender.SendRequest(ctx, call, t.snederCfg)
+	resp, err := sender.SendRequest(ctx, call, t.senderCfg)
 	if err != nil {
 		return nil, err
 	}
@@ -145,7 +145,7 @@ func (t *teamAPI) Update(ctx context.Context, teamID string, patch *msmodels.Tea
 	call := func(ctx context.Context) (sender.Response, error) {
 		return t.client.Teams().ByTeamId(teamID).Patch(ctx, patch, nil)
 	}
-	resp, err := sender.SendRequest(ctx, call, t.snederCfg)
+	resp, err := sender.SendRequest(ctx, call, t.senderCfg)
 	if err != nil {
 		return nil, err
 	}
@@ -168,7 +168,7 @@ func (t *teamAPI) Archive(ctx context.Context, teamID string, spoReadOnlyForMemb
 			Archive().
 			Post(ctx, body, nil)
 	}
-	_, err := sender.SendRequest(ctx, call, t.snederCfg)
+	_, err := sender.SendRequest(ctx, call, t.senderCfg)
 	return err
 }
 
@@ -180,7 +180,7 @@ func (t *teamAPI) Unarchive(ctx context.Context, teamID string) *sender.RequestE
 			Unarchive().
 			Post(ctx, nil)
 	}
-	_, err := sender.SendRequest(ctx, call, t.snederCfg)
+	_, err := sender.SendRequest(ctx, call, t.senderCfg)
 	return err
 }
 
@@ -191,7 +191,7 @@ func (t *teamAPI) Delete(ctx context.Context, teamID string) *sender.RequestErro
 			ByGroupId(teamID).
 			Delete(ctx, nil)
 	}
-	_, err := sender.SendRequest(ctx, call, t.snederCfg)
+	_, err := sender.SendRequest(ctx, call, t.senderCfg)
 	return err
 }
 
@@ -204,7 +204,7 @@ func (t *teamAPI) RestoreDeleted(ctx context.Context, deletedGroupID string) (ms
 			Restore().
 			Post(ctx, nil)
 	}
-	resp, err := sender.SendRequest(ctx, call, t.snederCfg)
+	resp, err := sender.SendRequest(ctx, call, t.senderCfg)
 	if err != nil {
 		return nil, err
 	}
@@ -223,7 +223,7 @@ func (t *teamAPI) ListMembers(ctx context.Context, teamID string) (msmodels.Conv
 			Members().
 			Get(ctx, nil)
 	}
-	resp, err := sender.SendRequest(ctx, call, t.techParams)
+	resp, err := sender.SendRequest(ctx, call, t.senderCfg)
 	if err != nil {
 		return nil, err
 	}
@@ -243,7 +243,7 @@ func (t *teamAPI) GetMember(ctx context.Context, teamID, memberID string) (msmod
 			ByConversationMemberId(memberID).
 			Get(ctx, nil)
 	}
-	resp, err := sender.SendRequest(ctx, call, t.techParams)
+	resp, err := sender.SendRequest(ctx, call, t.senderCfg)
 	if err != nil {
 		return nil, err
 	}
@@ -262,7 +262,7 @@ func (t *teamAPI) AddMember(ctx context.Context, teamID string, member msmodels.
 			Members().
 			Post(ctx, member, nil)
 	}
-	resp, err := sender.SendRequest(ctx, call, t.techParams)
+	resp, err := sender.SendRequest(ctx, call, t.senderCfg)
 	if err != nil {
 		return nil, err
 	}
@@ -282,7 +282,7 @@ func (t *teamAPI) RemoveMember(ctx context.Context, teamID, memberID string) *se
 			ByConversationMemberId(memberID).
 			Delete(ctx, nil)
 	}
-	_, err := sender.SendRequest(ctx, call, t.techParams)
+	_, err := sender.SendRequest(ctx, call, t.senderCfg)
 	return err
 }
 
@@ -297,6 +297,6 @@ func (t *teamAPI) UpdateMemberRoles(ctx context.Context, teamID, memberID string
 			ByConversationMemberId(memberID).
 			Patch(ctx, patch, nil)
 	}
-	_, err := sender.SendRequest(ctx, call, t.techParams)
+	_, err := sender.SendRequest(ctx, call, t.senderCfg)
 	return err
 }
