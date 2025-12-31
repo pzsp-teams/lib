@@ -35,9 +35,8 @@ func TestAsyncRunner_RunAndWait(t *testing.T) {
 	assert.Equal(t, int32(n), atomic.LoadInt32(&called))
 }
 
-func TestAsyncRunner_WaitWithNoTasks(t *testing.T) {
+func TestAsyncRunner_WaitWithNoTasks(_ *testing.T) {
 	var r AsyncRunner
-	// Should not deadlock
 	r.Wait()
 }
 

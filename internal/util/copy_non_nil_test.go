@@ -40,7 +40,7 @@ func TestCopyNonNil_Ints(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := CopyNonNil(tt.input)
 
-			assert.Equal(t, len(tt.want), len(got), "length mismatch")
+			assert.Equal(t, len(tt.want), len(got))
 			for i := range tt.want {
 				assert.Equal(t, tt.want[i], got[i], "mismatch at index %d", i)
 			}
@@ -54,8 +54,8 @@ func TestCopyNonNil_NoAliasing(t *testing.T) {
 
 	out := CopyNonNil(input)
 
-	assert.Equal(t, len(out) == 1, "expected output length to be 1")
-	assert.Equal(t, out[0] == 10, "expected output value to be 10")
+	assert.Equal(t, len(out), 1)
+	assert.Equal(t, out[0], 10)
 
 	out[0] = 42
 
