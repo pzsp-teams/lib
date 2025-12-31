@@ -42,7 +42,10 @@ type Service interface {
 	// ListMessages returns all messages in a chat.
 	ListMessages(ctx context.Context, chatRef ChatRef) ([]*models.Message, error)
 
-	// SendMessage sends a message to a chat. ContentType specifies the format of the message content.
+	// SendMessage sends a message to a chat. Body parameter is the body of the message. It includes:
+	//   - Content: the text or html content of the message.
+	//   - ContentType: the type of content (text or html).
+	//   - Mentions: optional mentions to include in the message.
 	SendMessage(ctx context.Context, chatRef ChatRef, body models.MessageBody) (*models.Message, error)
 
 	// DeleteMessage deletes a message from a chat. Action is reversible - soft delete is performed.
@@ -66,6 +69,9 @@ type Service interface {
 	// UnpinMessage unpins a message in a chat.
 	UnpinMessage(ctx context.Context, chatRef ChatRef, pinnedMessageID string) error
 
-	// GetMentions resolves raw mention strings to Mention objects in the context of a chat.
+	// GetMentions resolves raw mention strings to Mention objects in the context of a chat. Raw mentions can be:
+	//   - Emails
+	//   - Everyone (for group chats)
+	//   - User IDs
 	GetMentions(ctx context.Context, chatRef ChatRef, rawMentions []string) ([]models.Mention, error)
 }
