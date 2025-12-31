@@ -1,153 +1,86 @@
 package sender
 
 import (
-	"errors"
-	"strings"
+	"net/http"
 	"testing"
 
 	"github.com/pzsp-teams/lib/internal/resources"
+	"github.com/stretchr/testify/assert"
 )
 
-func TestRequestError_ErrorFormatsCorrectly(t *testing.T) {
-	e := RequestError{
-		Code:    403,
-		Message: "Forbidden",
-	}
-
+func TestRequestError(t *testing.T) {
+	e := RequestError{Code: http.StatusForbidden, Message: "Forbidden"}
 	got := e.Error()
 	want := "[CODE: 403]: Forbidden"
-
-	if got != want {
-		t.Fatalf("RequestError.Error() = %q, want %q", got, want)
-	}
+	assert.Equal(t, want, got)
 }
 
-func TestErrData_String_Empty(t *testing.T) {
-	ed := ErrData{
-		ResourceRefs: map[resources.Resource]string{},
-	}
-
-	got := ed.String()
-	if got != "" {
-		t.Fatalf("ErrData.String() for empty map = %q, want empty string", got)
-	}
-}
-
-func TestErrData_String_SingleEntry(t *testing.T) {
-	ed := ErrData{
-		ResourceRefs: map[resources.Resource]string{
-			resources.Team: "z1",
+func TestErrData(t *testing.T) {
+	tests := []struct {
+		name string
+		ed   ErrData
+		want string
+	}{
+		{
+			name: "empty map",
+			ed:   ErrData{ResourceRefs: map[resources.Resource]string{}},
+			want: "",
+		},
+		{
+			name: "single entry",
+			ed:   ErrData{ResourceRefs: map[resources.Resource]string{resources.Team: "z1"}},
+			want: "TEAM(z1)",
+		},
+		{
+			name: "multiple entries",
+			ed: ErrData{ResourceRefs: map[resources.Resource]string{
+				resources.Team:    "z1",
+				resources.Channel: "general",
+			}},
+			want: "TEAM(z1), CHANNEL(general)",
 		},
 	}
 
-	got := ed.String()
-	want := "TEAM(z1)"
-
-	if got != want {
-		t.Fatalf("ErrData.String() = %q, want %q", got, want)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.ed.String()
+			if tt.want != "" {
+				assert.Equal(t, tt.want, got)
+			}
+		})
 	}
 }
 
-func TestErrData_String_MultipleEntries_NoOrderAssumed(t *testing.T) {
-	ed := ErrData{
-		ResourceRefs: map[resources.Resource]string{
-			resources.Team:    "z1",
-			resources.Channel: "general",
-		},
-	}
-
-	got := ed.String()
-
-	if !strings.Contains(got, "TEAM(z1)") {
-		t.Errorf("ErrData.String() = %q, expected to contain TEAM(z1)", got)
-	}
-	if !strings.Contains(got, "CHANNEL(general)") {
-		t.Errorf("ErrData.String() = %q, expected to contain CHANNEL(general)", got)
-	}
-
-	if !strings.Contains(got, ", ") {
-		t.Errorf("ErrData.String() = %q, expected to contain \", \" between entries", got)
-	}
-}
-
-func TestErrAccessForbidden_ErrorIncludesCodeAndResources(t *testing.T) {
+func TestErrAccessForbidden(t *testing.T) {
 	e := ErrAccessForbidden{
-		Code: 403,
-		ErrData: ErrData{
-			ResourceRefs: map[resources.Resource]string{
-				resources.Team: "z1",
-			},
-		},
+		Code: http.StatusForbidden,
+		ErrData: ErrData{ResourceRefs: map[resources.Resource]string{
+			resources.Team: "z1",
+		}},
 	}
 
 	got := e.Error()
 	want := "[CODE: 403]: access forbidden to one or more resources among: TEAM(z1)"
+	assert.Equal(t, want, got)
 
-	if got != want {
-		t.Fatalf("ErrAccessForbidden.Error() = %q, want %q", got, want)
-	}
+	assert.ErrorIs(t, e, ErrAccessForbidden{Code: http.StatusForbidden})
+	assert.NotErrorIs(t, e, ErrAccessForbidden{Code: http.StatusNotFound})
+	assert.NotErrorIs(t, e, ErrResourceNotFound{Code: http.StatusForbidden})
 }
 
-func TestErrAccessForbidden_IsMatchesSameCode(t *testing.T) {
-	err := ErrAccessForbidden{
-		Code: 403,
-		ErrData: ErrData{
-			ResourceRefs: map[resources.Resource]string{
-				resources.Team: "z1",
-			},
-		},
-	}
-
-	if !errors.Is(err, ErrAccessForbidden{Code: 403}) {
-		t.Fatalf("errors.Is should match ErrAccessForbidden with same code")
-	}
-
-	if errors.Is(err, ErrAccessForbidden{Code: 401}) {
-		t.Fatalf("errors.Is should not match ErrAccessForbidden with different code")
-	}
-
-	if errors.Is(err, ErrResourceNotFound{Code: 403}) {
-		t.Fatalf("errors.Is should not match different error type")
-	}
-}
-
-func TestErrResourceNotFound_ErrorIncludesCodeAndResources(t *testing.T) {
+func TestErrResourceNotFound_Table(t *testing.T) {
 	e := ErrResourceNotFound{
-		Code: 404,
-		ErrData: ErrData{
-			ResourceRefs: map[resources.Resource]string{
-				resources.Channel: "general",
-			},
-		},
+		Code: http.StatusNotFound,
+		ErrData: ErrData{ResourceRefs: map[resources.Resource]string{
+			resources.Channel: "general",
+		}},
 	}
 
 	got := e.Error()
 	want := "[CODE: 404]: one or more resources not found among: CHANNEL(general)"
+	assert.Equal(t, want, got)
 
-	if got != want {
-		t.Fatalf("ErrResourceNotFound.Error() = %q, want %q", got, want)
-	}
-}
-
-func TestErrResourceNotFound_IsMatchesSameCode(t *testing.T) {
-	err := ErrResourceNotFound{
-		Code: 404,
-		ErrData: ErrData{
-			ResourceRefs: map[resources.Resource]string{
-				resources.Channel: "general",
-			},
-		},
-	}
-
-	if !errors.Is(err, ErrResourceNotFound{Code: 404}) {
-		t.Fatalf("errors.Is should match ErrResourceNotFound with same code")
-	}
-
-	if errors.Is(err, ErrResourceNotFound{Code: 400}) {
-		t.Fatalf("errors.Is should not match ErrResourceNotFound with different code")
-	}
-
-	if errors.Is(err, ErrAccessForbidden{Code: 404}) {
-		t.Fatalf("errors.Is should not match different error type")
-	}
+	assert.ErrorIs(t, e, ErrResourceNotFound{Code: http.StatusNotFound})
+	assert.NotErrorIs(t, e, ErrResourceNotFound{Code: http.StatusBadRequest})
+	assert.NotErrorIs(t, e, ErrAccessForbidden{Code: http.StatusNotFound})
 }
