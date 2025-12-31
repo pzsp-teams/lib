@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
 	"github.com/pzsp-teams/lib/internal/cacher"
 	sender "github.com/pzsp-teams/lib/internal/sender"
@@ -12,6 +11,7 @@ import (
 	"github.com/pzsp-teams/lib/internal/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	gomock "go.uber.org/mock/gomock"
 )
 
 func TestChatResolverCachable_ResolveOneOnOneRef(t *testing.T) {
@@ -19,7 +19,7 @@ func TestChatResolverCachable_ResolveOneOnOneRef(t *testing.T) {
 		name         string
 		chatRef      string
 		cacheEnabled bool
-		setupMocks   func(api *testutil.MockChatAPI, c *testutil.MockCacher)
+		setupMocks   func(api *testutil.MockChatAPI, c *testutil.MockCacher, tr *testutil.MockTaskRunner)
 		expectedID   string
 		expectError  bool
 	}
@@ -29,9 +29,10 @@ func TestChatResolverCachable_ResolveOneOnOneRef(t *testing.T) {
 			name:         "Empty one-on-one chat reference",
 			chatRef:      "   ",
 			cacheEnabled: true,
-			setupMocks: func(api *testutil.MockChatAPI, c *testutil.MockCacher) {
+			setupMocks: func(api *testutil.MockChatAPI, c *testutil.MockCacher, tr *testutil.MockTaskRunner) {
 				api.EXPECT().ListChats(gomock.Any(), gomock.Any()).Times(0)
 				c.EXPECT().Get(gomock.Any()).Times(0)
+				tr.EXPECT().Run(gomock.Any()).Times(0)
 			},
 			expectError: true,
 		},
@@ -39,9 +40,10 @@ func TestChatResolverCachable_ResolveOneOnOneRef(t *testing.T) {
 			name:         "Chat ID short circuit",
 			chatRef:      "19:3A8b081ef6-4792-4def-b2c9-c363a1bf41d5_877192bd-9183-47d3-a74c-8aa0426716cf@unq.gbl.spaces",
 			cacheEnabled: true,
-			setupMocks: func(api *testutil.MockChatAPI, c *testutil.MockCacher) {
+			setupMocks: func(api *testutil.MockChatAPI, c *testutil.MockCacher, tr *testutil.MockTaskRunner) {
 				api.EXPECT().ListChats(gomock.Any(), gomock.Any()).Times(0)
 				c.EXPECT().Get(gomock.Any()).Times(0)
+				tr.EXPECT().Run(gomock.Any()).Times(0)
 			},
 			expectedID: "19:3A8b081ef6-4792-4def-b2c9-c363a1bf41d5_877192bd-9183-47d3-a74c-8aa0426716cf@unq.gbl.spaces",
 		},
@@ -49,13 +51,13 @@ func TestChatResolverCachable_ResolveOneOnOneRef(t *testing.T) {
 			name:         "Cache single hit",
 			chatRef:      "jane@example.com",
 			cacheEnabled: true,
-			setupMocks: func(api *testutil.MockChatAPI, c *testutil.MockCacher) {
+			setupMocks: func(api *testutil.MockChatAPI, c *testutil.MockCacher, tr *testutil.MockTaskRunner) {
 				api.EXPECT().ListChats(gomock.Any(), gomock.Any()).Times(0)
 				c.EXPECT().
 					Get(cacher.NewOneOnOneChatKey("jane@example.com", nil)).
 					Return([]string{"chat-id-123"}, true, nil).
 					Times(1)
-				c.EXPECT().Set(gomock.Any(), gomock.Any()).Times(0)
+				tr.EXPECT().Run(gomock.Any()).Times(0)
 			},
 			expectedID: "chat-id-123",
 		},
@@ -63,7 +65,7 @@ func TestChatResolverCachable_ResolveOneOnOneRef(t *testing.T) {
 			name:         "Cache miss uses API and caches result",
 			chatRef:      "jane@example.com",
 			cacheEnabled: true,
-			setupMocks: func(api *testutil.MockChatAPI, c *testutil.MockCacher) {
+			setupMocks: func(api *testutil.MockChatAPI, c *testutil.MockCacher, tr *testutil.MockTaskRunner) {
 				m := testutil.NewGraphMember(
 					&testutil.NewMemberParams{
 						Email: util.Ptr("jane@example.com"),
@@ -82,7 +84,7 @@ func TestChatResolverCachable_ResolveOneOnOneRef(t *testing.T) {
 					Get(cacher.NewOneOnOneChatKey("jane@example.com", nil)).
 					Return(nil, false, nil).
 					Times(1)
-				c.EXPECT().Set(gomock.Any(), gomock.Any()).Times(1)
+				tr.EXPECT().Run(gomock.Any()).Times(1)
 			},
 			expectedID: "chat-id-123",
 		},
@@ -90,7 +92,7 @@ func TestChatResolverCachable_ResolveOneOnOneRef(t *testing.T) {
 			name:         "Cache disabled skips cache",
 			chatRef:      "jane@example.com",
 			cacheEnabled: false,
-			setupMocks: func(api *testutil.MockChatAPI, c *testutil.MockCacher) {
+			setupMocks: func(api *testutil.MockChatAPI, c *testutil.MockCacher, tr *testutil.MockTaskRunner) {
 				m := testutil.NewGraphMember(
 					&testutil.NewMemberParams{
 						Email: util.Ptr("jane@example.com"),
@@ -106,7 +108,7 @@ func TestChatResolverCachable_ResolveOneOnOneRef(t *testing.T) {
 				collection := testutil.NewChatCollection(chat)
 				api.EXPECT().ListChats(gomock.Any(), gomock.Any()).Return(collection, nil).Times(1)
 				c.EXPECT().Get(gomock.Any()).Times(0)
-				c.EXPECT().Set(gomock.Any(), gomock.Any()).Times(0)
+				tr.EXPECT().Run(gomock.Any()).Times(0)
 			},
 			expectedID: "chat-id-123",
 		},
@@ -114,10 +116,11 @@ func TestChatResolverCachable_ResolveOneOnOneRef(t *testing.T) {
 			name:         "Fetch from API fails",
 			chatRef:      "jane@example.com",
 			cacheEnabled: true,
-			setupMocks: func(api *testutil.MockChatAPI, c *testutil.MockCacher) {
+			setupMocks: func(api *testutil.MockChatAPI, c *testutil.MockCacher, tr *testutil.MockTaskRunner) {
 				wantErr := &sender.RequestError{Message: "nope"}
 				api.EXPECT().ListChats(gomock.Any(), gomock.Any()).Return(nil, wantErr).Times(1)
 				c.EXPECT().Get(gomock.Any()).Return(nil, false, nil).Times(1)
+				tr.EXPECT().Run(gomock.Any()).Times(0)
 			},
 			expectError: true,
 		},
@@ -130,12 +133,19 @@ func TestChatResolverCachable_ResolveOneOnOneRef(t *testing.T) {
 
 			apiMock := testutil.NewMockChatAPI(ctrl)
 			cacherMock := testutil.NewMockCacher(ctrl)
+			taskRunnerMock := testutil.NewMockTaskRunner(ctrl)
 
-			tc.setupMocks(apiMock, cacherMock)
+			tc.setupMocks(apiMock, cacherMock, taskRunnerMock)
 
-			resolver := NewChatResolverCacheable(apiMock, cacherMock, tc.cacheEnabled)
+			var cacherArg *cacher.CacheHandler = nil
+			if tc.cacheEnabled {
+				cacherArg = &cacher.CacheHandler{Cacher: cacherMock, Runner: taskRunnerMock}
+			}
 
-			id, err := resolver.ResolveOneOnOneChatRefToID(context.Background(), tc.chatRef)
+			resolver := NewChatResolverCacheable(apiMock, cacherArg)
+
+			ctx := context.Background()
+			id, err := resolver.ResolveOneOnOneChatRefToID(ctx, tc.chatRef)
 
 			if tc.expectError {
 				require.Error(t, err)
@@ -153,7 +163,7 @@ func TestChatResolverCachable_ResolveGroupChatRefToID(t *testing.T) {
 		name         string
 		chatRef      string
 		cacheEnabled bool
-		setupMocks   func(api *testutil.MockChatAPI, c *testutil.MockCacher)
+		setupMocks   func(api *testutil.MockChatAPI, c *testutil.MockCacher, tr *testutil.MockTaskRunner)
 		expectedID   string
 		expectError  bool
 	}
@@ -163,9 +173,10 @@ func TestChatResolverCachable_ResolveGroupChatRefToID(t *testing.T) {
 			name:         "Empty group chat reference",
 			chatRef:      "   ",
 			cacheEnabled: true,
-			setupMocks: func(api *testutil.MockChatAPI, c *testutil.MockCacher) {
+			setupMocks: func(api *testutil.MockChatAPI, c *testutil.MockCacher, tr *testutil.MockTaskRunner) {
 				api.EXPECT().ListChats(gomock.Any(), gomock.Any()).Times(0)
 				c.EXPECT().Get(gomock.Any()).Times(0)
+				tr.EXPECT().Run(gomock.Any()).Times(0)
 			},
 			expectError: true,
 		},
@@ -173,9 +184,10 @@ func TestChatResolverCachable_ResolveGroupChatRefToID(t *testing.T) {
 			name:         "Thread ID short circuit",
 			chatRef:      "19:abc123@thread.tacv2",
 			cacheEnabled: true,
-			setupMocks: func(api *testutil.MockChatAPI, c *testutil.MockCacher) {
+			setupMocks: func(api *testutil.MockChatAPI, c *testutil.MockCacher, tr *testutil.MockTaskRunner) {
 				api.EXPECT().ListChats(gomock.Any(), gomock.Any()).Times(0)
 				c.EXPECT().Get(gomock.Any()).Times(0)
+				tr.EXPECT().Run(gomock.Any()).Times(0)
 			},
 			expectedID: "19:abc123@thread.tacv2",
 		},
@@ -183,13 +195,13 @@ func TestChatResolverCachable_ResolveGroupChatRefToID(t *testing.T) {
 			name:         "Cache single hit",
 			chatRef:      "My Topic",
 			cacheEnabled: true,
-			setupMocks: func(api *testutil.MockChatAPI, c *testutil.MockCacher) {
+			setupMocks: func(api *testutil.MockChatAPI, c *testutil.MockCacher, tr *testutil.MockTaskRunner) {
 				api.EXPECT().ListChats(gomock.Any(), gomock.Any()).Times(0)
 				c.EXPECT().
 					Get(cacher.NewGroupChatKey("My Topic")).
 					Return([]string{"c-id-123"}, true, nil).
 					Times(1)
-				c.EXPECT().Set(gomock.Any(), gomock.Any()).Times(0)
+				tr.EXPECT().Run(gomock.Any()).Times(0)
 			},
 			expectedID: "c-id-123",
 		},
@@ -197,7 +209,7 @@ func TestChatResolverCachable_ResolveGroupChatRefToID(t *testing.T) {
 			name:         "Cache miss uses API and caches result",
 			chatRef:      "My Topic",
 			cacheEnabled: true,
-			setupMocks: func(api *testutil.MockChatAPI, c *testutil.MockCacher) {
+			setupMocks: func(api *testutil.MockChatAPI, c *testutil.MockCacher, tr *testutil.MockTaskRunner) {
 				chat := testutil.NewGraphChat(
 					&testutil.NewChatParams{
 						ID:    util.Ptr("gc-1"),
@@ -208,7 +220,7 @@ func TestChatResolverCachable_ResolveGroupChatRefToID(t *testing.T) {
 				collection := testutil.NewChatCollection(chat)
 				api.EXPECT().ListChats(gomock.Any(), gomock.Any()).Return(collection, nil).Times(1)
 				c.EXPECT().Get(cacher.NewGroupChatKey("My Topic")).Return(nil, false, nil).Times(1)
-				c.EXPECT().Set(gomock.Any(), gomock.Any()).Times(1)
+				tr.EXPECT().Run(gomock.Any()).Times(1)
 			},
 			expectedID: "gc-1",
 		},
@@ -216,7 +228,7 @@ func TestChatResolverCachable_ResolveGroupChatRefToID(t *testing.T) {
 			name:         "Cache disabled skips cache",
 			chatRef:      "Topic",
 			cacheEnabled: false,
-			setupMocks: func(api *testutil.MockChatAPI, c *testutil.MockCacher) {
+			setupMocks: func(api *testutil.MockChatAPI, c *testutil.MockCacher, tr *testutil.MockTaskRunner) {
 				chat := testutil.NewGraphChat(
 					&testutil.NewChatParams{
 						ID:    util.Ptr("gc-api"),
@@ -227,7 +239,7 @@ func TestChatResolverCachable_ResolveGroupChatRefToID(t *testing.T) {
 				collection := testutil.NewChatCollection(chat)
 				api.EXPECT().ListChats(gomock.Any(), gomock.Any()).Return(collection, nil).Times(1)
 				c.EXPECT().Get(gomock.Any()).Times(0)
-				c.EXPECT().Set(gomock.Any(), gomock.Any()).Times(0)
+				tr.EXPECT().Run(gomock.Any()).Times(0)
 			},
 			expectedID: "gc-api",
 		},
@@ -235,11 +247,11 @@ func TestChatResolverCachable_ResolveGroupChatRefToID(t *testing.T) {
 			name:         "Fetch from API fails",
 			chatRef:      "Topic",
 			cacheEnabled: true,
-			setupMocks: func(api *testutil.MockChatAPI, c *testutil.MockCacher) {
+			setupMocks: func(api *testutil.MockChatAPI, c *testutil.MockCacher, tr *testutil.MockTaskRunner) {
 				apiErr := &sender.RequestError{Code: 500, Message: "api error"}
 				api.EXPECT().ListChats(gomock.Any(), gomock.Any()).Return(nil, apiErr).Times(1)
 				c.EXPECT().Get(cacher.NewGroupChatKey("Topic")).Return(nil, false, nil).Times(1)
-				c.EXPECT().Set(gomock.Any(), gomock.Any()).Times(0)
+				tr.EXPECT().Run(gomock.Any()).Times(0)
 			},
 			expectError: true,
 		},
@@ -252,12 +264,19 @@ func TestChatResolverCachable_ResolveGroupChatRefToID(t *testing.T) {
 
 			apiMock := testutil.NewMockChatAPI(ctrl)
 			cacherMock := testutil.NewMockCacher(ctrl)
+			taskRunnerMock := testutil.NewMockTaskRunner(ctrl)
 
-			tc.setupMocks(apiMock, cacherMock)
+			tc.setupMocks(apiMock, cacherMock, taskRunnerMock)
 
-			resolver := NewChatResolverCacheable(apiMock, cacherMock, tc.cacheEnabled)
+			var cacherArg *cacher.CacheHandler = nil
+			if tc.cacheEnabled {
+				cacherArg = &cacher.CacheHandler{Cacher: cacherMock, Runner: taskRunnerMock}
+			}
 
-			id, err := resolver.ResolveGroupChatRefToID(context.Background(), tc.chatRef)
+			resolver := NewChatResolverCacheable(apiMock, cacherArg)
+
+			ctx := context.Background()
+			id, err := resolver.ResolveGroupChatRefToID(ctx, tc.chatRef)
 
 			if tc.expectError {
 				assert.Error(t, err)

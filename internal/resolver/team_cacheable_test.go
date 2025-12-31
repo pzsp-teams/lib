@@ -2,14 +2,15 @@ package resolver
 
 import (
 	"context"
+	"net/http"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	"github.com/pzsp-teams/lib/internal/cacher"
 	sender "github.com/pzsp-teams/lib/internal/sender"
 	testutil "github.com/pzsp-teams/lib/internal/testutil"
 	"github.com/pzsp-teams/lib/internal/util"
 	"github.com/stretchr/testify/assert"
+	gomock "go.uber.org/mock/gomock"
 )
 
 func TestTeamResolverCacheable_ResolveTeamRefToID(t *testing.T) {
@@ -17,7 +18,7 @@ func TestTeamResolverCacheable_ResolveTeamRefToID(t *testing.T) {
 		name         string
 		teamRef      string
 		cacheEnabled bool
-		setupMocks   func(api *testutil.MockTeamAPI, c *testutil.MockCacher)
+		setupMocks   func(api *testutil.MockTeamAPI, c *testutil.MockCacher, tr *testutil.MockTaskRunner)
 		expectedID   string
 		expectError  bool
 	}
@@ -27,9 +28,10 @@ func TestTeamResolverCacheable_ResolveTeamRefToID(t *testing.T) {
 			name:         "Empty team reference",
 			teamRef:      "   ",
 			cacheEnabled: true,
-			setupMocks: func(api *testutil.MockTeamAPI, c *testutil.MockCacher) {
+			setupMocks: func(api *testutil.MockTeamAPI, c *testutil.MockCacher, tr *testutil.MockTaskRunner) {
 				api.EXPECT().ListMyJoined(gomock.Any()).Times(0)
 				c.EXPECT().Get(gomock.Any()).Times(0)
+				tr.EXPECT().Run(gomock.Any()).Times(0)
 			},
 			expectError: true,
 		},
@@ -37,9 +39,10 @@ func TestTeamResolverCacheable_ResolveTeamRefToID(t *testing.T) {
 			name:         "GUID short circuit",
 			teamRef:      "123e4567-e89b-12d3-a456-426614174000",
 			cacheEnabled: true,
-			setupMocks: func(api *testutil.MockTeamAPI, c *testutil.MockCacher) {
+			setupMocks: func(api *testutil.MockTeamAPI, c *testutil.MockCacher, tr *testutil.MockTaskRunner) {
 				api.EXPECT().ListMyJoined(gomock.Any()).Times(0)
 				c.EXPECT().Get(gomock.Any()).Times(0)
+				tr.EXPECT().Run(gomock.Any()).Times(0)
 			},
 			expectedID: "123e4567-e89b-12d3-a456-426614174000",
 		},
@@ -47,13 +50,13 @@ func TestTeamResolverCacheable_ResolveTeamRefToID(t *testing.T) {
 			name:         "Cache single hit",
 			teamRef:      "My Team",
 			cacheEnabled: true,
-			setupMocks: func(api *testutil.MockTeamAPI, c *testutil.MockCacher) {
+			setupMocks: func(api *testutil.MockTeamAPI, c *testutil.MockCacher, tr *testutil.MockTaskRunner) {
 				api.EXPECT().ListMyJoined(gomock.Any()).Times(0)
 				c.EXPECT().
 					Get(cacher.NewTeamKey("My Team")).
 					Return([]string{"team-id-123"}, true, nil).
 					Times(1)
-				c.EXPECT().Set(gomock.Any(), gomock.Any()).Times(0)
+				tr.EXPECT().Run(gomock.Any()).Times(0)
 			},
 			expectedID: "team-id-123",
 		},
@@ -61,7 +64,7 @@ func TestTeamResolverCacheable_ResolveTeamRefToID(t *testing.T) {
 			name:         "Cache miss uses API and caches result",
 			teamRef:      "My Team",
 			cacheEnabled: true,
-			setupMocks: func(api *testutil.MockTeamAPI, c *testutil.MockCacher) {
+			setupMocks: func(api *testutil.MockTeamAPI, c *testutil.MockCacher, tr *testutil.MockTaskRunner) {
 				team := testutil.NewGraphTeam(
 					&testutil.NewTeamParams{
 						ID:          util.Ptr("team-id-123"),
@@ -71,7 +74,7 @@ func TestTeamResolverCacheable_ResolveTeamRefToID(t *testing.T) {
 				collection := testutil.NewTeamCollection(team)
 				api.EXPECT().ListMyJoined(gomock.Any()).Return(collection, nil).Times(1)
 				c.EXPECT().Get(cacher.NewTeamKey("My Team")).Return(nil, false, nil).Times(1)
-				c.EXPECT().Set(cacher.NewTeamKey("My Team"), "team-id-123").Return(nil).Times(1)
+				tr.EXPECT().Run(gomock.Any()).Times(1)
 			},
 			expectedID: "team-id-123",
 		},
@@ -79,7 +82,7 @@ func TestTeamResolverCacheable_ResolveTeamRefToID(t *testing.T) {
 			name:         "Cache disabled",
 			teamRef:      "My Team",
 			cacheEnabled: false,
-			setupMocks: func(api *testutil.MockTeamAPI, c *testutil.MockCacher) {
+			setupMocks: func(api *testutil.MockTeamAPI, c *testutil.MockCacher, tr *testutil.MockTaskRunner) {
 				team := testutil.NewGraphTeam(
 					&testutil.NewTeamParams{
 						ID:          util.Ptr("team-id-123"),
@@ -89,7 +92,7 @@ func TestTeamResolverCacheable_ResolveTeamRefToID(t *testing.T) {
 				collection := testutil.NewTeamCollection(team)
 				api.EXPECT().ListMyJoined(gomock.Any()).Return(collection, nil).Times(1)
 				c.EXPECT().Get(gomock.Any()).Times(0)
-				c.EXPECT().Set(gomock.Any(), gomock.Any()).Times(0)
+				tr.EXPECT().Run(gomock.Any()).Times(0)
 			},
 			expectedID: "team-id-123",
 		},
@@ -97,13 +100,14 @@ func TestTeamResolverCacheable_ResolveTeamRefToID(t *testing.T) {
 			name:         "Fetch from API fails",
 			teamRef:      "My Team",
 			cacheEnabled: true,
-			setupMocks: func(api *testutil.MockTeamAPI, c *testutil.MockCacher) {
+			setupMocks: func(api *testutil.MockTeamAPI, c *testutil.MockCacher, tr *testutil.MockTaskRunner) {
 				apiErr := &sender.RequestError{
-					Code:    500,
+					Code:    http.StatusInternalServerError,
 					Message: "Internal Server Error",
 				}
 				api.EXPECT().ListMyJoined(gomock.Any()).Return(nil, apiErr).Times(1)
 				c.EXPECT().Get(cacher.NewTeamKey("My Team")).Return(nil, false, nil).Times(1)
+				tr.EXPECT().Run(gomock.Any()).Times(0)
 			},
 			expectError: true,
 		},
@@ -115,11 +119,16 @@ func TestTeamResolverCacheable_ResolveTeamRefToID(t *testing.T) {
 
 			mockAPI := testutil.NewMockTeamAPI(ctrl)
 			mockCacher := testutil.NewMockCacher(ctrl)
-			if tc.setupMocks != nil {
-				tc.setupMocks(mockAPI, mockCacher)
+			mockTaskRunner := testutil.NewMockTaskRunner(ctrl)
+
+			tc.setupMocks(mockAPI, mockCacher, mockTaskRunner)
+
+			var cacherArg *cacher.CacheHandler = nil
+			if tc.cacheEnabled {
+				cacherArg = &cacher.CacheHandler{Cacher: mockCacher, Runner: mockTaskRunner}
 			}
 
-			res := NewTeamResolverCacheable(mockAPI, mockCacher, tc.cacheEnabled)
+			res := NewTeamResolverCacheable(mockAPI, cacherArg)
 
 			ctx := context.Background()
 			id, err := res.ResolveTeamRefToID(ctx, tc.teamRef)

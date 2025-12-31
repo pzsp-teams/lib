@@ -4,13 +4,13 @@ import (
 	"context"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	"github.com/pzsp-teams/lib/internal/cacher"
 	sender "github.com/pzsp-teams/lib/internal/sender"
 	"github.com/pzsp-teams/lib/internal/testutil"
 	"github.com/pzsp-teams/lib/internal/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	gomock "go.uber.org/mock/gomock"
 )
 
 func TestChannelResolverCacheable_ResolveChannelRefToID(t *testing.T) {
@@ -19,7 +19,7 @@ func TestChannelResolverCacheable_ResolveChannelRefToID(t *testing.T) {
 		teamID       string
 		channelRef   string
 		cacheEnabled bool
-		setupMocks   func(api *testutil.MockChannelAPI, c *testutil.MockCacher)
+		setupMocks   func(api *testutil.MockChannelAPI, c *testutil.MockCacher, tr *testutil.MockTaskRunner)
 		expectedID   string
 		expectError  bool
 	}
@@ -30,9 +30,10 @@ func TestChannelResolverCacheable_ResolveChannelRefToID(t *testing.T) {
 			teamID:       "team-1",
 			channelRef:   "   ",
 			cacheEnabled: true,
-			setupMocks: func(api *testutil.MockChannelAPI, c *testutil.MockCacher) {
+			setupMocks: func(api *testutil.MockChannelAPI, c *testutil.MockCacher, tr *testutil.MockTaskRunner) {
 				api.EXPECT().ListChannels(gomock.Any(), gomock.Any()).Times(0)
 				c.EXPECT().Get(gomock.Any()).Times(0)
+				tr.EXPECT().Run(gomock.Any()).Times(0)
 			},
 			expectError: true,
 		},
@@ -41,9 +42,10 @@ func TestChannelResolverCacheable_ResolveChannelRefToID(t *testing.T) {
 			teamID:       "team-1",
 			channelRef:   "19:abc123@thread.tacv2",
 			cacheEnabled: true,
-			setupMocks: func(api *testutil.MockChannelAPI, c *testutil.MockCacher) {
+			setupMocks: func(api *testutil.MockChannelAPI, c *testutil.MockCacher, tr *testutil.MockTaskRunner) {
 				api.EXPECT().ListChannels(gomock.Any(), gomock.Any()).Times(0)
 				c.EXPECT().Get(gomock.Any()).Times(0)
+				tr.EXPECT().Run(gomock.Any()).Times(0)
 			},
 			expectedID: "19:abc123@thread.tacv2",
 		},
@@ -52,13 +54,13 @@ func TestChannelResolverCacheable_ResolveChannelRefToID(t *testing.T) {
 			teamID:       "team-1",
 			channelRef:   "General",
 			cacheEnabled: true,
-			setupMocks: func(api *testutil.MockChannelAPI, c *testutil.MockCacher) {
+			setupMocks: func(api *testutil.MockChannelAPI, c *testutil.MockCacher, tr *testutil.MockTaskRunner) {
 				api.EXPECT().ListChannels(gomock.Any(), gomock.Any()).Times(0)
 				c.EXPECT().
 					Get(cacher.NewChannelKey("team-1", "General")).
 					Return([]string{"chan-id-123"}, true, nil).
 					Times(1)
-				c.EXPECT().Set(gomock.Any(), gomock.Any()).Times(0)
+				tr.EXPECT().Run(gomock.Any()).Times(0)
 			},
 			expectedID: "chan-id-123",
 		},
@@ -67,7 +69,7 @@ func TestChannelResolverCacheable_ResolveChannelRefToID(t *testing.T) {
 			teamID:       "team-42",
 			channelRef:   "  General ",
 			cacheEnabled: true,
-			setupMocks: func(api *testutil.MockChannelAPI, c *testutil.MockCacher) {
+			setupMocks: func(api *testutil.MockChannelAPI, c *testutil.MockCacher, tr *testutil.MockTaskRunner) {
 				ch := testutil.NewGraphChannel(
 					&testutil.NewChannelParams{
 						ID:   util.Ptr("chan-id-xyz"),
@@ -80,10 +82,7 @@ func TestChannelResolverCacheable_ResolveChannelRefToID(t *testing.T) {
 					Get(cacher.NewChannelKey("team-42", "General")).
 					Return(nil, false, nil).
 					Times(1)
-				c.EXPECT().
-					Set(cacher.NewChannelKey("team-42", "General"), gomock.Any()).
-					Return(nil).
-					Times(1)
+				tr.EXPECT().Run(gomock.Any()).Times(1)
 			},
 			expectedID: "chan-id-xyz",
 		},
@@ -92,7 +91,7 @@ func TestChannelResolverCacheable_ResolveChannelRefToID(t *testing.T) {
 			teamID:       "team-1",
 			channelRef:   "General",
 			cacheEnabled: false,
-			setupMocks: func(api *testutil.MockChannelAPI, c *testutil.MockCacher) {
+			setupMocks: func(api *testutil.MockChannelAPI, c *testutil.MockCacher, tr *testutil.MockTaskRunner) {
 				ch := testutil.NewGraphChannel(
 					&testutil.NewChannelParams{
 						ID:   util.Ptr("chan-id-api"),
@@ -102,7 +101,7 @@ func TestChannelResolverCacheable_ResolveChannelRefToID(t *testing.T) {
 				collection := testutil.NewChannelCollection(ch)
 				api.EXPECT().ListChannels(gomock.Any(), "team-1").Return(collection, nil).Times(1)
 				c.EXPECT().Get(gomock.Any()).Times(0)
-				c.EXPECT().Set(gomock.Any(), gomock.Any()).Times(0)
+				tr.EXPECT().Run(gomock.Any()).Times(0)
 			},
 			expectedID: "chan-id-api",
 		},
@@ -111,13 +110,14 @@ func TestChannelResolverCacheable_ResolveChannelRefToID(t *testing.T) {
 			teamID:       "team-1",
 			channelRef:   "General",
 			cacheEnabled: true,
-			setupMocks: func(api *testutil.MockChannelAPI, c *testutil.MockCacher) {
+			setupMocks: func(api *testutil.MockChannelAPI, c *testutil.MockCacher, tr *testutil.MockTaskRunner) {
 				wantErr := &sender.RequestError{Message: "boom"}
 				api.EXPECT().ListChannels(gomock.Any(), "team-1").Return(nil, wantErr).Times(1)
 				c.EXPECT().
 					Get(cacher.NewChannelKey("team-1", "General")).
 					Return(nil, false, nil).
 					Times(1)
+				tr.EXPECT().Run(gomock.Any()).Times(0)
 			},
 			expectError: true,
 		},
@@ -130,16 +130,19 @@ func TestChannelResolverCacheable_ResolveChannelRefToID(t *testing.T) {
 
 			apiMock := testutil.NewMockChannelAPI(ctrl)
 			cacherMock := testutil.NewMockCacher(ctrl)
+			taskRunnerMock := testutil.NewMockTaskRunner(ctrl)
 
-			tc.setupMocks(apiMock, cacherMock)
+			tc.setupMocks(apiMock, cacherMock, taskRunnerMock)
 
-			resolver := NewChannelResolverCacheable(apiMock, cacherMock, tc.cacheEnabled)
+			var cacherArg *cacher.CacheHandler = nil
+			if tc.cacheEnabled {
+				cacherArg = &cacher.CacheHandler{Cacher: cacherMock, Runner: taskRunnerMock}
+			}
 
-			id, err := resolver.ResolveChannelRefToID(
-				context.Background(),
-				tc.teamID,
-				tc.channelRef,
-			)
+			resolver := NewChannelResolverCacheable(apiMock, cacherArg)
+
+			ctx := context.Background()
+			id, err := resolver.ResolveChannelRefToID(ctx, tc.teamID, tc.channelRef)
 
 			if tc.expectError {
 				require.Error(t, err)
@@ -159,7 +162,7 @@ func TestChannelResolverCacheable_ResolveChannelMemberRefToID(t *testing.T) {
 		channelID    string
 		userRef      string
 		cacheEnabled bool
-		setupMocks   func(api *testutil.MockChannelAPI, c *testutil.MockCacher)
+		setupMocks   func(api *testutil.MockChannelAPI, c *testutil.MockCacher, tr *testutil.MockTaskRunner)
 		expectedID   string
 		expectError  bool
 	}
@@ -171,9 +174,10 @@ func TestChannelResolverCacheable_ResolveChannelMemberRefToID(t *testing.T) {
 			channelID:    "chan-1",
 			userRef:      " ",
 			cacheEnabled: true,
-			setupMocks: func(api *testutil.MockChannelAPI, c *testutil.MockCacher) {
+			setupMocks: func(api *testutil.MockChannelAPI, c *testutil.MockCacher, tr *testutil.MockTaskRunner) {
 				api.EXPECT().ListMembers(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 				c.EXPECT().Get(gomock.Any()).Times(0)
+				tr.EXPECT().Run(gomock.Any()).Times(0)
 			},
 			expectError: true,
 		},
@@ -183,13 +187,13 @@ func TestChannelResolverCacheable_ResolveChannelMemberRefToID(t *testing.T) {
 			channelID:    "chan-1",
 			userRef:      "user-ref",
 			cacheEnabled: true,
-			setupMocks: func(api *testutil.MockChannelAPI, c *testutil.MockCacher) {
+			setupMocks: func(api *testutil.MockChannelAPI, c *testutil.MockCacher, tr *testutil.MockTaskRunner) {
+				api.EXPECT().ListMembers(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 				c.EXPECT().
 					Get(cacher.NewChannelMemberKey("team-1", "chan-1", "user-ref", nil)).
 					Return([]string{"member-id-123"}, true, nil).
 					Times(1)
-				api.EXPECT().ListMembers(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
-				c.EXPECT().Set(gomock.Any(), gomock.Any()).Times(0)
+				tr.EXPECT().Run(gomock.Any()).Times(0)
 			},
 			expectedID: "member-id-123",
 		},
@@ -197,9 +201,9 @@ func TestChannelResolverCacheable_ResolveChannelMemberRefToID(t *testing.T) {
 			name:         "Cache miss uses API and caches",
 			teamID:       "team-42",
 			channelID:    "chan-7",
-			userRef:      " u-1 ",
 			cacheEnabled: true,
-			setupMocks: func(api *testutil.MockChannelAPI, c *testutil.MockCacher) {
+			userRef:      " u-1 ",
+			setupMocks: func(api *testutil.MockChannelAPI, c *testutil.MockCacher, tr *testutil.MockTaskRunner) {
 				member := testutil.NewGraphMember(
 					&testutil.NewMemberParams{
 						ID:          util.Ptr("m-1"),
@@ -216,10 +220,7 @@ func TestChannelResolverCacheable_ResolveChannelMemberRefToID(t *testing.T) {
 					Get(cacher.NewChannelMemberKey("team-42", "chan-7", "u-1", nil)).
 					Return(nil, false, nil).
 					Times(1)
-				c.EXPECT().
-					Set(cacher.NewChannelMemberKey("team-42", "chan-7", "u-1", nil), gomock.Any()).
-					Return(nil).
-					Times(1)
+				tr.EXPECT().Run(gomock.Any()).Times(1)
 			},
 			expectedID: "m-1",
 		},
@@ -229,7 +230,7 @@ func TestChannelResolverCacheable_ResolveChannelMemberRefToID(t *testing.T) {
 			channelID:    "chan-1",
 			userRef:      "u-1",
 			cacheEnabled: false,
-			setupMocks: func(api *testutil.MockChannelAPI, c *testutil.MockCacher) {
+			setupMocks: func(api *testutil.MockChannelAPI, c *testutil.MockCacher, tr *testutil.MockTaskRunner) {
 				member := testutil.NewGraphMember(
 					&testutil.NewMemberParams{
 						ID:          util.Ptr("m-api"),
@@ -243,7 +244,7 @@ func TestChannelResolverCacheable_ResolveChannelMemberRefToID(t *testing.T) {
 					Return(collection, nil).
 					Times(1)
 				c.EXPECT().Get(gomock.Any()).Times(0)
-				c.EXPECT().Set(gomock.Any(), gomock.Any()).Times(0)
+				tr.EXPECT().Run(gomock.Any()).Times(0)
 			},
 			expectedID: "m-api",
 		},
@@ -253,7 +254,7 @@ func TestChannelResolverCacheable_ResolveChannelMemberRefToID(t *testing.T) {
 			channelID:    "chan-1",
 			userRef:      "user-ref",
 			cacheEnabled: true,
-			setupMocks: func(api *testutil.MockChannelAPI, c *testutil.MockCacher) {
+			setupMocks: func(api *testutil.MockChannelAPI, c *testutil.MockCacher, tr *testutil.MockTaskRunner) {
 				apiErr := &sender.RequestError{Code: 500, Message: "api error"}
 				api.EXPECT().
 					ListMembers(gomock.Any(), "team-1", "chan-1").
@@ -263,7 +264,7 @@ func TestChannelResolverCacheable_ResolveChannelMemberRefToID(t *testing.T) {
 					Get(cacher.NewChannelMemberKey("team-1", "chan-1", "user-ref", nil)).
 					Return(nil, false, nil).
 					Times(1)
-				c.EXPECT().Set(gomock.Any(), gomock.Any()).Times(0)
+				tr.EXPECT().Run(gomock.Any()).Times(0)
 			},
 			expectError: true,
 		},
@@ -276,10 +277,16 @@ func TestChannelResolverCacheable_ResolveChannelMemberRefToID(t *testing.T) {
 
 			apiMock := testutil.NewMockChannelAPI(ctrl)
 			cacherMock := testutil.NewMockCacher(ctrl)
+			taskRunnerMock := testutil.NewMockTaskRunner(ctrl)
 
-			tc.setupMocks(apiMock, cacherMock)
+			tc.setupMocks(apiMock, cacherMock, taskRunnerMock)
 
-			resolver := NewChannelResolverCacheable(apiMock, cacherMock, tc.cacheEnabled)
+			var cacherArg *cacher.CacheHandler = nil
+			if tc.cacheEnabled {
+				cacherArg = &cacher.CacheHandler{Cacher: cacherMock, Runner: taskRunnerMock}
+			}
+
+			resolver := NewChannelResolverCacheable(apiMock, cacherArg)
 
 			id, err := resolver.ResolveChannelMemberRefToID(
 				context.Background(),
