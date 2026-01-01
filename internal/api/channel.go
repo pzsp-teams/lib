@@ -39,7 +39,7 @@ type channelAPI struct {
 	senderCfg *config.SenderConfig
 }
 
-func NewChannels(client *graph.GraphServiceClient, senderCfg *config.SenderConfig) ChannelAPI {
+func NewChannelAPI(client *graph.GraphServiceClient, senderCfg *config.SenderConfig) ChannelAPI {
 	return &channelAPI{client, senderCfg}
 }
 

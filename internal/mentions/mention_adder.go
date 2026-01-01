@@ -52,7 +52,7 @@ func ExtractUserIDAndDisplayName(user msmodels.Userable, raw string) (id, displa
 	return *idPtr, *dnPtr, nil
 }
 
-func (a *MentionAdder) AddUserMention(ctx context.Context, userRef string, userAPI api.UsersAPI) error {
+func (a *MentionAdder) AddUserMention(ctx context.Context, userRef string, userAPI api.UserAPI) error {
 	user, reqErr := userAPI.GetUserByEmailOrUPN(ctx, userRef)
 	if reqErr != nil {
 		return reqErr

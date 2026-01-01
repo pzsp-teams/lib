@@ -30,7 +30,7 @@ type teamAPI struct {
 	snederCfg *config.SenderConfig
 }
 
-func NewTeams(client *graph.GraphServiceClient, senderCfg *config.SenderConfig) TeamAPI {
+func NewTeamAPI(client *graph.GraphServiceClient, senderCfg *config.SenderConfig) TeamAPI {
 	return &teamAPI{client, senderCfg}
 }
 

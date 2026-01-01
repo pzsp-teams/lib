@@ -43,7 +43,7 @@ type chatsAPI struct {
 	senderCfg *config.SenderConfig
 }
 
-func NewChat(client *graph.GraphServiceClient, senderCfg *config.SenderConfig) ChatAPI {
+func NewChatAPI(client *graph.GraphServiceClient, senderCfg *config.SenderConfig) ChatAPI {
 	return &chatsAPI{client, senderCfg}
 }
 

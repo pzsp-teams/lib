@@ -33,7 +33,7 @@ func (f *fakeUsersAPI) GetUserByEmailOrUPN(ctx context.Context, emailOrUPN strin
 	return nil, &sender.RequestError{Message: "not found"}
 }
 
-var _ api.UsersAPI = (*fakeUsersAPI)(nil)
+var _ api.UserAPI = (*fakeUsersAPI)(nil)
 
 func newGraphUser(id, displayName string) msmodels.Userable {
 	u := msmodels.NewUser()

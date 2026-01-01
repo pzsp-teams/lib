@@ -33,25 +33,25 @@ func NewClient(ctx context.Context, authCfg *config.AuthConfig, senderCfg *confi
 		return nil, fmt.Errorf("creating graph client: %w", err)
 	}
 
-	teamsAPI := api.NewTeams(graphClient, senderCfg)
-	channelsAPI := api.NewChannels(graphClient, senderCfg)
-	chatAPI := api.NewChat(graphClient, senderCfg)
-	userAPI := api.NewUsers(graphClient, senderCfg)
+	teamAPI := api.NewTeamAPI(graphClient, senderCfg)
+	channelAPI := api.NewChannelAPI(graphClient, senderCfg)
+	chatAPI := api.NewChatAPI(graphClient, senderCfg)
+	userAPI := api.NewUserAPI(graphClient, senderCfg)
 
 	cacheHandler := cacher.NewCacheHandler(cacheCfg)
 
 	// TODO: make resolvers with cache decorators, the same as services
-	teamResolver := resolver.NewTeamResolverCacheable(teamsAPI, cacheHandler)
-	channelResolver := resolver.NewChannelResolverCacheable(channelsAPI, cacheHandler)
+	teamResolver := resolver.NewTeamResolverCacheable(teamAPI, cacheHandler)
+	channelResolver := resolver.NewChannelResolverCacheable(channelAPI, cacheHandler)
 	chatResolver := resolver.NewChatResolverCacheable(chatAPI, cacheHandler)
 
-	teamSvc := teams.NewService(teamsAPI, teamResolver)
-	channelSvc := channels.NewService(channelsAPI, teamResolver, channelResolver, userAPI)
+	teamSvc := teams.NewService(teamAPI, teamResolver)
+	channelSvc := channels.NewService(channelAPI, teamResolver, channelResolver, userAPI)
 	chatSvc := chats.NewService(chatAPI, chatResolver, userAPI)
 
 	if cacheHandler != nil {
-		channelSvc = channels.NewServiceWithCache(channelSvc, teamResolver, channelResolver, cacheHandler)
 		teamSvc = teams.NewServiceWithCache(teamSvc, cacheHandler)
+		channelSvc = channels.NewServiceWithCache(channelSvc, teamResolver, channelResolver, cacheHandler)
 	}
 
 	return &Client{
@@ -62,11 +62,15 @@ func NewClient(ctx context.Context, authCfg *config.AuthConfig, senderCfg *confi
 }
 
 func (c *Client) Close() {
-	if w, ok := c.Channels.(interface{ Wait() }); ok {
+	type Waiter interface {
+		Wait()
+	}
+
+	if w, ok := c.Channels.(Waiter); ok {
 		w.Wait()
 	}
 
-	if w, ok := c.Teams.(interface{ Wait() }); ok {
+	if w, ok := c.Teams.(Waiter); ok {
 		w.Wait()
 	}
 }

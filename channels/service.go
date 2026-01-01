@@ -20,11 +20,11 @@ type service struct {
 	channelAPI      api.ChannelAPI
 	teamResolver    resolver.TeamResolver
 	channelResolver resolver.ChannelResolver
-	userAPI         api.UsersAPI
+	userAPI         api.UserAPI
 }
 
 // NewService creates a new channels Service instance
-func NewService(channelsAPI api.ChannelAPI, tr resolver.TeamResolver, cr resolver.ChannelResolver, userAPI api.UsersAPI) Service {
+func NewService(channelsAPI api.ChannelAPI, tr resolver.TeamResolver, cr resolver.ChannelResolver, userAPI api.UserAPI) Service {
 	return &service{channelAPI: channelsAPI, teamResolver: tr, channelResolver: cr, userAPI: userAPI}
 }
 
