@@ -33,6 +33,10 @@ func NewClient(ctx context.Context, authCfg *config.AuthConfig, senderCfg *confi
 		return nil, fmt.Errorf("creating graph client: %w", err)
 	}
 
+	return NewClientFromGraphClient(graphClient, senderCfg, cacheCfg)
+}
+
+func NewClientFromGraphClient(graphClient *graph.GraphServiceClient, senderCfg *config.SenderConfig, cacheCfg *config.CacheConfig) (*Client, error) {
 	teamsAPI := api.NewTeams(graphClient, senderCfg)
 	channelsAPI := api.NewChannels(graphClient, senderCfg)
 	chatAPI := api.NewChat(graphClient, senderCfg)
