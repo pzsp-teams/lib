@@ -28,10 +28,3 @@ func isTeamRef(low, raw, teamRef, teamID string) bool {
 func isChannelRef(low, raw, channelRef, channelID string) bool {
 	return low == "channel" || raw == channelRef || raw == channelID
 }
-
-func memberRole(isOwner bool) string {
-	if isOwner {
-		return "owner"
-	}
-	return "member"
-}
