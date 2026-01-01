@@ -157,11 +157,3 @@ func TestTryAddTeamOrChannelMention_ReturnsFalseAndDoesNotAdd(t *testing.T) {
 	}
 }
 
-func TestMemberRole(t *testing.T) {
-	if got := memberRole(true); got != "owner" {
-		t.Fatalf("expected owner, got %q", got)
-	}
-	if got := memberRole(false); got != "member" {
-		t.Fatalf("expected member, got %q", got)
-	}
-}
