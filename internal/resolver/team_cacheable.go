@@ -19,6 +19,10 @@ type TeamResolver interface {
 	// If the reference already appears to be an team ID,
 	// it may be returned directly.
 	ResolveTeamRefToID(ctx context.Context, teamRef string) (string, error)
+	ResolveTeamMemberRefToID(
+		ctx context.Context,
+		teamID, userRef string,
+	) (string, error)
 }
 
 // TeamResolverCacheable resolves team references using the graph API
@@ -61,6 +65,32 @@ func (r *TeamResolverCacheable) newTeamResolveContext(
 		},
 		extract: func(data msmodels.TeamCollectionResponseable) (string, error) {
 			return resolveTeamIDByName(data, ref)
+		},
+	}
+}
+
+// ResolveTeamMemberRefToID implements TeamResolver.
+func (r *TeamResolverCacheable) ResolveTeamMemberRefToID(
+	ctx context.Context,
+	teamID, userRef string,
+) (string, error) {
+	rCtx := r.newTeamMemberResolveContext(teamID, userRef)
+	return rCtx.resolveWithCache(ctx, r.cacheHandler)
+}
+
+func (r *TeamResolverCacheable) newTeamMemberResolveContext(
+	teamID, userRef string,
+) resolverContext[msmodels.ConversationMemberCollectionResponseable] {
+	ref := strings.TrimSpace(userRef)
+	return resolverContext[msmodels.ConversationMemberCollectionResponseable]{
+		cacheKey:    cacher.NewTeamMemberKey(teamID, ref, nil),
+		ref:         ref,
+		isAlreadyID: func() bool { return util.IsLikelyGUID(ref) },
+		fetch: func(ctx context.Context) (msmodels.ConversationMemberCollectionResponseable, *sender.RequestError) {
+			return r.teamsAPI.ListMembers(ctx, teamID)
+		},
+		extract: func(data msmodels.ConversationMemberCollectionResponseable) (string, error) {
+			return resolveMemberID(data, ref)
 		},
 	}
 }
