@@ -205,13 +205,13 @@ func (s *serviceWithCache) AddMember(
 	return member, nil
 }
 
-func (s *serviceWithCache) UpdateMemberRole(
+func (s *serviceWithCache) UpdateMemberRoles(
 	ctx context.Context,
 	teamRef, channelRef, userRef string,
 	isOwner bool,
 ) (*models.Member, error) {
 	return withErrorClear(func() (*models.Member, error) {
-		return s.svc.UpdateMemberRole(ctx, teamRef, channelRef, userRef, isOwner)
+		return s.svc.UpdateMemberRoles(ctx, teamRef, channelRef, userRef, isOwner)
 	}, s)
 }
 

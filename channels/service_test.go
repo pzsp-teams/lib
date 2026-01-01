@@ -24,6 +24,16 @@ func (m *fakeTeamRes) ResolveTeamRefToID(ctx context.Context, teamName string) (
 	return teamName, nil
 }
 
+// ResolveTeamMemberRefToID resolves a member reference within a team to an ID.
+// This implements the resolver.TeamResolver interface used by NewService in tests.
+func (m *fakeTeamRes) ResolveTeamMemberRefToID(ctx context.Context, teamName, userRef string) (string, error) {
+	m.lastTeamName = teamName
+	if m.resolveTeamErr != nil {
+		return "", m.resolveTeamErr
+	}
+	return userRef, nil
+}
+
 type fakeChannelRes struct {
 	resChanErr           error
 	lastChannelName      string
@@ -85,12 +95,12 @@ type fakeChanAPI struct {
 	addMemberResp  msmodels.ConversationMemberable
 	addMemberErr   *sender.RequestError
 	lastAddUserRef string
-	lastAddRole    string
+	lastAddRoles   []string
 
 	updateMemberResp   msmodels.ConversationMemberable
 	updateMemberErr    *sender.RequestError
 	lastUpdateMemberID string
-	lastUpdateRole     string
+	lastUpdateRoles    []string
 
 	removeMemberErr    *sender.RequestError
 	lastRemoveMemberID string
@@ -175,11 +185,11 @@ func (f *fakeChanAPI) ListMembers(ctx context.Context, teamID, channelID string)
 	return f.membersResp, f.membersErr
 }
 
-func (f *fakeChanAPI) AddMember(ctx context.Context, teamID, channelID, userID, role string) (msmodels.ConversationMemberable, *sender.RequestError) {
+func (f *fakeChanAPI) AddMember(ctx context.Context, teamID, channelID, userID string, roles []string) (msmodels.ConversationMemberable, *sender.RequestError) {
 	f.lastTeamID = teamID
 	f.lastChanID = channelID
 	f.lastAddUserRef = userID
-	f.lastAddRole = role
+	f.lastAddRoles = roles
 	return f.addMemberResp, f.addMemberErr
 }
 
@@ -190,11 +200,11 @@ func (f *fakeChanAPI) RemoveMember(ctx context.Context, teamID, channelID, membe
 	return f.removeMemberErr
 }
 
-func (f *fakeChanAPI) UpdateMemberRole(ctx context.Context, teamID, channelID, memberID, role string) (msmodels.ConversationMemberable, *sender.RequestError) {
+func (f *fakeChanAPI) UpdateMemberRoles(ctx context.Context, teamID, channelID, memberID string, roles []string) (msmodels.ConversationMemberable, *sender.RequestError) {
 	f.lastTeamID = teamID
 	f.lastChanID = channelID
 	f.lastUpdateMemberID = memberID
-	f.lastUpdateRole = role
+	f.lastUpdateRoles = roles
 	return f.updateMemberResp, f.updateMemberErr
 }
 
@@ -727,8 +737,8 @@ func TestService_AddMember_OwnerRole(t *testing.T) {
 		t.Errorf("unexpected mapped member: %+v", got)
 	}
 
-	if api.lastAddUserRef != "user-ref" || api.lastAddRole != "owner" {
-		t.Errorf("expected AddMember called with user-ref/owner, got user=%q role=%q", api.lastAddUserRef, api.lastAddRole)
+	if api.lastAddUserRef != "user-ref" || api.lastAddRoles[0] != "owner" {
+		t.Errorf("expected AddMember called with user-ref/owner, got user=%q role=%q", api.lastAddUserRef, api.lastAddRoles[0])
 	}
 	if api.lastTeamID != "team-1" || api.lastChanID != "chan-1" {
 		t.Errorf("expected api called with team-1/chan-1, got team=%q, chan=%q", api.lastTeamID, api.lastChanID)
@@ -770,7 +780,7 @@ func TestService_UpdateMemberRole_OwnerRole(t *testing.T) {
 
 	svc := NewService(api, tm, cm, nil)
 
-	got, err := svc.UpdateMemberRole(ctx, "team-1", "chan-1", "user-ref", true)
+	got, err := svc.UpdateMemberRoles(ctx, "team-1", "chan-1", "user-ref", true)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -784,9 +794,9 @@ func TestService_UpdateMemberRole_OwnerRole(t *testing.T) {
 			cm.lastTeamIDForUser, cm.lastChannelIDForUser, cm.lastUserRef)
 	}
 
-	if api.lastUpdateMemberID != "user-ref" || api.lastUpdateRole != "owner" {
+	if api.lastUpdateMemberID != "user-ref" || api.lastUpdateRoles[0] != "owner" {
 		t.Errorf("expected UpdateMemberRole called with memberID=user-ref role=owner, got id=%q role=%q",
-			api.lastUpdateMemberID, api.lastUpdateRole)
+			api.lastUpdateMemberID, api.lastUpdateRoles[0])
 	}
 }
 
@@ -800,7 +810,7 @@ func TestService_UpdateMemberRole_MapperError(t *testing.T) {
 
 	svc := NewService(api, tm, cm, nil)
 
-	_, err := svc.UpdateMemberRole(ctx, "team-1", "chan-1", "user-ref", true)
+	_, err := svc.UpdateMemberRoles(ctx, "team-1", "chan-1", "user-ref", true)
 	if err == nil {
 		t.Fatalf("expected error, got nil")
 	}
@@ -823,7 +833,7 @@ func TestService_UpdateMemberRole_MapsError(t *testing.T) {
 
 	svc := NewService(api, tm, cm, nil)
 
-	_, err := svc.UpdateMemberRole(ctx, "team-1", "chan-1", "user-ref", false)
+	_, err := svc.UpdateMemberRoles(ctx, "team-1", "chan-1", "user-ref", false)
 	if err == nil {
 		t.Fatalf("expected error, got nil")
 	}
