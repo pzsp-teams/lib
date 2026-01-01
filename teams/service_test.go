@@ -7,6 +7,8 @@ import (
 
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
 	sender "github.com/pzsp-teams/lib/internal/sender"
+	"github.com/pzsp-teams/lib/internal/testutil"
+	"github.com/pzsp-teams/lib/internal/util"
 )
 
 type fakeResolver struct {
@@ -111,8 +113,8 @@ func (f *fakeTeamsAPI) UpdateMemberRoles(ctx context.Context, teamID, memberID s
 func TestService_ListMyJoined_MapsTeams(t *testing.T) {
 	ctx := context.Background()
 	col := msmodels.NewTeamCollectionResponse()
-	a := newGraphTeam("1", "Alpha")
-	b := newGraphTeam("2", "Beta")
+	a := testutil.NewGraphTeam(&testutil.NewTeamParams{ID: util.Ptr("1"), DisplayName: util.Ptr("Alpha")})
+	b := testutil.NewGraphTeam(&testutil.NewTeamParams{ID: util.Ptr("2"), DisplayName: util.Ptr("Beta")})
 	col.SetValue([]msmodels.Teamable{a, b})
 
 	api := &fakeTeamsAPI{listResp: col}
@@ -129,7 +131,7 @@ func TestService_ListMyJoined_MapsTeams(t *testing.T) {
 
 func TestService_Get_MapsTeam(t *testing.T) {
 	ctx := context.Background()
-	api := &fakeTeamsAPI{getResp: newGraphTeam("42", "X")}
+	api := &fakeTeamsAPI{getResp: testutil.NewGraphTeam(&testutil.NewTeamParams{ID: util.Ptr("42"), DisplayName: util.Ptr("X")})}
 	m := &fakeResolver{}
 	svc := NewService(api, m)
 
