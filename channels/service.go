@@ -38,7 +38,11 @@ func (s *service) ListChannels(ctx context.Context, teamRef string) ([]*models.C
 	if requestErr != nil {
 		return nil, snd.MapError(requestErr, snd.WithResource(resources.Team, teamRef))
 	}
-	return util.MapSlices(resp.GetValue(), adapter.MapGraphChannel), nil
+	return util.MapSlices(resp.GetValue(), func (channel msmodels.Channelable) *models.Channel {
+		out := adapter.MapGraphChannel(channel)
+		out.TeamID = teamID
+		return out
+	}), nil
 }
 
 func (s *service) Get(ctx context.Context, teamRef, channelRef string) (*models.Channel, error) {
@@ -52,7 +56,9 @@ func (s *service) Get(ctx context.Context, teamRef, channelRef string) (*models.
 		return nil, snd.MapError(requestErr, snd.WithResource(resources.Team, teamRef), snd.WithResource(resources.Channel, channelRef))
 	}
 
-	return adapter.MapGraphChannel(resp), nil
+	out := adapter.MapGraphChannel(resp)
+	out.TeamID = teamID
+	return out, nil
 }
 
 func (s *service) CreateStandardChannel(ctx context.Context, teamRef, name string) (*models.Channel, error) {
@@ -69,7 +75,9 @@ func (s *service) CreateStandardChannel(ctx context.Context, teamRef, name strin
 		return nil, snd.MapError(requestErr, snd.WithResource(resources.Team, teamRef))
 	}
 
-	return adapter.MapGraphChannel(created), nil
+	out := adapter.MapGraphChannel(created)
+	out.TeamID = teamID
+	return out, nil
 }
 
 func (s *service) CreatePrivateChannel(ctx context.Context, teamRef, name string, memberRefs, ownerRefs []string) (*models.Channel, error) {
@@ -83,7 +91,9 @@ func (s *service) CreatePrivateChannel(ctx context.Context, teamRef, name string
 		return nil, snd.MapError(requestErr, snd.WithResource(resources.Team, teamRef), snd.WithResources(resources.User, append(memberRefs, ownerRefs...)))
 	}
 
-	return adapter.MapGraphChannel(created), nil
+	out := adapter.MapGraphChannel(created)
+	out.TeamID = teamID
+	return out, nil
 }
 
 func (s *service) Delete(ctx context.Context, teamRef, channelRef string) error {
@@ -205,7 +215,12 @@ func (s *service) ListMembers(ctx context.Context, teamRef, channelRef string) (
 	if requestErr != nil {
 		return nil, snd.MapError(requestErr, snd.WithResource(resources.Team, teamRef), snd.WithResource(resources.Channel, channelRef))
 	}
-	return util.MapSlices(resp.GetValue(), adapter.MapGraphMember), nil
+	return util.MapSlices(resp.GetValue(), func(channelMember msmodels.ConversationMemberable) *models.Member {
+		out := adapter.MapGraphMember(channelMember)
+		out.TeamID = &teamID
+		out.ThreadID = &channelID
+		return out
+	}), nil
 }
 
 func (s *service) AddMember(ctx context.Context, teamRef, channelRef, userRef string, isOwner bool) (*models.Member, error) {
@@ -219,7 +234,10 @@ func (s *service) AddMember(ctx context.Context, teamRef, channelRef, userRef st
 		return nil, snd.MapError(requestErr, snd.WithResource(resources.Team, teamRef), snd.WithResource(resources.Channel, channelRef), snd.WithResource(resources.User, userRef))
 	}
 
-	return adapter.MapGraphMember(created), nil
+	out := adapter.MapGraphMember(created)
+	out.TeamID = &teamID
+	out.ThreadID = &channelID
+	return out, nil
 }
 
 func (s *service) UpdateMemberRoles(ctx context.Context, teamRef, channelRef, userRef string, isOwner bool) (*models.Member, error) {
@@ -240,7 +258,10 @@ func (s *service) UpdateMemberRoles(ctx context.Context, teamRef, channelRef, us
 		return nil, snd.MapError(requestErr, snd.WithResource(resources.Team, teamRef), snd.WithResource(resources.Channel, channelRef), snd.WithResource(resources.User, userRef))
 	}
 
-	return adapter.MapGraphMember(updated), nil
+	out := adapter.MapGraphMember(updated)
+	out.TeamID = &teamID
+	out.ThreadID = &channelID
+	return out, nil
 }
 
 func (s *service) RemoveMember(ctx context.Context, teamRef, channelRef, userRef string) error {
