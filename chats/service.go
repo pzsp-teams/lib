@@ -268,6 +268,10 @@ func (s *service) GetMentions(ctx context.Context, chatRef ChatRef, rawMentions 
 			continue
 		}
 
+		if !isGroup && strings.EqualFold(raw, "this") {
+			raw = chatRef.(OneOnOneChatRef).Ref
+		}
+
 		if util.IsLikelyEmail(raw) {
 			if err := adder.AddUserMention(ctx, raw, s.userAPI); err != nil {
 				return nil, err
