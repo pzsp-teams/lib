@@ -268,7 +268,7 @@ func (s *service) GetMentions(ctx context.Context, chatRef ChatRef, rawMentions 
 			continue
 		}
 
-		if !isGroup && strings.EqualFold(raw, "this") {
+		if checkThisMentionValidity(isGroup, raw) {
 			raw = chatRef.(OneOnOneChatRef).Ref
 		}
 
