@@ -55,7 +55,7 @@ func NewClientFromGraphClient(graphClient *graph.GraphServiceClient, senderCfg *
 
 	if cacheHandler != nil {
 		channelSvc = channels.NewServiceWithCache(channelSvc, teamResolver, channelResolver, cacheHandler)
-		teamSvc = teams.NewServiceWithCache(teamSvc, cacheHandler)
+		teamSvc = teams.NewServiceWithCache(teamSvc, cacheHandler, teamResolver)
 	}
 
 	return &Client{
