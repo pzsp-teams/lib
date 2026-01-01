@@ -72,8 +72,8 @@ type Service interface {
 	// AddMember adds a user to a channel.
 	AddMember(ctx context.Context, teamRef, channelRef, userRef string, isOwner bool) (*models.Member, error)
 
-	// UpdateMemberRole updates the role of a member in a channel.
-	UpdateMemberRole(ctx context.Context, teamRef, channelRef, userRef string, isOwner bool) (*models.Member, error)
+	// UpdateMemberRoles updates the roles of a member in a channel.
+	UpdateMemberRoles(ctx context.Context, teamRef, channelRef, userRef string, isOwner bool) (*models.Member, error)
 
 	// RemoveMember removes a user from a channel.
 	RemoveMember(ctx context.Context, teamRef, channelRef, userRef string) error

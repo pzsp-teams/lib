@@ -29,8 +29,8 @@ type ChannelAPI interface {
 	ListReplies(ctx context.Context, teamID, channelID, messageID string, top *int32) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError)
 	GetReply(ctx context.Context, teamID, channelID, messageID, replyID string) (msmodels.ChatMessageable, *sender.RequestError)
 	ListMembers(ctx context.Context, teamID, channelID string) (msmodels.ConversationMemberCollectionResponseable, *sender.RequestError)
-	AddMember(ctx context.Context, teamID, channelID, userRef, role string) (msmodels.ConversationMemberable, *sender.RequestError)
-	UpdateMemberRole(ctx context.Context, teamID, channelID, memberID, role string) (msmodels.ConversationMemberable, *sender.RequestError)
+	AddMember(ctx context.Context, teamID, channelID, userRef string, roles []string) (msmodels.ConversationMemberable, *sender.RequestError)
+	UpdateMemberRoles(ctx context.Context, teamID, channelID, memberID string, roles []string) (msmodels.ConversationMemberable, *sender.RequestError)
 	RemoveMember(ctx context.Context, teamID, channelID, memberID string) *sender.RequestError
 }
 
@@ -356,9 +356,10 @@ func (c *channelAPI) ListMembers(ctx context.Context, teamID, channelID string) 
 	return out, nil
 }
 
-func (c *channelAPI) AddMember(ctx context.Context, teamID, channelID, userRef, role string) (msmodels.ConversationMemberable, *sender.RequestError) {
+// Roles must be ["owner"] or [] (member)
+func (c *channelAPI) AddMember(ctx context.Context, teamID, channelID, userRef string, roles []string) (msmodels.ConversationMemberable, *sender.RequestError) {
 	member := msmodels.NewAadUserConversationMember()
-	member.SetRoles([]string{role})
+	member.SetRoles(roles)
 	member.SetAdditionalData(map[string]any{
 		graphUserBindKey: fmt.Sprintf(graphUserBindFmt, userRef),
 	})
@@ -385,9 +386,9 @@ func (c *channelAPI) AddMember(ctx context.Context, teamID, channelID, userRef, 
 	return out, nil
 }
 
-func (c *channelAPI) UpdateMemberRole(ctx context.Context, teamID, channelID, memberID, role string) (msmodels.ConversationMemberable, *sender.RequestError) {
+func (c *channelAPI) UpdateMemberRoles(ctx context.Context, teamID, channelID, memberID string, roles []string) (msmodels.ConversationMemberable, *sender.RequestError) {
 	member := msmodels.NewAadUserConversationMember()
-	member.SetRoles([]string{role})
+	member.SetRoles(roles)
 	call := func(ctx context.Context) (sender.Response, error) {
 		return c.client.
 			Teams().

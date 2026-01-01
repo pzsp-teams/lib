@@ -213,8 +213,8 @@ func (s *service) AddMember(ctx context.Context, teamRef, channelRef, userRef st
 	if err != nil {
 		return nil, err
 	}
-	role := memberRole(isOwner)
-	created, requestErr := s.channelAPI.AddMember(ctx, teamID, channelID, userRef, role)
+	roles := util.MemberRole(isOwner)
+	created, requestErr := s.channelAPI.AddMember(ctx, teamID, channelID, userRef, roles)
 	if requestErr != nil {
 		return nil, snd.MapError(requestErr, snd.WithResource(resources.Team, teamRef), snd.WithResource(resources.Channel, channelRef), snd.WithResource(resources.User, userRef))
 	}
@@ -222,7 +222,7 @@ func (s *service) AddMember(ctx context.Context, teamRef, channelRef, userRef st
 	return adapter.MapGraphMember(created), nil
 }
 
-func (s *service) UpdateMemberRole(ctx context.Context, teamRef, channelRef, userRef string, isOwner bool) (*models.Member, error) {
+func (s *service) UpdateMemberRoles(ctx context.Context, teamRef, channelRef, userRef string, isOwner bool) (*models.Member, error) {
 	teamID, channelID, err := s.resolveTeamAndChannelID(ctx, teamRef, channelRef)
 	if err != nil {
 		return nil, err
@@ -233,9 +233,9 @@ func (s *service) UpdateMemberRole(ctx context.Context, teamRef, channelRef, use
 		return nil, err
 	}
 
-	role := memberRole(isOwner)
+	roles := util.MemberRole(isOwner)
 
-	updated, requestErr := s.channelAPI.UpdateMemberRole(ctx, teamID, channelID, memberID, role)
+	updated, requestErr := s.channelAPI.UpdateMemberRoles(ctx, teamID, channelID, memberID, roles)
 	if requestErr != nil {
 		return nil, snd.MapError(requestErr, snd.WithResource(resources.Team, teamRef), snd.WithResource(resources.Channel, channelRef), snd.WithResource(resources.User, userRef))
 	}
