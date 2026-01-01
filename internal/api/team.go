@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -256,11 +255,7 @@ func (t *teamAPI) GetMember(ctx context.Context, teamID, memberID string) (msmod
 }
 
 func (t *teamAPI) AddMember(ctx context.Context, teamID, userRef string, roles []string) (msmodels.ConversationMemberable, *sender.RequestError) {
-	member := msmodels.NewAadUserConversationMember()
-	member.SetRoles(roles)
-	member.SetAdditionalData(map[string]any{
-		graphUserBindKey: fmt.Sprintf(graphUserBindFmt, userRef),
-	})
+	member := newAadUserMemberBody(userRef, roles)
 	call := func(ctx context.Context) (sender.Response, error) {
 		return t.client.
 			Teams().
@@ -294,8 +289,7 @@ func (t *teamAPI) RemoveMember(ctx context.Context, teamID, memberID string) *se
 
 // Roles can be ["owner"] or [] (member)
 func (t *teamAPI) UpdateMemberRoles(ctx context.Context, teamID, memberID string, roles []string) (msmodels.ConversationMemberable, *sender.RequestError) {
-	patch := msmodels.NewAadUserConversationMember()
-	patch.SetRoles(roles)
+	patch := newRolesPatchBody(roles)
 	call := func(ctx context.Context) (sender.Response, error) {
 		return t.client.
 			Teams().
