@@ -228,14 +228,14 @@ func withErrorClear[T any](
 }
 
 func (s *serviceWithCache) addMembersToCache(teamRef string, members ...models.Member) {
+	ctx := context.Background()
+	teamID, err := s.teamResolver.ResolveTeamRefToID(ctx, teamRef)
+	if err != nil {
+		return
+	}
 	for _, member := range members {
-		ref := strings.TrimSpace(strings.TrimSpace(member.Email))
+		ref := strings.TrimSpace(member.Email)
 		if ref == "" {
-			continue
-		}
-		ctx := context.Background()
-		teamID, err := s.teamResolver.ResolveTeamRefToID(ctx, teamRef)
-		if err != nil {
 			continue
 		}
 		key := cacher.NewTeamMemberKey(teamID, ref, nil)

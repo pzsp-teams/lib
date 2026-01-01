@@ -292,7 +292,7 @@ func (t *teamAPI) RemoveMember(ctx context.Context, teamID, memberID string) *se
 	return err
 }
 
-// Roles can be ["owner"] or [] (guest)
+// Roles can be ["owner"] or [] (member)
 func (t *teamAPI) UpdateMemberRoles(ctx context.Context, teamID, memberID string, roles []string) (msmodels.ConversationMemberable, *sender.RequestError) {
 	patch := msmodels.NewAadUserConversationMember()
 	patch.SetRoles(roles)
