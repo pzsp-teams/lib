@@ -32,6 +32,15 @@ func (m *fakeResolver) MapUserRefToMemberID(ctx context.Context, userRef, teamID
 	return userRef, nil
 }
 
+func (m *fakeResolver) ResolveTeamMemberRefToID(ctx context.Context, userRef, teamRef string) (string, error) {
+	// simple passthrough for tests
+	m.lastTeamName = teamRef
+	if m.resolverErr != nil {
+		return "", m.resolverErr
+	}
+	return userRef, nil
+}
+
 type fakeTeamsAPI struct {
 	getResp    msmodels.Teamable
 	getErr     *sender.RequestError
@@ -90,7 +99,7 @@ func (f *fakeTeamsAPI) RestoreDeleted(ctx context.Context, deletedGroupID string
 	return f.restoreObj, f.restoreErr
 }
 
-func (f *fakeTeamsAPI) AddMember(ctx context.Context, teamID string, member msmodels.ConversationMemberable) (msmodels.ConversationMemberable, *sender.RequestError) {
+func (f *fakeTeamsAPI) AddMember(ctx context.Context, teamID, userID string, roles []string) (msmodels.ConversationMemberable, *sender.RequestError) {
 	return nil, nil
 }
 
@@ -106,9 +115,11 @@ func (f *fakeTeamsAPI) RemoveMember(ctx context.Context, teamID, memberID string
 	return nil
 }
 
-func (f *fakeTeamsAPI) UpdateMemberRoles(ctx context.Context, teamID, memberID string, roles []string) *sender.RequestError {
-	return nil
+func (f *fakeTeamsAPI) UpdateMemberRoles(ctx context.Context, teamID, memberID string, roles []string) (msmodels.ConversationMemberable, *sender.RequestError) {
+	return nil, nil
 }
+
+
 
 func TestService_ListMyJoined_MapsTeams(t *testing.T) {
 	ctx := context.Background()
