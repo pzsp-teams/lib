@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -25,9 +26,9 @@ type TeamAPI interface {
 	RestoreDeleted(ctx context.Context, deletedGroupID string) (msmodels.DirectoryObjectable, *sender.RequestError)
 	ListMembers(ctx context.Context, teamID string) (msmodels.ConversationMemberCollectionResponseable, *sender.RequestError)
 	GetMember(ctx context.Context, teamID, memberID string) (msmodels.ConversationMemberable, *sender.RequestError)
-	AddMember(ctx context.Context, teamID string, member msmodels.ConversationMemberable) (msmodels.ConversationMemberable, *sender.RequestError)
+	AddMember(ctx context.Context, teamID, userRef string, roles []string) (msmodels.ConversationMemberable, *sender.RequestError)
 	RemoveMember(ctx context.Context, teamID, memberID string) *sender.RequestError
-	UpdateMemberRoles(ctx context.Context, teamID, memberID string, roles []string) *sender.RequestError
+	UpdateMemberRoles(ctx context.Context, teamID, memberID string, roles []string) (msmodels.ConversationMemberable, *sender.RequestError)
 }
 
 type teamAPI struct {
@@ -254,7 +255,12 @@ func (t *teamAPI) GetMember(ctx context.Context, teamID, memberID string) (msmod
 	return out, nil
 }
 
-func (t *teamAPI) AddMember(ctx context.Context, teamID string, member msmodels.ConversationMemberable) (msmodels.ConversationMemberable, *sender.RequestError) {
+func (t *teamAPI) AddMember(ctx context.Context, teamID string, userRef string, roles []string) (msmodels.ConversationMemberable, *sender.RequestError) {
+	member := msmodels.NewAadUserConversationMember()
+	member.SetRoles(roles)
+	member.SetAdditionalData(map[string]any{
+		graphUserBindKey: fmt.Sprintf(graphUserBindFmt, userRef),
+	})
 	call := func(ctx context.Context) (sender.Response, error) {
 		return t.client.
 			Teams().
@@ -287,8 +293,8 @@ func (t *teamAPI) RemoveMember(ctx context.Context, teamID, memberID string) *se
 }
 
 // Roles can be ["owner"] or [] (guest)
-func (t *teamAPI) UpdateMemberRoles(ctx context.Context, teamID, memberID string, roles []string) *sender.RequestError {
-	patch := msmodels.NewConversationMember()
+func (t *teamAPI) UpdateMemberRoles(ctx context.Context, teamID, memberID string, roles []string) (msmodels.ConversationMemberable, *sender.RequestError) {
+	patch := msmodels.NewAadUserConversationMember()
 	patch.SetRoles(roles)
 	call := func(ctx context.Context) (sender.Response, error) {
 		return t.client.
@@ -298,6 +304,13 @@ func (t *teamAPI) UpdateMemberRoles(ctx context.Context, teamID, memberID string
 			ByConversationMemberId(memberID).
 			Patch(ctx, patch, nil)
 	}
-	_, err := sender.SendRequest(ctx, call, t.senderCfg)
-	return err
+	resp, err := sender.SendRequest(ctx, call, t.senderCfg)
+	if err != nil {
+		return nil, err
+	}
+	out, ok := resp.(msmodels.ConversationMemberable)
+	if !ok {
+		return nil, newTypeError("ConversationMemberable")
+	}
+	return out, nil
 }
