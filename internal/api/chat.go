@@ -59,7 +59,7 @@ func (c *chatsAPI) CreateOneOnOneChat(ctx context.Context, userRef string) (msmo
 
 	userRefs := []string{*me.GetId(), userRef}
 	members := make([]msmodels.ConversationMemberable, 0, len(userRefs))
-	addToMembers(&members, userRefs, "owner")
+	addToMembers(&members, userRefs, ownerRoles())
 	body.SetMembers(members)
 
 	call := func(ctx context.Context) (sender.Response, error) {
@@ -128,7 +128,7 @@ func (c *chatsAPI) CreateGroupChat(ctx context.Context, userRefs []string, topic
 	}
 
 	members := make([]msmodels.ConversationMemberable, 0, len(userRefs))
-	addToMembers(&members, userRefs, "owner")
+	addToMembers(&members, userRefs, ownerRoles())
 	body.SetMembers(members)
 
 	call := func(ctx context.Context) (sender.Response, error) {
@@ -148,11 +148,7 @@ func (c *chatsAPI) CreateGroupChat(ctx context.Context, userRefs []string, topic
 }
 
 func (c *chatsAPI) AddMemberToGroupChat(ctx context.Context, chatID, userRef string) (msmodels.ConversationMemberable, *sender.RequestError) {
-	chatMember := msmodels.NewAadUserConversationMember()
-	chatMember.SetRoles([]string{"owner"})
-	chatMember.SetAdditionalData(map[string]any{
-		graphUserBindKey: fmt.Sprintf(graphUserBindFmt, userRef),
-	})
+	chatMember := newAadUserMemberBody(userRef, []string{"owner"})
 
 	call := func(ctx context.Context) (sender.Response, error) {
 		return c.client.Chats().ByChatId(chatID).Members().Post(ctx, chatMember, nil)

@@ -6,7 +6,6 @@ package api
 
 import (
 	"context"
-	"fmt"
 
 	graph "github.com/microsoftgraph/msgraph-sdk-go"
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
@@ -117,8 +116,8 @@ func (c *channelAPI) CreatePrivateChannelWithMembers(ctx context.Context, teamID
 	ch.SetMembershipType(&mt)
 
 	members := make([]msmodels.ConversationMemberable, 0, len(memberRefs)+len(ownerRefs))
-	addToMembers(&members, memberRefs, "member")
-	addToMembers(&members, ownerRefs, "owner")
+	addToMembers(&members, memberRefs, emptyRoles())
+	addToMembers(&members, ownerRefs, ownerRoles())
 	ch.SetMembers(members)
 	call := func(ctx context.Context) (sender.Response, error) {
 		return c.client.
@@ -358,11 +357,7 @@ func (c *channelAPI) ListMembers(ctx context.Context, teamID, channelID string) 
 
 // Roles must be ["owner"] or [] (member)
 func (c *channelAPI) AddMember(ctx context.Context, teamID, channelID, userRef string, roles []string) (msmodels.ConversationMemberable, *sender.RequestError) {
-	member := msmodels.NewAadUserConversationMember()
-	member.SetRoles(roles)
-	member.SetAdditionalData(map[string]any{
-		graphUserBindKey: fmt.Sprintf(graphUserBindFmt, userRef),
-	})
+	member := newAadUserMemberBody(userRef, roles)
 	call := func(ctx context.Context) (sender.Response, error) {
 		return c.client.
 			Teams().
@@ -387,8 +382,7 @@ func (c *channelAPI) AddMember(ctx context.Context, teamID, channelID, userRef s
 }
 
 func (c *channelAPI) UpdateMemberRoles(ctx context.Context, teamID, channelID, memberID string, roles []string) (msmodels.ConversationMemberable, *sender.RequestError) {
-	member := msmodels.NewAadUserConversationMember()
-	member.SetRoles(roles)
+	patch := newRolesPatchBody(roles)
 	call := func(ctx context.Context) (sender.Response, error) {
 		return c.client.
 			Teams().
@@ -397,7 +391,7 @@ func (c *channelAPI) UpdateMemberRoles(ctx context.Context, teamID, channelID, m
 			ByChannelId(channelID).
 			Members().
 			ByConversationMemberId(memberID).
-			Patch(ctx, member, nil)
+			Patch(ctx, patch, nil)
 	}
 
 	resp, err := sender.SendRequest(ctx, call, c.senderCfg)

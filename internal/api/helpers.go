@@ -18,16 +18,39 @@ const (
 	templateBindKey     = "template@odata.bind"
 	graphMessageBindFmt = "https://graph.microsoft.com/v1.0/chats/%s/messages/%s"
 	graphMessageBindKey = "message@odata.bind"
+	roleOwner         = "owner"
 )
 
-func addToMembers(members *[]msmodels.ConversationMemberable, userRefs []string, role string) {
+func ownerRoles() []string {
+	return []string{roleOwner}
+}
+
+func emptyRoles() []string {
+	return []string{}
+}
+
+func userBindValue(userRef string) string {
+	return fmt.Sprintf(graphUserBindFmt, userRef)
+}
+
+func newAadUserMemberBody(userRef string, roles []string) msmodels.ConversationMemberable {
+	m := msmodels.NewAadUserConversationMember()
+	m.SetRoles(roles)
+	m.SetAdditionalData(map[string]any{
+		graphUserBindKey: userBindValue(userRef),
+	})
+	return m
+}
+
+func newRolesPatchBody(roles []string) msmodels.ConversationMemberable {
+	patch := msmodels.NewAadUserConversationMember()
+	patch.SetRoles(roles)
+	return patch
+}
+
+func addToMembers(members *[]msmodels.ConversationMemberable, userRefs []string, roles []string) {
 	for _, userRef := range userRefs {
-		member := msmodels.NewAadUserConversationMember()
-		member.SetRoles([]string{role})
-		member.SetAdditionalData(map[string]any{
-			graphUserBindKey: fmt.Sprintf(graphUserBindFmt, userRef),
-		})
-		*members = append(*members, member)
+		*members = append(*members, newAadUserMemberBody(userRef, roles))
 	}
 }
 
