@@ -51,7 +51,7 @@ func NewClient(ctx context.Context, authCfg *config.AuthConfig, senderCfg *confi
 
 	if cacheHandler != nil {
 		teamSvc = teams.NewServiceWithCache(teamSvc, cacheHandler)
-		channelSvc = channels.NewServiceWithCache(channelSvc, teamResolver, channelResolver, cacheHandler)
+		channelSvc = channels.NewServiceWithCache(channelSvc, cacheHandler)
 	}
 
 	return &Client{

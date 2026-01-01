@@ -2,35 +2,24 @@ package channels
 
 import (
 	"context"
-	"strings"
 
 	"github.com/pzsp-teams/lib/internal/cacher"
-	"github.com/pzsp-teams/lib/internal/resolver"
 	"github.com/pzsp-teams/lib/internal/util"
 	"github.com/pzsp-teams/lib/models"
 )
 
 type serviceWithCache struct {
-	svc             Service
-	teamResolver    resolver.TeamResolver
-	channelResolver resolver.ChannelResolver
-	cacheHandler    *cacher.CacheHandler
+	svc          Service
+	cacheHandler *cacher.CacheHandler
 }
 
-func NewServiceWithCache(
-	svc Service,
-	teamResolver resolver.TeamResolver,
-	channelResolver resolver.ChannelResolver,
-	cacheHandler *cacher.CacheHandler,
-) Service {
+func NewServiceWithCache(svc Service, cacheHandler *cacher.CacheHandler) Service {
 	if cacheHandler == nil {
 		return svc
 	}
 	return &serviceWithCache{
-		svc:             svc,
-		teamResolver:    teamResolver,
-		channelResolver: channelResolver,
-		cacheHandler:    cacheHandler,
+		svc:          svc,
+		cacheHandler: cacheHandler,
 	}
 }
 
@@ -46,7 +35,7 @@ func (s *serviceWithCache) ListChannels(ctx context.Context, teamRef string) ([]
 	}
 	local := util.CopyNonNil(chans)
 	s.cacheHandler.Runner.Run(func() {
-		s.addChannelsToCache(teamRef, local...)
+		s.addChannelsToCache(ctx, local...)
 	})
 	return chans, nil
 }
@@ -60,7 +49,7 @@ func (s *serviceWithCache) Get(ctx context.Context, teamRef, channelRef string) 
 	if ch != nil {
 		local := *ch
 		s.cacheHandler.Runner.Run(func() {
-			s.addChannelsToCache(teamRef, local)
+			s.addChannelsToCache(ctx, local)
 		})
 	}
 	return ch, nil
@@ -72,7 +61,7 @@ func (s *serviceWithCache) CreateStandardChannel(ctx context.Context, teamRef, n
 		s.cacheHandler.OnError()
 		return nil, err
 	}
-	s.updateCacheAfterCreate(teamRef, name, ch)
+	s.updateCacheAfterCreate(ctx, name, ch)
 	return ch, nil
 }
 
@@ -86,18 +75,18 @@ func (s *serviceWithCache) CreatePrivateChannel(
 		s.cacheHandler.OnError()
 		return nil, err
 	}
-	s.updateCacheAfterCreate(teamRef, name, ch)
+	s.updateCacheAfterCreate(ctx, name, ch)
 	return ch, nil
 }
 
-func (s *serviceWithCache) updateCacheAfterCreate(teamRef, name string, ch *models.Channel) {
+func (s *serviceWithCache) updateCacheAfterCreate(ctx context.Context, name string, ch *models.Channel) {
 	s.cacheHandler.Runner.Run(func() {
-		s.removeChannelFromCache(teamRef, name)
+		s.removeChannelFromCache(ctx, name)
 		if ch == nil {
 			return
 		}
 		local := *ch
-		s.addChannelsToCache(teamRef, local)
+		s.addChannelsToCache(ctx, local)
 	})
 }
 
@@ -107,7 +96,7 @@ func (s *serviceWithCache) Delete(ctx context.Context, teamRef, channelRef strin
 		return err
 	}
 	s.cacheHandler.Runner.Run(func() {
-		s.removeChannelFromCache(teamRef, channelRef)
+		s.removeChannelFromCache(ctx, channelRef)
 	})
 	return nil
 }
@@ -181,7 +170,7 @@ func (s *serviceWithCache) ListMembers(
 	}
 	local := util.CopyNonNil(members)
 	s.cacheHandler.Runner.Run(func() {
-		s.addMembersToCache(teamRef, channelRef, local...)
+		s.addMembersToCache(ctx, local...)
 	})
 	return members, nil
 }
@@ -199,7 +188,7 @@ func (s *serviceWithCache) AddMember(
 	if member != nil {
 		local := *member
 		s.cacheHandler.Runner.Run(func() {
-			s.addMembersToCache(teamRef, channelRef, local)
+			s.addMembersToCache(ctx, local)
 		})
 	}
 	return member, nil
@@ -224,7 +213,7 @@ func (s *serviceWithCache) RemoveMember(
 		return err
 	}
 	s.cacheHandler.Runner.Run(func() {
-		s.invalidateMemberCache(teamRef, channelRef, userRef)
+		s.invalidateMemberCache(ctx, userRef)
 	})
 	return nil
 }
@@ -235,72 +224,47 @@ func (s *serviceWithCache) GetMentions(ctx context.Context, teamRef, channelRef 
 	})
 }
 
-func (s *serviceWithCache) addChannelsToCache(teamRef string, chans ...models.Channel) {
-	ctx := context.Background()
-	teamID, err := s.teamResolver.ResolveTeamRefToID(ctx, teamRef)
-	if err != nil {
-		return
-	}
+func (s *serviceWithCache) addChannelsToCache(ctx context.Context, chans ...models.Channel) {
 	for _, ch := range chans {
-		name := strings.TrimSpace(ch.Name)
-		if name == "" || util.IsLikelyThreadConversationID(name) {
+		teamID, ok := ctx.Value(resolvedTeamIDKey).(string)
+		if !ok {
 			continue
 		}
-		key := cacher.NewChannelKey(teamID, name)
+		key := cacher.NewChannelKey(teamID, ch.Name)
 		_ = s.cacheHandler.Cacher.Set(key, ch.ID)
 	}
 }
 
-func (s *serviceWithCache) removeChannelFromCache(teamRef, channelRef string) {
-	ref := strings.TrimSpace(channelRef)
-	if ref == "" || util.IsLikelyThreadConversationID(ref) {
+func (s *serviceWithCache) removeChannelFromCache(ctx context.Context, channelRef string) {
+	teamID, ok := ctx.Value(resolvedTeamIDKey).(string)
+	if !ok {
 		return
 	}
-	ctx := context.Background()
-	teamID, err := s.teamResolver.ResolveTeamRefToID(ctx, teamRef)
-	if err != nil {
-		return
-	}
-	key := cacher.NewChannelKey(teamID, ref)
+
+	key := cacher.NewChannelKey(teamID, channelRef)
 	_ = s.cacheHandler.Cacher.Invalidate(key)
 }
 
-func (s *serviceWithCache) addMembersToCache(teamRef, channelRef string, members ...models.Member) {
+func (s *serviceWithCache) addMembersToCache(ctx context.Context, members ...models.Member) {
 	for _, member := range members {
-		ref := strings.TrimSpace(strings.TrimSpace(member.Email))
-		if ref == "" {
+		teamID, ok1 := ctx.Value(resolvedTeamIDKey).(string)
+		channelID, ok2 := ctx.Value(resolvedChannelIDKey).(string)
+		if !ok1 || !ok2 {
 			continue
 		}
-		ctx := context.Background()
-		teamID, err := s.teamResolver.ResolveTeamRefToID(ctx, teamRef)
-		if err != nil {
-			continue
-		}
-		channelID, err := s.channelResolver.ResolveChannelRefToID(ctx, teamID, channelRef)
-		if err != nil {
-			continue
-		}
-		key := cacher.NewChannelMemberKey(ref, teamID, channelID, nil)
+
+		key := cacher.NewChannelMemberKey(member.Email, teamID, channelID, nil)
 		_ = s.cacheHandler.Cacher.Set(key, member.ID)
 	}
 }
 
-func (s *serviceWithCache) invalidateMemberCache(teamRef, channelRef, userRef string) {
-	ref := strings.TrimSpace(userRef)
-	if ref == "" {
+func (s *serviceWithCache) invalidateMemberCache(ctx context.Context, userRef string) {
+	teamID, ok1 := ctx.Value(resolvedTeamIDKey).(string)
+	channelID, ok2 := ctx.Value(resolvedChannelIDKey).(string)
+	if !ok1 || !ok2 {
 		return
 	}
 
-	ctx := context.Background()
-	teamID, err := s.teamResolver.ResolveTeamRefToID(ctx, teamRef)
-	if err != nil {
-		return
-	}
-	channelID, err := s.channelResolver.ResolveChannelRefToID(ctx, teamID, channelRef)
-	if err != nil {
-		return
-	}
-
-	key := cacher.NewChannelMemberKey(ref, teamID, channelID, nil)
+	key := cacher.NewChannelMemberKey(userRef, teamID, channelID, nil)
 	_ = s.cacheHandler.Cacher.Invalidate(key)
 }

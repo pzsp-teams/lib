@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
 	"github.com/pzsp-teams/lib/internal/adapter"
 	"github.com/pzsp-teams/lib/internal/api"
 	"github.com/pzsp-teams/lib/internal/mentions"
@@ -34,6 +33,8 @@ func (s *service) ListChannels(ctx context.Context, teamRef string) ([]*models.C
 		return nil, err
 	}
 
+	ctx = withResolvedTeamID(ctx, teamID)
+
 	resp, requestErr := s.channelAPI.ListChannels(ctx, teamID)
 	if requestErr != nil {
 		return nil, snd.MapError(requestErr, snd.WithResource(resources.Team, teamRef))
@@ -46,6 +47,9 @@ func (s *service) Get(ctx context.Context, teamRef, channelRef string) (*models.
 	if err != nil {
 		return nil, err
 	}
+
+	ctx = withResolvedTeamID(ctx, teamID)
+	ctx = withResolvedChannelID(ctx, channelID)
 
 	resp, requestErr := s.channelAPI.GetChannel(ctx, teamID, channelID)
 	if requestErr != nil {
@@ -61,10 +65,9 @@ func (s *service) CreateStandardChannel(ctx context.Context, teamRef, name strin
 		return nil, err
 	}
 
-	newChannel := msmodels.NewChannel()
-	newChannel.SetDisplayName(&name)
+	ctx = withResolvedTeamID(ctx, teamID)
 
-	created, requestErr := s.channelAPI.CreateStandardChannel(ctx, teamID, newChannel)
+	created, requestErr := s.channelAPI.CreateStandardChannel(ctx, teamID, name)
 	if requestErr != nil {
 		return nil, snd.MapError(requestErr, snd.WithResource(resources.Team, teamRef))
 	}
@@ -77,6 +80,8 @@ func (s *service) CreatePrivateChannel(ctx context.Context, teamRef, name string
 	if err != nil {
 		return nil, err
 	}
+
+	ctx = withResolvedTeamID(ctx, teamID)
 
 	created, requestErr := s.channelAPI.CreatePrivateChannelWithMembers(ctx, teamID, name, memberRefs, ownerRefs)
 	if requestErr != nil {
@@ -92,6 +97,9 @@ func (s *service) Delete(ctx context.Context, teamRef, channelRef string) error 
 		return err
 	}
 
+	ctx = withResolvedTeamID(ctx, teamID)
+	ctx = withResolvedChannelID(ctx, channelID)
+
 	requestErr := s.channelAPI.DeleteChannel(ctx, teamID, channelID)
 	if requestErr != nil {
 		return snd.MapError(requestErr, snd.WithResource(resources.Team, teamRef), snd.WithResource(resources.Channel, channelRef))
@@ -105,6 +113,9 @@ func (s *service) SendMessage(ctx context.Context, teamRef, channelRef string, b
 	if err != nil {
 		return nil, err
 	}
+
+	ctx = withResolvedTeamID(ctx, teamID)
+	ctx = withResolvedChannelID(ctx, channelID)
 
 	ments, err := mentions.PrepareMentions(&body)
 	if err != nil {
@@ -125,6 +136,9 @@ func (s *service) SendReply(ctx context.Context, teamRef, channelRef, messageID 
 		return nil, err
 	}
 
+	ctx = withResolvedTeamID(ctx, teamID)
+	ctx = withResolvedChannelID(ctx, channelID)
+
 	ments, err := mentions.PrepareMentions(&body)
 	if err != nil {
 		return nil, err
@@ -143,10 +157,15 @@ func (s *service) ListMessages(ctx context.Context, teamRef, channelRef string, 
 	if err != nil {
 		return nil, err
 	}
+
+	ctx = withResolvedTeamID(ctx, teamID)
+	ctx = withResolvedChannelID(ctx, channelID)
+
 	var top *int32
 	if opts != nil && opts.Top != nil {
 		top = opts.Top
 	}
+
 	resp, requestErr := s.channelAPI.ListMessages(ctx, teamID, channelID, top)
 	if requestErr != nil {
 		return nil, snd.MapError(requestErr, snd.WithResource(resources.Team, teamRef), snd.WithResource(resources.Channel, channelRef))
@@ -159,6 +178,9 @@ func (s *service) GetMessage(ctx context.Context, teamRef, channelRef, messageID
 	if err != nil {
 		return nil, err
 	}
+
+	ctx = withResolvedTeamID(ctx, teamID)
+	ctx = withResolvedChannelID(ctx, channelID)
 
 	resp, requestErr := s.channelAPI.GetMessage(ctx, teamID, channelID, messageID)
 	if requestErr != nil {
@@ -174,6 +196,9 @@ func (s *service) ListReplies(ctx context.Context, teamRef, channelRef, messageI
 		return nil, err
 	}
 
+	ctx = withResolvedTeamID(ctx, teamID)
+	ctx = withResolvedChannelID(ctx, channelID)
+
 	resp, requestErr := s.channelAPI.ListReplies(ctx, teamID, channelID, messageID, top)
 	if requestErr != nil {
 		return nil, snd.MapError(requestErr, snd.WithResource(resources.Team, teamRef), snd.WithResource(resources.Channel, channelRef), snd.WithResource(resources.Message, messageID))
@@ -186,6 +211,9 @@ func (s *service) GetReply(ctx context.Context, teamRef, channelRef, messageID, 
 	if err != nil {
 		return nil, err
 	}
+
+	ctx = withResolvedTeamID(ctx, teamID)
+	ctx = withResolvedChannelID(ctx, channelID)
 
 	resp, requestErr := s.channelAPI.GetReply(ctx, teamID, channelID, messageID, replyID)
 	if requestErr != nil {
@@ -201,6 +229,9 @@ func (s *service) ListMembers(ctx context.Context, teamRef, channelRef string) (
 		return nil, err
 	}
 
+	ctx = withResolvedTeamID(ctx, teamID)
+	ctx = withResolvedChannelID(ctx, channelID)
+
 	resp, requestErr := s.channelAPI.ListMembers(ctx, teamID, channelID)
 	if requestErr != nil {
 		return nil, snd.MapError(requestErr, snd.WithResource(resources.Team, teamRef), snd.WithResource(resources.Channel, channelRef))
@@ -213,6 +244,10 @@ func (s *service) AddMember(ctx context.Context, teamRef, channelRef, userRef st
 	if err != nil {
 		return nil, err
 	}
+
+	ctx = withResolvedTeamID(ctx, teamID)
+	ctx = withResolvedChannelID(ctx, channelID)
+
 	role := memberRole(isOwner)
 	created, requestErr := s.channelAPI.AddMember(ctx, teamID, channelID, userRef, role)
 	if requestErr != nil {
@@ -227,6 +262,9 @@ func (s *service) UpdateMemberRole(ctx context.Context, teamRef, channelRef, use
 	if err != nil {
 		return nil, err
 	}
+
+	ctx = withResolvedTeamID(ctx, teamID)
+	ctx = withResolvedChannelID(ctx, channelID)
 
 	memberID, err := s.channelResolver.ResolveChannelMemberRefToID(ctx, teamID, channelID, userRef)
 	if err != nil {
@@ -249,6 +287,9 @@ func (s *service) RemoveMember(ctx context.Context, teamRef, channelRef, userRef
 		return err
 	}
 
+	ctx = withResolvedTeamID(ctx, teamID)
+	ctx = withResolvedChannelID(ctx, channelID)
+
 	memberID, err := s.channelResolver.ResolveChannelMemberRefToID(ctx, teamID, channelID, userRef)
 	if err != nil {
 		return err
@@ -267,6 +308,9 @@ func (s *service) GetMentions(ctx context.Context, teamRef, channelRef string, r
 	if err != nil {
 		return nil, err
 	}
+
+	ctx = withResolvedTeamID(ctx, teamID)
+	ctx = withResolvedChannelID(ctx, channelID)
 
 	out := make([]models.Mention, 0, len(rawMentions))
 	adder := mentions.NewMentionAdder(&out)

@@ -73,18 +73,18 @@ func (mr *MockChannelAPIMockRecorder) CreatePrivateChannelWithMembers(ctx, teamI
 }
 
 // CreateStandardChannel mocks base method.
-func (m *MockChannelAPI) CreateStandardChannel(ctx context.Context, teamID string, channel models.Channelable) (models.Channelable, *sender.RequestError) {
+func (m *MockChannelAPI) CreateStandardChannel(ctx context.Context, teamID, name string) (models.Channelable, *sender.RequestError) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateStandardChannel", ctx, teamID, channel)
+	ret := m.ctrl.Call(m, "CreateStandardChannel", ctx, teamID, name)
 	ret0, _ := ret[0].(models.Channelable)
 	ret1, _ := ret[1].(*sender.RequestError)
 	return ret0, ret1
 }
 
 // CreateStandardChannel indicates an expected call of CreateStandardChannel.
-func (mr *MockChannelAPIMockRecorder) CreateStandardChannel(ctx, teamID, channel any) *gomock.Call {
+func (mr *MockChannelAPIMockRecorder) CreateStandardChannel(ctx, teamID, name any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateStandardChannel", reflect.TypeOf((*MockChannelAPI)(nil).CreateStandardChannel), ctx, teamID, channel)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateStandardChannel", reflect.TypeOf((*MockChannelAPI)(nil).CreateStandardChannel), ctx, teamID, name)
 }
 
 // DeleteChannel mocks base method.

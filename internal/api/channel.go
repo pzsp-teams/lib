@@ -19,7 +19,7 @@ import (
 type ChannelAPI interface {
 	ListChannels(ctx context.Context, teamID string) (msmodels.ChannelCollectionResponseable, *sender.RequestError)
 	GetChannel(ctx context.Context, teamID, channelID string) (msmodels.Channelable, *sender.RequestError)
-	CreateStandardChannel(ctx context.Context, teamID string, channel msmodels.Channelable) (msmodels.Channelable, *sender.RequestError)
+	CreateStandardChannel(ctx context.Context, teamID, name string) (msmodels.Channelable, *sender.RequestError)
 	CreatePrivateChannelWithMembers(ctx context.Context, teamID, displayName string, memberIDs, ownersID []string) (msmodels.Channelable, *sender.RequestError)
 	DeleteChannel(ctx context.Context, teamID, channelID string) *sender.RequestError
 	SendMessage(ctx context.Context, teamID, channelID, content, contentType string, mentions []msmodels.ChatMessageMentionable) (msmodels.ChatMessageable, *sender.RequestError)
@@ -88,7 +88,10 @@ func (c *channelAPI) GetChannel(ctx context.Context, teamID, channelID string) (
 	return out, nil
 }
 
-func (c *channelAPI) CreateStandardChannel(ctx context.Context, teamID string, channel msmodels.Channelable) (msmodels.Channelable, *sender.RequestError) {
+func (c *channelAPI) CreateStandardChannel(ctx context.Context, teamID, name string) (msmodels.Channelable, *sender.RequestError) {
+	channel := msmodels.NewChannel()
+	channel.SetDisplayName(&name)
+
 	call := func(ctx context.Context) (sender.Response, error) {
 		return c.client.
 			Teams().

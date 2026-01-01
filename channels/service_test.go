@@ -61,7 +61,7 @@ type fakeChanAPI struct {
 	createResp      msmodels.Channelable
 	createErr       *sender.RequestError
 	deleteErr       *sender.RequestError
-	lastCreate      msmodels.Channelable
+	lastCreateName  string
 	lastTeamID      string
 	lastChanID      string
 	sendMsgResp     msmodels.ChatMessageable
@@ -107,9 +107,9 @@ func (f *fakeChanAPI) GetChannel(ctx context.Context, teamID, channelID string) 
 	return f.getResp, f.getErr
 }
 
-func (f *fakeChanAPI) CreateStandardChannel(ctx context.Context, teamID string, channel msmodels.Channelable) (msmodels.Channelable, *sender.RequestError) {
+func (f *fakeChanAPI) CreateStandardChannel(ctx context.Context, teamID, name string) (msmodels.Channelable, *sender.RequestError) {
 	f.lastTeamID = teamID
-	f.lastCreate = channel
+	f.lastCreateName = name
 	return f.createResp, f.createErr
 }
 
@@ -360,9 +360,8 @@ func TestService_Create_SetsNameAndMapsResult(t *testing.T) {
 		t.Errorf("expected IsGeneral=false for created channel, got true")
 	}
 
-	dn := api.lastCreate.GetDisplayName()
-	if dn == nil || *dn != "my-channel" {
-		t.Errorf("expected displayName 'my-channel', got %#v", dn)
+	if api.lastCreateName != "my-channel" {
+		t.Errorf("expected displayName 'my-channel', got %#v", api.lastCreateName)
 	}
 	if api.lastTeamID != "team-1" {
 		t.Errorf("expected team ID 'team-1', got %q", api.lastTeamID)
