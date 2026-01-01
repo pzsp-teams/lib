@@ -29,7 +29,7 @@ func (s *serviceWithCache) Wait() {
 func (s *serviceWithCache) Get(ctx context.Context, teamRef string) (*models.Team, error) {
 	team, err := s.svc.Get(ctx, teamRef)
 	if err != nil {
-		s.onError()
+		s.cacheHandler.OnError()
 		return nil, err
 	}
 	s.cacheHandler.Runner.Run(func() {
@@ -41,7 +41,7 @@ func (s *serviceWithCache) Get(ctx context.Context, teamRef string) (*models.Tea
 func (s *serviceWithCache) ListMyJoined(ctx context.Context) ([]*models.Team, error) {
 	teams, err := s.svc.ListMyJoined(ctx)
 	if err != nil {
-		s.onError()
+		s.cacheHandler.OnError()
 		return nil, err
 	}
 	vals := util.CopyNonNil(teams)
@@ -54,7 +54,7 @@ func (s *serviceWithCache) ListMyJoined(ctx context.Context) ([]*models.Team, er
 func (s *serviceWithCache) Update(ctx context.Context, teamRef string, patch *msmodels.Team) (*models.Team, error) {
 	team, err := s.svc.Update(ctx, teamRef, patch)
 	if err != nil {
-		s.onError()
+		s.cacheHandler.OnError()
 		return nil, err
 	}
 	s.cacheHandler.Runner.Run(func() {
@@ -67,7 +67,7 @@ func (s *serviceWithCache) Update(ctx context.Context, teamRef string, patch *ms
 func (s *serviceWithCache) CreateFromTemplate(ctx context.Context, displayName, description string, owners []string) (string, error) {
 	id, err := s.svc.CreateFromTemplate(ctx, displayName, description, owners)
 	if err != nil {
-		s.onError()
+		s.cacheHandler.OnError()
 		return id, err
 	}
 	s.cacheHandler.Runner.Run(func() {
@@ -79,7 +79,7 @@ func (s *serviceWithCache) CreateFromTemplate(ctx context.Context, displayName, 
 func (s *serviceWithCache) CreateViaGroup(ctx context.Context, displayName, mailNickname, visibility string) (*models.Team, error) {
 	team, err := s.svc.CreateViaGroup(ctx, displayName, mailNickname, visibility)
 	if err != nil {
-		s.onError()
+		s.cacheHandler.OnError()
 		return nil, err
 	}
 	s.cacheHandler.Runner.Run(func() {
@@ -91,7 +91,7 @@ func (s *serviceWithCache) CreateViaGroup(ctx context.Context, displayName, mail
 func (s *serviceWithCache) Archive(ctx context.Context, teamRef string, spoReadOnlyForMembers *bool) error {
 	err := s.svc.Archive(ctx, teamRef, spoReadOnlyForMembers)
 	if err != nil {
-		s.onError()
+		s.cacheHandler.OnError()
 		return err
 	}
 	s.cacheHandler.Runner.Run(func() {
@@ -103,7 +103,7 @@ func (s *serviceWithCache) Archive(ctx context.Context, teamRef string, spoReadO
 func (s *serviceWithCache) Unarchive(ctx context.Context, teamRef string) error {
 	err := s.svc.Unarchive(ctx, teamRef)
 	if err != nil {
-		s.onError()
+		s.cacheHandler.OnError()
 		return err
 	}
 	s.cacheHandler.Runner.Run(func() {
@@ -115,7 +115,7 @@ func (s *serviceWithCache) Unarchive(ctx context.Context, teamRef string) error 
 func (s *serviceWithCache) Delete(ctx context.Context, teamRef string) error {
 	err := s.svc.Delete(ctx, teamRef)
 	if err != nil {
-		s.onError()
+		s.cacheHandler.OnError()
 		return err
 	}
 	s.cacheHandler.Runner.Run(func() {
@@ -125,9 +125,9 @@ func (s *serviceWithCache) Delete(ctx context.Context, teamRef string) error {
 }
 
 func (s *serviceWithCache) RestoreDeleted(ctx context.Context, deletedGroupID string) (string, error) {
-	return withErrorClear(func() (string, error) {
+	return cacher.WithErrorClear(s.cacheHandler, func() (string, error) {
 		return s.svc.RestoreDeleted(ctx, deletedGroupID)
-	}, s)
+	})
 }
 
 func (s *serviceWithCache) addTeamsToCache(teams ...models.Team) {
@@ -145,22 +145,4 @@ func (s *serviceWithCache) removeTeamsFromCache(teamRefs ...string) {
 		key := cacher.NewTeamKey(strings.TrimSpace(teamRef))
 		_ = s.cacheHandler.Cacher.Invalidate(key)
 	}
-}
-
-func (s *serviceWithCache) onError() {
-	s.cacheHandler.Runner.Run(func() {
-		_ = s.cacheHandler.Cacher.Clear()
-	})
-}
-
-func withErrorClear[T any](
-	fn func() (T, error), s *serviceWithCache,
-) (T, error) {
-	res, err := fn()
-	if err != nil {
-		s.onError()
-		var zero T
-		return zero, err
-	}
-	return res, nil
 }

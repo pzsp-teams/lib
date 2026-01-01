@@ -41,7 +41,7 @@ func (s *serviceWithCache) Wait() {
 func (s *serviceWithCache) ListChannels(ctx context.Context, teamRef string) ([]*models.Channel, error) {
 	chans, err := s.svc.ListChannels(ctx, teamRef)
 	if err != nil {
-		s.onError()
+		s.cacheHandler.OnError()
 		return nil, err
 	}
 	local := util.CopyNonNil(chans)
@@ -54,7 +54,7 @@ func (s *serviceWithCache) ListChannels(ctx context.Context, teamRef string) ([]
 func (s *serviceWithCache) Get(ctx context.Context, teamRef, channelRef string) (*models.Channel, error) {
 	ch, err := s.svc.Get(ctx, teamRef, channelRef)
 	if err != nil {
-		s.onError()
+		s.cacheHandler.OnError()
 		return nil, err
 	}
 	if ch != nil {
@@ -69,7 +69,7 @@ func (s *serviceWithCache) Get(ctx context.Context, teamRef, channelRef string) 
 func (s *serviceWithCache) CreateStandardChannel(ctx context.Context, teamRef, name string) (*models.Channel, error) {
 	ch, err := s.svc.CreateStandardChannel(ctx, teamRef, name)
 	if err != nil {
-		s.onError()
+		s.cacheHandler.OnError()
 		return nil, err
 	}
 	s.updateCacheAfterCreate(teamRef, name, ch)
@@ -83,7 +83,7 @@ func (s *serviceWithCache) CreatePrivateChannel(
 ) (*models.Channel, error) {
 	ch, err := s.svc.CreatePrivateChannel(ctx, teamRef, name, memberRefs, ownerRefs)
 	if err != nil {
-		s.onError()
+		s.cacheHandler.OnError()
 		return nil, err
 	}
 	s.updateCacheAfterCreate(teamRef, name, ch)
@@ -103,7 +103,7 @@ func (s *serviceWithCache) updateCacheAfterCreate(teamRef, name string, ch *mode
 
 func (s *serviceWithCache) Delete(ctx context.Context, teamRef, channelRef string) error {
 	if err := s.svc.Delete(ctx, teamRef, channelRef); err != nil {
-		s.onError()
+		s.cacheHandler.OnError()
 		return err
 	}
 	s.cacheHandler.Runner.Run(func() {
@@ -117,9 +117,9 @@ func (s *serviceWithCache) SendMessage(
 	teamRef, channelRef string,
 	body models.MessageBody,
 ) (*models.Message, error) {
-	return withErrorClear(func() (*models.Message, error) {
+	return cacher.WithErrorClear(s.cacheHandler, func() (*models.Message, error) {
 		return s.svc.SendMessage(ctx, teamRef, channelRef, body)
-	}, s)
+	})
 }
 
 func (s *serviceWithCache) SendReply(
@@ -127,9 +127,9 @@ func (s *serviceWithCache) SendReply(
 	teamRef, channelRef, messageID string,
 	body models.MessageBody,
 ) (*models.Message, error) {
-	return withErrorClear(func() (*models.Message, error) {
+	return cacher.WithErrorClear(s.cacheHandler, func() (*models.Message, error) {
 		return s.svc.SendReply(ctx, teamRef, channelRef, messageID, body)
-	}, s)
+	})
 }
 
 func (s *serviceWithCache) ListMessages(
@@ -137,18 +137,18 @@ func (s *serviceWithCache) ListMessages(
 	teamRef, channelRef string,
 	opts *models.ListMessagesOptions,
 ) ([]*models.Message, error) {
-	return withErrorClear(func() ([]*models.Message, error) {
+	return cacher.WithErrorClear(s.cacheHandler, func() ([]*models.Message, error) {
 		return s.svc.ListMessages(ctx, teamRef, channelRef, opts)
-	}, s)
+	})
 }
 
 func (s *serviceWithCache) GetMessage(
 	ctx context.Context,
 	teamRef, channelRef, messageID string,
 ) (*models.Message, error) {
-	return withErrorClear(func() (*models.Message, error) {
+	return cacher.WithErrorClear(s.cacheHandler, func() (*models.Message, error) {
 		return s.svc.GetMessage(ctx, teamRef, channelRef, messageID)
-	}, s)
+	})
 }
 
 func (s *serviceWithCache) ListReplies(
@@ -156,18 +156,18 @@ func (s *serviceWithCache) ListReplies(
 	teamRef, channelRef, messageID string,
 	top *int32,
 ) ([]*models.Message, error) {
-	return withErrorClear(func() ([]*models.Message, error) {
+	return cacher.WithErrorClear(s.cacheHandler, func() ([]*models.Message, error) {
 		return s.svc.ListReplies(ctx, teamRef, channelRef, messageID, top)
-	}, s)
+	})
 }
 
 func (s *serviceWithCache) GetReply(
 	ctx context.Context,
 	teamRef, channelRef, messageID, replyID string,
 ) (*models.Message, error) {
-	return withErrorClear(func() (*models.Message, error) {
+	return cacher.WithErrorClear(s.cacheHandler, func() (*models.Message, error) {
 		return s.svc.GetReply(ctx, teamRef, channelRef, messageID, replyID)
-	}, s)
+	})
 }
 
 func (s *serviceWithCache) ListMembers(
@@ -176,7 +176,7 @@ func (s *serviceWithCache) ListMembers(
 ) ([]*models.Member, error) {
 	members, err := s.svc.ListMembers(ctx, teamRef, channelRef)
 	if err != nil {
-		s.onError()
+		s.cacheHandler.OnError()
 		return nil, err
 	}
 	local := util.CopyNonNil(members)
@@ -193,7 +193,7 @@ func (s *serviceWithCache) AddMember(
 ) (*models.Member, error) {
 	member, err := s.svc.AddMember(ctx, teamRef, channelRef, userRef, isOwner)
 	if err != nil {
-		s.onError()
+		s.cacheHandler.OnError()
 		return nil, err
 	}
 	if member != nil {
@@ -210,9 +210,9 @@ func (s *serviceWithCache) UpdateMemberRole(
 	teamRef, channelRef, userRef string,
 	isOwner bool,
 ) (*models.Member, error) {
-	return withErrorClear(func() (*models.Member, error) {
+	return cacher.WithErrorClear(s.cacheHandler, func() (*models.Member, error) {
 		return s.svc.UpdateMemberRole(ctx, teamRef, channelRef, userRef, isOwner)
-	}, s)
+	})
 }
 
 func (s *serviceWithCache) RemoveMember(
@@ -220,7 +220,7 @@ func (s *serviceWithCache) RemoveMember(
 	teamRef, channelRef, userRef string,
 ) error {
 	if err := s.svc.RemoveMember(ctx, teamRef, channelRef, userRef); err != nil {
-		s.onError()
+		s.cacheHandler.OnError()
 		return err
 	}
 	s.cacheHandler.Runner.Run(func() {
@@ -230,9 +230,9 @@ func (s *serviceWithCache) RemoveMember(
 }
 
 func (s *serviceWithCache) GetMentions(ctx context.Context, teamRef, channelRef string, rawMentions []string) ([]models.Mention, error) {
-	return withErrorClear(func() ([]models.Mention, error) {
+	return cacher.WithErrorClear(s.cacheHandler, func() ([]models.Mention, error) {
 		return s.svc.GetMentions(ctx, teamRef, channelRef, rawMentions)
-	}, s)
+	})
 }
 
 func (s *serviceWithCache) addChannelsToCache(teamRef string, chans ...models.Channel) {
@@ -303,22 +303,4 @@ func (s *serviceWithCache) invalidateMemberCache(teamRef, channelRef, userRef st
 
 	key := cacher.NewChannelMemberKey(ref, teamID, channelID, nil)
 	_ = s.cacheHandler.Cacher.Invalidate(key)
-}
-
-func (s *serviceWithCache) onError() {
-	s.cacheHandler.Runner.Run(func() {
-		_ = s.cacheHandler.Cacher.Clear()
-	})
-}
-
-func withErrorClear[T any](
-	fn func() (T, error), s *serviceWithCache,
-) (T, error) {
-	res, err := fn()
-	if err != nil {
-		s.onError()
-		var zero T
-		return zero, err
-	}
-	return res, nil
 }

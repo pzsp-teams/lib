@@ -39,6 +39,25 @@ func NewCacheHandler(cfg *config.CacheConfig) *CacheHandler {
 	}
 }
 
+func (c *CacheHandler) OnError() {
+	c.Runner.Run(func() {
+		_ = c.Cacher.Clear()
+	})
+}
+
+func WithErrorClear[T any](
+	c *CacheHandler,
+	fn func() (T, error),
+) (T, error) {
+	res, err := fn()
+	if err != nil {
+		c.OnError()
+		var zero T
+		return zero, err
+	}
+	return res, err
+}
+
 func defaultCachePath() string {
 	dir, err := os.UserCacheDir()
 	if err != nil {
