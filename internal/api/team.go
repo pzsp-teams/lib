@@ -255,7 +255,7 @@ func (t *teamAPI) GetMember(ctx context.Context, teamID, memberID string) (msmod
 	return out, nil
 }
 
-func (t *teamAPI) AddMember(ctx context.Context, teamID string, userRef string, roles []string) (msmodels.ConversationMemberable, *sender.RequestError) {
+func (t *teamAPI) AddMember(ctx context.Context, teamID, userRef string, roles []string) (msmodels.ConversationMemberable, *sender.RequestError) {
 	member := msmodels.NewAadUserConversationMember()
 	member.SetRoles(roles)
 	member.SetAdditionalData(map[string]any{

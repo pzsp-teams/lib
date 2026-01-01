@@ -126,7 +126,6 @@ func (s *service) Delete(ctx context.Context, teamRef string) error {
 	return nil
 }
 
-
 func (s *service) RestoreDeleted(ctx context.Context, deletedGroupID string) (string, error) {
 	obj, err := s.teamAPI.RestoreDeleted(ctx, deletedGroupID)
 	if err != nil {
@@ -158,7 +157,7 @@ func (s *service) ListMembers(ctx context.Context, teamRef string) ([]*models.Me
 	return util.MapSlices(resp.GetValue(), adapter.MapGraphMember), nil
 }
 
-func (s *service) AddMember(ctx context.Context, teamRef string, userRef string, isOwner bool) (*models.Member, error) {
+func (s *service) AddMember(ctx context.Context, teamRef, userRef string, isOwner bool) (*models.Member, error) {
 	teamID, err := s.teamResolver.ResolveTeamRefToID(ctx, teamRef)
 	if err != nil {
 		return nil, err
@@ -226,5 +225,3 @@ func (s *service) UpdateMemberRoles(ctx context.Context, teamRef, userRef string
 	}
 	return adapter.MapGraphMember(updated), nil
 }
-
-
