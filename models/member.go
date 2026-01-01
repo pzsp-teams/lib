@@ -1,6 +1,6 @@
 package models
 
-// Member represents a member of a Microsoft Teams channel or direct chat.
+// Member represents a member of a Microsoft Teams channel, direct chat or team.
 type Member struct {
 	ID          string
 	UserID      string
