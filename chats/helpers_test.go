@@ -124,3 +124,39 @@ func TestTryAddEveryoneMention_DuplicatesAllowed(t *testing.T) {
 		t.Fatalf("expected AtID=0, got %d", out[0].AtID)
 	}
 }
+
+func TestCheckThisMentionValidity_OneOnOne_ThisMention(t *testing.T) {
+	if !checkThisMentionValidity(false, "this") {
+		t.Fatalf("expected true for 'this' in one-on-one chat")
+	}
+	if !checkThisMentionValidity(false, "@this") {
+		t.Fatalf("expected true for '@this' in one-on-one chat")
+	}
+}
+
+func TestCheckThisMentionValidity_OneOnOne_NonThisMention(t *testing.T) {
+	if checkThisMentionValidity(false, "alice") {
+		t.Fatalf("expected false for 'alice' in one-on-one chat")
+	}
+	if checkThisMentionValidity(false, "@alice") {
+		t.Fatalf("expected false for '@alice' in one-on-one chat")
+	}
+}
+
+func TestCheckThisMentionValidity_GroupChat(t *testing.T) {
+	if checkThisMentionValidity(true, "this") {
+		t.Fatalf("expected false for 'this' in group chat")
+	}
+	if checkThisMentionValidity(true, "@this") {
+		t.Fatalf("expected false for '@this' in group chat")
+	}
+}
+
+func TestCheckThisMentionValidity_GroupChat_NonThisMention(t *testing.T) {
+	if checkThisMentionValidity(true, "alice") {
+		t.Fatalf("expected false for 'alice' in group chat")
+	}
+	if checkThisMentionValidity(true, "@alice") {
+		t.Fatalf("expected false for '@alice' in group chat")
+	}
+}

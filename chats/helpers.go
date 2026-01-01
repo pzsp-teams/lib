@@ -30,3 +30,8 @@ func tryAddEveryoneMention(adder *mentions.MentionAdder, chatID string, isGroup 
 	adder.Add(models.MentionEveryone, chatID, "Everyone")
 	return true, nil
 }
+
+func checkThisMentionValidity(isGroup bool, raw string) bool {
+	low := strings.ToLower(strings.TrimSpace(raw))
+	return !isGroup && (low == "this" || low == "@this")
+}
