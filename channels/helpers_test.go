@@ -156,4 +156,3 @@ func TestTryAddTeamOrChannelMention_ReturnsFalseAndDoesNotAdd(t *testing.T) {
 		t.Fatalf("expected no mentions added, got %d", len(out))
 	}
 }
-

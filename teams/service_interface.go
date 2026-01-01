@@ -66,4 +66,3 @@ type Service interface {
 	// UpdateMemberRoles updates the roles of a team member (e.g., promote to owner or demote to member).
 	UpdateMemberRoles(ctx context.Context, teamRef, userRef string, isOwner bool) (*models.Member, error)
 }
-
