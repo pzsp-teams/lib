@@ -50,4 +50,20 @@ type Service interface {
 
 	// RestoreDeleted restores a deleted team using the deleted group ID.
 	RestoreDeleted(ctx context.Context, deletedGroupID string) (string, error)
+
+	// ListMembers returns all members of a team.
+	ListMembers(ctx context.Context, teamRef string) ([]*models.Member, error)
+
+	// GetMember retrieves a specific member of a team by their member ID or user email.
+	GetMember(ctx context.Context, teamRef, userRef string) (*models.Member, error)
+
+	// AddMember adds a new member to a team.
+	AddMember(ctx context.Context, teamRef string, userRef string, isOwner bool) (*models.Member, error)
+
+	// RemoveMember removes a member from a team by their member ID or user email.
+	RemoveMember(ctx context.Context, teamRef, userRef string) error
+
+	// UpdateMemberRoles updates the roles of a team member (e.g., promote to owner or demote to member).
+	UpdateMemberRoles(ctx context.Context, teamRef, userRef string, isOwner bool) (*models.Member, error)
 }
+

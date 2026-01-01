@@ -6,20 +6,22 @@ import (
 
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
 	"github.com/pzsp-teams/lib/internal/cacher"
+	"github.com/pzsp-teams/lib/internal/resolver"
 	"github.com/pzsp-teams/lib/internal/util"
 	"github.com/pzsp-teams/lib/models"
 )
 
 type serviceWithCache struct {
 	svc          Service
+	teamResolver resolver.TeamResolver
 	cacheHandler *cacher.CacheHandler
 }
 
-func NewServiceWithCache(svc Service, cacheHandler *cacher.CacheHandler) Service {
+func NewServiceWithCache(svc Service, cacheHandler *cacher.CacheHandler, teamResolver resolver.TeamResolver) Service {
 	if cacheHandler == nil {
 		return svc
 	}
-	return &serviceWithCache{svc, cacheHandler}
+	return &serviceWithCache{svc, teamResolver, cacheHandler}
 }
 
 func (s *serviceWithCache) Wait() {
@@ -130,6 +132,66 @@ func (s *serviceWithCache) RestoreDeleted(ctx context.Context, deletedGroupID st
 	}, s)
 }
 
+func (s *serviceWithCache) ListMembers(ctx context.Context, teamRef string) ([]*models.Member, error) {
+	members, err := s.svc.ListMembers(ctx, teamRef)
+	if err != nil {
+		s.onError()
+		return nil, err
+	}
+	local := util.CopyNonNil(members)
+	s.cacheHandler.Runner.Run(func() {
+		s.addMembersToCache(teamRef, local...)
+	})
+	return members, nil
+}
+
+func (s *serviceWithCache) GetMember(ctx context.Context, teamRef, userRef string) (*models.Member, error) {
+	member, err := s.svc.GetMember(ctx, teamRef, userRef)
+	if err != nil {
+		s.onError()
+		return nil, err
+	}
+	if member != nil {
+		local := *member
+		s.cacheHandler.Runner.Run(func() {
+			s.addMembersToCache(teamRef, local)
+		})
+	}
+	return member, nil
+}
+
+func (s *serviceWithCache) AddMember(ctx context.Context, teamRef, userRef string, isOwner bool) (*models.Member, error) {
+	member, err := s.svc.AddMember(ctx, teamRef, userRef, isOwner)
+	if err != nil {
+		s.onError()
+		return nil, err
+	}
+	if member != nil {
+		local := *member
+		s.cacheHandler.Runner.Run(func() {
+			s.addMembersToCache(teamRef, local)
+		})
+	}
+	return member, nil
+}
+
+func (s *serviceWithCache) UpdateMemberRoles(ctx context.Context, teamRef, userRef string, isOwner bool) (*models.Member, error) {
+	return withErrorClear(func() (*models.Member, error) {
+		return s.svc.UpdateMemberRoles(ctx, teamRef, userRef, isOwner)
+	}, s)
+}
+
+func (s *serviceWithCache) RemoveMember(ctx context.Context, teamRef, userRef string) error {
+	if err := s.svc.RemoveMember(ctx, teamRef, userRef); err != nil {
+		s.onError()
+		return err
+	}
+	s.cacheHandler.Runner.Run(func() {
+		s.invalidateMemberCache(teamRef, userRef)
+	})
+	return nil
+}
+
 func (s *serviceWithCache) addTeamsToCache(teams ...models.Team) {
 	for _, team := range teams {
 		key := cacher.NewTeamKey(strings.TrimSpace(team.DisplayName))
@@ -163,4 +225,36 @@ func withErrorClear[T any](
 		return zero, err
 	}
 	return res, nil
+}
+
+func (s *serviceWithCache) addMembersToCache(teamRef string, members ...models.Member) {
+	for _, member := range members {
+		ref := strings.TrimSpace(strings.TrimSpace(member.Email))
+		if ref == "" {
+			continue
+		}
+		ctx := context.Background()
+		teamID, err := s.teamResolver.ResolveTeamRefToID(ctx, teamRef)
+		if err != nil {
+			continue
+		}
+		key := cacher.NewTeamMemberKey(teamID, ref, nil)
+		_ = s.cacheHandler.Cacher.Set(key, member.ID)
+	}
+}
+
+func (s *serviceWithCache) invalidateMemberCache(teamRef, userRef string) {
+	ref := strings.TrimSpace(userRef)
+	if ref == "" {
+		return
+	}
+
+	ctx := context.Background()
+	teamID, err := s.teamResolver.ResolveTeamRefToID(ctx, teamRef)
+	if err != nil {
+		return
+	}
+
+	key := cacher.NewTeamMemberKey(teamID, ref, nil)
+	_ = s.cacheHandler.Cacher.Invalidate(key)
 }
