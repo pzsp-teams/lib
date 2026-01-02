@@ -116,8 +116,8 @@ func (c *channelAPI) CreatePrivateChannelWithMembers(ctx context.Context, teamID
 	ch.SetMembershipType(&mt)
 
 	members := make([]msmodels.ConversationMemberable, 0, len(memberRefs)+len(ownerRefs))
-	addToMembers(&members, memberRefs, emptyRoles())
-	addToMembers(&members, ownerRefs, ownerRoles())
+	addToMembers(&members, memberRefs, []string{})
+	addToMembers(&members, ownerRefs, []string{roleOwner})
 	ch.SetMembers(members)
 	call := func(ctx context.Context) (sender.Response, error) {
 		return c.client.
