@@ -61,7 +61,7 @@ func (o *opsWithCache) CreateFromTemplate(ctx context.Context, displayName, desc
 	id, requestErr := o.teamOps.CreateFromTemplate(ctx, displayName, description, owners)
 	if requestErr != nil {
 		o.cacheHandler.OnError(requestErr)
-		return "", requestErr
+		return id, requestErr
 	}
 	o.cacheHandler.Runner.Run(func() {
 		o.removeTeamFromCache(displayName)
