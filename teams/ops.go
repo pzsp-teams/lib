@@ -2,6 +2,7 @@ package teams
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/pzsp-teams/lib/internal/adapter"
 	"github.com/pzsp-teams/lib/internal/api"
@@ -81,6 +82,9 @@ func (o *ops) RestoreDeletedTeam(ctx context.Context, deletedGroupID string) (st
 		return "", nil
 	}
 	id := util.Deref(obj.GetId())
+	if id == "" {
+		return "", fmt.Errorf("restored object has empty id")
+	}
 	return id, nil
 }
 
