@@ -27,9 +27,7 @@ func WithErrorClear[T any](
 ) (T, *snd.RequestError) {
 	res, err := fn()
 	if err != nil {
-		if shouldClearCache(err) {
-			cacheHandler.OnError(err)
-		}
+		cacheHandler.OnError(err)
 		var zero T
 		return zero, err
 	}
