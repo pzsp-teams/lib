@@ -641,7 +641,7 @@ func TestOps_ListMembers(t *testing.T) {
 					ID:          util.Ptr("m1"),
 					UserID:      util.Ptr("u1"),
 					DisplayName: util.Ptr("Alice"),
-					Roles:       util.Ptr([]string{"owner"}),
+					Roles:       []string{"owner"},
 				}),
 			})
 			d.channelAPI.EXPECT().
@@ -691,7 +691,7 @@ func TestOps_AddMember(t *testing.T) {
 						ID:          util.Ptr("m1"),
 						UserID:      util.Ptr("user-1"),
 						DisplayName: util.Ptr("X"),
-						Roles:       util.Ptr([]string{"owner"}),
+						Roles:       []string{"owner"},
 					}), nil
 				}).
 				Times(1)
@@ -712,7 +712,7 @@ func TestOps_AddMember(t *testing.T) {
 						ID:          util.Ptr("m1"),
 						UserID:      util.Ptr("user-1"),
 						DisplayName: util.Ptr("X"),
-						Roles:       util.Ptr([]string{}),
+						Roles:       []string{},
 					}), nil
 				}).
 				Times(1)
@@ -755,7 +755,7 @@ func TestOps_UpdateMemberRoles(t *testing.T) {
 						ID:          util.Ptr("member-1"),
 						UserID:      util.Ptr("user-1"),
 						DisplayName: util.Ptr("X"),
-						Roles:       util.Ptr([]string{"owner"}),
+						Roles:       []string{"owner"},
 					}), nil
 				}).
 				Times(1)
@@ -775,7 +775,7 @@ func TestOps_UpdateMemberRoles(t *testing.T) {
 						ID:          util.Ptr("member-1"),
 						UserID:      util.Ptr("user-1"),
 						DisplayName: util.Ptr("X"),
-						Roles:       util.Ptr([]string{}),
+						Roles:       []string{},
 					}), nil
 				}).
 				Times(1)

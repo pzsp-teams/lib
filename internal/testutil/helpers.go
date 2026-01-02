@@ -70,7 +70,7 @@ type NewMemberParams struct {
 	ID          *string
 	UserID      *string
 	DisplayName *string
-	Roles       *[]string
+	Roles       []string
 	Email       *string
 }
 
@@ -87,7 +87,7 @@ func NewGraphMember(params *NewMemberParams) msmodels.ConversationMemberable {
 	_ = member.GetBackingStore().Set("email", params.Email)
 
 	if params.Roles != nil {
-		member.SetRoles(*params.Roles)
+		member.SetRoles(params.Roles)
 	}
 
 	return member
