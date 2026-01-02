@@ -1,12 +1,38 @@
 package util
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/require"
+)
 
 func TestMemberRole(t *testing.T) {
-	if got := MemberRole(true); got[0] != "owner" {
-		t.Fatalf("expected owner, got %q", got)
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		isOwner bool
+		want    []string
+	}{
+		{
+			name:    "owner true returns [owner]",
+			isOwner: true,
+			want:    []string{"owner"},
+		},
+		{
+			name:    "owner false returns empty slice",
+			isOwner: false,
+			want:    []string{},
+		},
 	}
-	if got := MemberRole(false); len(got) != 0 {
-		t.Fatalf("expected empty slice, got %q", got)
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := MemberRole(tt.isOwner)
+			require.Equal(t, tt.want, got)
+		})
 	}
 }
