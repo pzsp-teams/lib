@@ -12,7 +12,6 @@ var errTemplate string = "[CODE: %d]: %s"
 type RequestError struct {
 	Code    int
 	Message string
-	ErrData
 }
 
 func (e RequestError) Error() string {

@@ -13,3 +13,17 @@ const (
 	PinnedMessage Resource = "PINNED_MESSAGE"
 	Mention       Resource = "MENTION"
 )
+
+type Key string
+
+const (
+	TeamRef          Key = "team_ref"
+	ChannelRef       Key = "channel_ref"
+	ChatRef          Key = "chat_ref"
+	GroupChatRef     Key = "group_chat_ref"
+	OneOnOneChatRef  Key = "one_on_one_chat_ref"
+	UserRef          Key = "user_ref"
+	MessageRef       Key = "message_ref"
+	PinnedMessageRef Key = "pinned_message_ref"
+	MentionRef       Key = "mention_ref"
+)
