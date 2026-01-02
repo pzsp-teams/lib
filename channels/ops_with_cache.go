@@ -2,7 +2,6 @@ package channels
 
 import (
 	"context"
-	"strings"
 
 	"github.com/pzsp-teams/lib/internal/cacher"
 	snd "github.com/pzsp-teams/lib/internal/sender"
@@ -182,24 +181,20 @@ func (o *opsWithCache) RemoveMember(ctx context.Context, teamID, channelID, memb
 }
 
 func (o *opsWithCache) addChannelsToCache(teamID string, chans ...models.Channel) {
-	teamID = strings.TrimSpace(teamID)
-	if teamID == "" {
+	if util.CheckIfAnyStringIsBlank(teamID) {
 		return
 	}
 	for _, ch := range chans {
-		name := strings.TrimSpace(ch.Name)
-		if name == "" {
+		if util.CheckIfAnyStringIsBlank(ch.Name) {
 			continue
 		}
-		key := cacher.NewChannelKey(teamID, name)
+		key := cacher.NewChannelKey(teamID, ch.Name)
 		_ = o.cacheHandler.Cacher.Set(key, ch.ID)
 	}
 }
 
 func (o *opsWithCache) removeChannelFromCache(teamID, channelRef string) {
-	teamID = strings.TrimSpace(teamID)
-	channelRef = strings.TrimSpace(channelRef)
-	if teamID == "" || channelRef == "" {
+	if util.CheckIfAnyStringIsBlank(teamID, channelRef) { 
 		return
 	}
 	key := cacher.NewChannelKey(teamID, channelRef)
@@ -207,26 +202,20 @@ func (o *opsWithCache) removeChannelFromCache(teamID, channelRef string) {
 }
 
 func (o *opsWithCache) addMembersToCache(teamID, channelID string, members ...models.Member) {
-	teamID = strings.TrimSpace(teamID)
-	channelID = strings.TrimSpace(channelID)
-	if teamID == "" || channelID == "" {
+	if util.CheckIfAnyStringIsBlank(teamID, channelID) {
 		return
 	}
 	for _, m := range members {
-		email := strings.TrimSpace(m.Email)
-		if email == "" {
+		if util.CheckIfAnyStringIsBlank(m.Email) {
 			continue
 		}
-		key := cacher.NewChannelMemberKey(teamID, channelID, email, nil)
+		key := cacher.NewChannelMemberKey(teamID, channelID, m.Email, nil)
 		_ = o.cacheHandler.Cacher.Set(key, m.ID)
 	}
 }
 
 func (o *opsWithCache) removeMemberFromCache(teamID, channelID, userRef string) {
-	teamID = strings.TrimSpace(teamID)
-	channelID = strings.TrimSpace(channelID)
-	userRef = strings.TrimSpace(userRef)
-	if teamID == "" || channelID == "" || userRef == "" {
+	if util.CheckIfAnyStringIsBlank(teamID, channelID, userRef) {
 		return
 	}
 	key := cacher.NewChannelMemberKey(teamID, channelID, userRef, nil)
