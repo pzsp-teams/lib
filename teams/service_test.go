@@ -15,7 +15,7 @@ import (
 )
 
 type sutDeps struct {
-	api      *testutil.MockTeamAPI
+	ops      *testutil.MockteamsOps
 	resolver *testutil.MockTeamResolver
 }
 
@@ -25,14 +25,14 @@ func newSUT(t *testing.T, setup func(d sutDeps)) (Service, context.Context) {
 	ctrl := gomock.NewController(t)
 	t.Cleanup(ctrl.Finish)
 
-	apiMock := testutil.NewMockTeamAPI(ctrl)
+	opsMock := testutil.NewMockteamsOps(ctrl)
 	resolverMock := testutil.NewMockTeamResolver(ctrl)
 
 	if setup != nil {
-		setup(sutDeps{api: apiMock, resolver: resolverMock})
+		setup(sutDeps{ops: opsMock, resolver: resolverMock})
 	}
 
-	return NewService(apiMock, resolverMock), context.Background()
+	return NewService(opsMock, resolverMock), context.Background()
 }
 
 func TestService_ListMyJoined(t *testing.T) {
@@ -51,8 +51,8 @@ func TestService_ListMyJoined(t *testing.T) {
 				b := testutil.NewGraphTeam(&testutil.NewTeamParams{ID: util.Ptr("2"), DisplayName: util.Ptr("Beta")})
 				col.SetValue([]msmodels.Teamable{a, b})
 
-				d.api.EXPECT().
-					ListMyJoined(gomock.Any()).
+				d.ops.EXPECT().
+					ListMyJoinedTeams(gomock.Any()).
 					Return(col, nil).
 					Times(1)
 			},
@@ -77,8 +77,8 @@ func TestService_ListMyJoined(t *testing.T) {
 
 	t.Run("maps api error", func(t *testing.T) {
 		svc, ctx := newSUT(t, func(d sutDeps) {
-			d.api.EXPECT().
-				ListMyJoined(gomock.Any()).
+			d.ops.EXPECT().
+				ListMyJoinedTeams(gomock.Any()).
 				Return(nil, &sender.RequestError{Code: 403, Message: "nope"}).
 				Times(1)
 		})
@@ -111,8 +111,8 @@ func TestService_Get(t *testing.T) {
 					Return("resolved-42", nil).
 					Times(1)
 
-				d.api.EXPECT().
-					Get(gomock.Any(), "resolved-42").
+				d.ops.EXPECT().
+					GetTeamByID(gomock.Any(), "resolved-42").
 					Return(testutil.NewGraphTeam(&testutil.NewTeamParams{ID: util.Ptr("42"), DisplayName: util.Ptr("X")}), nil).
 					Times(1)
 			},
@@ -139,8 +139,8 @@ func TestService_Get(t *testing.T) {
 					Return("missing-id", nil).
 					Times(1)
 
-				d.api.EXPECT().
-					Get(gomock.Any(), "missing-id").
+				d.ops.EXPECT().
+					GetTeamByID(gomock.Any(), "missing-id").
 					Return(nil, &sender.RequestError{Code: 404, Message: "no such team"}).
 					Times(1)
 			},
@@ -192,8 +192,8 @@ func TestService_Delete(t *testing.T) {
 					Return("team-id", nil).
 					Times(1)
 
-				d.api.EXPECT().
-					Delete(gomock.Any(), "team-id").
+				d.ops.EXPECT().
+					DeleteTeam(gomock.Any(), "team-id", "MyTeam").
 					Return(nil).
 					Times(1)
 			},
@@ -207,8 +207,8 @@ func TestService_Delete(t *testing.T) {
 					Return("team-id", nil).
 					Times(1)
 
-				d.api.EXPECT().
-					Delete(gomock.Any(), "team-id").
+				d.ops.EXPECT().
+					DeleteTeam(gomock.Any(), "team-id", "MyTeam").
 					Return(&sender.RequestError{Code: 403, Message: "nope"}).
 					Times(1)
 			},
@@ -262,7 +262,7 @@ func TestService_CreateViaGroup(t *testing.T) {
 		{
 			name: "maps create error",
 			setupMocks: func(d sutDeps) {
-				d.api.EXPECT().
+				d.ops.EXPECT().
 					CreateViaGroup(gomock.Any(), "X", "x", "public").
 					Return("", &sender.RequestError{Code: 403, Message: "nope"}).
 					Times(1)
@@ -272,13 +272,13 @@ func TestService_CreateViaGroup(t *testing.T) {
 		{
 			name: "maps get error",
 			setupMocks: func(d sutDeps) {
-				d.api.EXPECT().
+				d.ops.EXPECT().
 					CreateViaGroup(gomock.Any(), "X", "x", "public").
 					Return("team-xyz", nil).
 					Times(1)
 
-				d.api.EXPECT().
-					Get(gomock.Any(), "team-xyz").
+				d.ops.EXPECT().
+					GetTeamByID(gomock.Any(), "team-xyz").
 					Return(nil, &sender.RequestError{Code: 404, Message: "not ready"}).
 					Times(1)
 			},
@@ -287,13 +287,13 @@ func TestService_CreateViaGroup(t *testing.T) {
 		{
 			name: "success maps team",
 			setupMocks: func(d sutDeps) {
-				d.api.EXPECT().
+				d.ops.EXPECT().
 					CreateViaGroup(gomock.Any(), "X", "x", "public").
 					Return("team-xyz", nil).
 					Times(1)
 
-				d.api.EXPECT().
-					Get(gomock.Any(), "team-xyz").
+				d.ops.EXPECT().
+					GetTeamByID(gomock.Any(), "team-xyz").
 					Return(testutil.NewGraphTeam(&testutil.NewTeamParams{ID: util.Ptr("team-xyz"), DisplayName: util.Ptr("X")}), nil).
 					Times(1)
 			},
@@ -339,7 +339,7 @@ func TestService_CreateFromTemplate(t *testing.T) {
 		{
 			name: "returns id",
 			setupMocks: func(d sutDeps) {
-				d.api.EXPECT().
+				d.ops.EXPECT().
 					CreateFromTemplate(gomock.Any(), "Tpl", "Desc", gomock.Any()).
 					Return("tmpl-123", nil).
 					Times(1)
@@ -349,7 +349,7 @@ func TestService_CreateFromTemplate(t *testing.T) {
 		{
 			name: "treats 201 in RequestError as success",
 			setupMocks: func(d sutDeps) {
-				d.api.EXPECT().
+				d.ops.EXPECT().
 					CreateFromTemplate(gomock.Any(), "Tpl", "Desc", gomock.Any()).
 					Return("tmpl-201", &sender.RequestError{Code: 201, Message: "created"}).
 					Times(1)
@@ -359,7 +359,7 @@ func TestService_CreateFromTemplate(t *testing.T) {
 		{
 			name: "maps error",
 			setupMocks: func(d sutDeps) {
-				d.api.EXPECT().
+				d.ops.EXPECT().
 					CreateFromTemplate(gomock.Any(), "Tpl", "Desc", gomock.Any()).
 					Return("", &sender.RequestError{Code: 403, Message: "nope"}).
 					Times(1)
@@ -408,8 +408,8 @@ func TestService_Archive(t *testing.T) {
 					ResolveTeamRefToID(gomock.Any(), "T1").
 					Return("team-id", nil).
 					Times(1)
-				d.api.EXPECT().
-					Archive(gomock.Any(), "team-id", &readOnly).
+				d.ops.EXPECT().
+					Archive(gomock.Any(), "team-id", "T1", &readOnly).
 					Return(nil).
 					Times(1)
 			},
@@ -421,8 +421,8 @@ func TestService_Archive(t *testing.T) {
 					ResolveTeamRefToID(gomock.Any(), "T1").
 					Return("team-id", nil).
 					Times(1)
-				d.api.EXPECT().
-					Archive(gomock.Any(), "team-id", &readOnly).
+				d.ops.EXPECT().
+					Archive(gomock.Any(), "team-id", "T1", &readOnly).
 					Return(&sender.RequestError{Code: 403, Message: "nope"}).
 					Times(1)
 			},
@@ -467,7 +467,7 @@ func TestService_Unarchive(t *testing.T) {
 					ResolveTeamRefToID(gomock.Any(), "T1").
 					Return("team-id", nil).
 					Times(1)
-				d.api.EXPECT().
+				d.ops.EXPECT().
 					Unarchive(gomock.Any(), "team-id").
 					Return(nil).
 					Times(1)
@@ -480,7 +480,7 @@ func TestService_Unarchive(t *testing.T) {
 					ResolveTeamRefToID(gomock.Any(), "T1").
 					Return("team-id", nil).
 					Times(1)
-				d.api.EXPECT().
+				d.ops.EXPECT().
 					Unarchive(gomock.Any(), "team-id").
 					Return(&sender.RequestError{Code: 403, Message: "nope"}).
 					Times(1)
@@ -528,8 +528,8 @@ func TestService_RestoreDeleted(t *testing.T) {
 				id := "restored-id"
 				obj.SetId(&id)
 
-				d.api.EXPECT().
-					RestoreDeleted(gomock.Any(), "deleted-1").
+				d.ops.EXPECT().
+					RestoreDeletedTeam(gomock.Any(), "deleted-1").
 					Return(obj, nil).
 					Times(1)
 			},
@@ -538,8 +538,8 @@ func TestService_RestoreDeleted(t *testing.T) {
 		{
 			name: "maps not found",
 			setupMocks: func(d sutDeps) {
-				d.api.EXPECT().
-					RestoreDeleted(gomock.Any(), "deleted-1").
+				d.ops.EXPECT().
+					RestoreDeletedTeam(gomock.Any(), "deleted-1").
 					Return(nil, &sender.RequestError{Code: 404, Message: "missing"}).
 					Times(1)
 			},
@@ -549,8 +549,8 @@ func TestService_RestoreDeleted(t *testing.T) {
 			name: "empty object returns error",
 			setupMocks: func(d sutDeps) {
 				obj := msmodels.NewDirectoryObject()
-				d.api.EXPECT().
-					RestoreDeleted(gomock.Any(), "deleted-1").
+				d.ops.EXPECT().
+					RestoreDeletedTeam(gomock.Any(), "deleted-1").
 					Return(obj, nil).
 					Times(1)
 			},
@@ -614,7 +614,7 @@ func TestService_ListMembers(t *testing.T) {
 					}),
 				})
 
-				d.api.EXPECT().
+				d.ops.EXPECT().
 					ListMembers(gomock.Any(), "team-id").
 					Return(col, nil).
 					Times(1)
@@ -641,7 +641,7 @@ func TestService_ListMembers(t *testing.T) {
 					Return("team-id", nil).
 					Times(1)
 
-				d.api.EXPECT().
+				d.ops.EXPECT().
 					ListMembers(gomock.Any(), "team-id").
 					Return(nil, &sender.RequestError{Code: 403, Message: "nope"}).
 					Times(1)
@@ -701,7 +701,7 @@ func TestService_AddMember(t *testing.T) {
 					Return("team-id", nil).
 					Times(1)
 
-				d.api.EXPECT().
+				d.ops.EXPECT().
 					AddMember(gomock.Any(), "team-id", "user@x.com", gomock.Any()).
 					DoAndReturn(func(_ context.Context, _ string, _ string, roles []string) (msmodels.ConversationMemberable, *sender.RequestError) {
 						require.Equal(t, []string{"owner"}, roles)
@@ -724,7 +724,7 @@ func TestService_AddMember(t *testing.T) {
 					Return("team-id", nil).
 					Times(1)
 
-				d.api.EXPECT().
+				d.ops.EXPECT().
 					AddMember(gomock.Any(), "team-id", "user@x.com", gomock.Any()).
 					DoAndReturn(func(_ context.Context, _ string, _ string, roles []string) (msmodels.ConversationMemberable, *sender.RequestError) {
 						require.Len(t, roles, 0)
@@ -760,7 +760,7 @@ func TestService_AddMember(t *testing.T) {
 					Return("team-id", nil).
 					Times(1)
 
-				d.api.EXPECT().
+				d.ops.EXPECT().
 					AddMember(gomock.Any(), "team-id", "user@x.com", gomock.Any()).
 					Return(nil, &sender.RequestError{Code: 403, Message: "nope"}).
 					Times(1)
@@ -820,8 +820,8 @@ func TestService_GetMember(t *testing.T) {
 					Return("member-id", nil).
 					Times(1)
 
-				d.api.EXPECT().
-					GetMember(gomock.Any(), "team-id", "member-id").
+				d.ops.EXPECT().
+					GetMemberByID(gomock.Any(), "team-id", "member-id").
 					Return(testutil.NewGraphMember(&testutil.NewMemberParams{
 						ID: util.Ptr("member-id"),
 					}), nil).
@@ -873,8 +873,8 @@ func TestService_GetMember(t *testing.T) {
 					Return("member-id", nil).
 					Times(1)
 
-				d.api.EXPECT().
-					GetMember(gomock.Any(), "team-id", "member-id").
+				d.ops.EXPECT().
+					GetMemberByID(gomock.Any(), "team-id", "member-id").
 					Return(nil, &sender.RequestError{Code: 404, Message: "missing"}).
 					Times(1)
 			},
@@ -932,8 +932,8 @@ func TestService_RemoveMember(t *testing.T) {
 					Return("member-id", nil).
 					Times(1)
 
-				d.api.EXPECT().
-					RemoveMember(gomock.Any(), "team-id", "member-id").
+				d.ops.EXPECT().
+					RemoveMember(gomock.Any(), "team-id", "member-id", "user@x.com").
 					Return(nil).
 					Times(1)
 			},
@@ -970,8 +970,8 @@ func TestService_RemoveMember(t *testing.T) {
 					Return("member-id", nil).
 					Times(1)
 
-				d.api.EXPECT().
-					RemoveMember(gomock.Any(), "team-id", "member-id").
+				d.ops.EXPECT().
+					RemoveMember(gomock.Any(), "team-id", "member-id", "user@x.com").
 					Return(&sender.RequestError{Code: 403, Message: "nope"}).
 					Times(1)
 			},
@@ -1030,7 +1030,7 @@ func TestService_UpdateMemberRoles(t *testing.T) {
 					Return("member-id", nil).
 					Times(1)
 
-				d.api.EXPECT().
+				d.ops.EXPECT().
 					UpdateMemberRoles(gomock.Any(), "team-id", "member-id", gomock.Any()).
 					DoAndReturn(func(_ context.Context, _ string, _ string, roles []string) (msmodels.ConversationMemberable, *sender.RequestError) {
 						require.Equal(t, []string{"owner"}, roles)
@@ -1058,7 +1058,7 @@ func TestService_UpdateMemberRoles(t *testing.T) {
 					Return("member-id", nil).
 					Times(1)
 
-				d.api.EXPECT().
+				d.ops.EXPECT().
 					UpdateMemberRoles(gomock.Any(), "team-id", "member-id", gomock.Any()).
 					DoAndReturn(func(_ context.Context, _ string, _ string, roles []string) (msmodels.ConversationMemberable, *sender.RequestError) {
 						require.Len(t, roles, 0)
@@ -1086,7 +1086,7 @@ func TestService_UpdateMemberRoles(t *testing.T) {
 					Return("member-id", nil).
 					Times(1)
 
-				d.api.EXPECT().
+				d.ops.EXPECT().
 					UpdateMemberRoles(gomock.Any(), "team-id", "member-id", gomock.Any()).
 					Return(nil, &sender.RequestError{Code: 403, Message: "nope"}).
 					Times(1)
