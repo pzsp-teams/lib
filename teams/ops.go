@@ -55,7 +55,7 @@ func (o *ops) CreateViaGroup(ctx context.Context, displayName, mailNickname, vis
 func (o *ops) CreateFromTemplate(ctx context.Context, displayName, description string, ownerIDs []string) (string, *snd.RequestError) {
 	id, requestErr := o.teamAPI.CreateFromTemplate(ctx, displayName, description, ownerIDs)
 	if requestErr != nil {
-		return "", requestErr
+		return id, requestErr
 	}
 	return id, nil
 }
