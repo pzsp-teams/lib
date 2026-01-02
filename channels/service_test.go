@@ -5,12 +5,12 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	snd "github.com/pzsp-teams/lib/internal/sender"
 	"github.com/pzsp-teams/lib/internal/testutil"
 	"github.com/pzsp-teams/lib/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
 type sutDeps struct {
