@@ -1,7 +1,6 @@
 package sender
 
 import (
-	"errors"
 	"net/http"
 
 	"github.com/pzsp-teams/lib/internal/resources"
@@ -43,37 +42,7 @@ func MapError(e *RequestError, opts ...Option) error {
 
 	default:
 		c := *e
-		c.ErrData = data
 		return &c
 	}
 }
 
-type dataCarrier interface {
-	error
-	errData() *ErrData
-}
-
-func (e *ErrAccessForbidden) errData() *ErrData {
-	return &e.ErrData
-}
-
-func (e *ErrResourceNotFound) errData() *ErrData {
-	return &e.ErrData
-}
-
-func (e *RequestError) errData() *ErrData {
-	return &e.ErrData
-}
-
-func EnrichError(err error, opts ...Option) error {
-	if err == nil {
-		return nil
-	}
-	var carrier dataCarrier
-	if errors.As(err, &carrier) {
-		for _, opt := range opts {
-			opt(carrier.errData())
-		}
-	}
-	return err
-}
