@@ -5,8 +5,6 @@ import (
 	"fmt"
 
 	"github.com/pzsp-teams/lib/internal/resolver"
-	"github.com/pzsp-teams/lib/internal/resources"
-	snd "github.com/pzsp-teams/lib/internal/sender"
 	"github.com/pzsp-teams/lib/models"
 )
 
@@ -26,35 +24,35 @@ func (s *service) Get(ctx context.Context, teamRef string) (*models.Team, error)
 		return nil, err
 	}
 
-	resp, requestErr := s.teamOps.GetTeamByID(ctx, teamID)
-	if requestErr != nil {
-		return nil, snd.MapError(requestErr, snd.WithResource(resources.Team, teamRef))
+	resp, err := s.teamOps.GetTeamByID(ctx, teamID)
+	if err != nil {
+		return nil, err
 	}
 
 	return resp, nil
 }
 
 func (s *service) ListMyJoined(ctx context.Context) ([]*models.Team, error) {
-	resp, requestErr := s.teamOps.ListMyJoinedTeams(ctx)
-	if requestErr != nil {
-		return nil, snd.MapError(requestErr)
+	resp, err := s.teamOps.ListMyJoinedTeams(ctx)
+	if err != nil {
+		return nil, err
 	}
 	return resp, nil
 }
 
 func (s *service) CreateViaGroup(ctx context.Context, displayName, mailNickname, visibility string) (*models.Team, error) {
-	t, requestErr := s.teamOps.CreateViaGroup(ctx, displayName, mailNickname, visibility)
-	if requestErr != nil {
-		return nil, snd.MapError(requestErr, snd.WithResource(resources.Team, displayName))
+	t, err := s.teamOps.CreateViaGroup(ctx, displayName, mailNickname, visibility)
+	if err != nil {
+		return nil, err
 	}
 
 	return t, nil
 }
 
 func (s *service) CreateFromTemplate(ctx context.Context, displayName, description string, owners []string) (string, error) {
-	id, requestErr := s.teamOps.CreateFromTemplate(ctx, displayName, description, owners)
-	if requestErr != nil {
-		return "", snd.MapError(requestErr, snd.WithResources(resources.User, owners))
+	id, err := s.teamOps.CreateFromTemplate(ctx, displayName, description, owners)
+	if err != nil {
+		return "", err
 	}
 
 	return id, nil
@@ -65,9 +63,9 @@ func (s *service) Archive(ctx context.Context, teamRef string, spoReadOnlyForMem
 	if err != nil {
 		return err
 	}
-
-	if e := s.teamOps.Archive(ctx, teamID, teamRef, spoReadOnlyForMembers); e != nil {
-		return snd.MapError(e, snd.WithResource(resources.Team, teamRef))
+	
+	if err = s.teamOps.Archive(ctx, teamID, teamRef, spoReadOnlyForMembers); err != nil {
+		return err
 	}
 
 	return nil
@@ -79,8 +77,8 @@ func (s *service) Unarchive(ctx context.Context, teamRef string) error {
 		return err
 	}
 
-	if requestErr := s.teamOps.Unarchive(ctx, teamID); requestErr != nil {
-		return snd.MapError(requestErr, snd.WithResource(resources.Team, teamRef))
+	if err := s.teamOps.Unarchive(ctx, teamID); err != nil {
+		return err
 	}
 
 	return nil
@@ -92,8 +90,8 @@ func (s *service) Delete(ctx context.Context, teamRef string) error {
 		return err
 	}
 
-	if requestErr := s.teamOps.DeleteTeam(ctx, teamID, teamRef); requestErr != nil {
-		return snd.MapError(requestErr, snd.WithResource(resources.Team, teamRef))
+	if err := s.teamOps.DeleteTeam(ctx, teamID, teamRef); err != nil {
+		return err
 	}
 
 	return nil
@@ -102,7 +100,7 @@ func (s *service) Delete(ctx context.Context, teamRef string) error {
 func (s *service) RestoreDeleted(ctx context.Context, deletedGroupID string) (string, error) {
 	id, err := s.teamOps.RestoreDeletedTeam(ctx, deletedGroupID)
 	if err != nil {
-		return "", snd.MapError(err, snd.WithResource(resources.Team, deletedGroupID))
+		return "", err
 	}
 
 	if id == "" {
@@ -118,9 +116,9 @@ func (s *service) ListMembers(ctx context.Context, teamRef string) ([]*models.Me
 		return nil, err
 	}
 
-	resp, requestErr := s.teamOps.ListMembers(ctx, teamID)
-	if requestErr != nil {
-		return nil, snd.MapError(requestErr, snd.WithResource(resources.Team, teamRef))
+	resp, err := s.teamOps.ListMembers(ctx, teamID)
+	if err != nil {
+		return nil, err
 	}
 
 	return resp, nil
@@ -132,9 +130,9 @@ func (s *service) AddMember(ctx context.Context, teamRef, userRef string, isOwne
 		return nil, err
 	}
 
-	resp, requestErr := s.teamOps.AddMember(ctx, teamID, userRef, isOwner)
-	if requestErr != nil {
-		return nil, snd.MapError(requestErr, snd.WithResource(resources.Team, teamRef), snd.WithResource(resources.User, userRef))
+	resp, err := s.teamOps.AddMember(ctx, teamID, userRef, isOwner)
+	if err != nil {
+		return nil, err
 	}
 	return resp, nil
 }
@@ -150,9 +148,9 @@ func (s *service) GetMember(ctx context.Context, teamRef, userRef string) (*mode
 		return nil, err
 	}
 
-	resp, requestErr := s.teamOps.GetMemberByID(ctx, teamID, memberID)
-	if requestErr != nil {
-		return nil, snd.MapError(requestErr, snd.WithResource(resources.Team, teamRef), snd.WithResource(resources.User, userRef))
+	resp, err := s.teamOps.GetMemberByID(ctx, teamID, memberID)
+	if err != nil {
+		return nil, err
 	}
 
 	return resp, nil
@@ -169,8 +167,8 @@ func (s *service) RemoveMember(ctx context.Context, teamRef, userRef string) err
 		return err
 	}
 
-	if requestErr := s.teamOps.RemoveMember(ctx, teamID, memberID, userRef); requestErr != nil {
-		return snd.MapError(requestErr, snd.WithResource(resources.Team, teamRef), snd.WithResource(resources.User, userRef))
+	if err := s.teamOps.RemoveMember(ctx, teamID, memberID, userRef); err != nil {
+		return err
 	}
 
 	return nil
@@ -187,9 +185,9 @@ func (s *service) UpdateMemberRoles(ctx context.Context, teamRef, userRef string
 		return nil, err
 	}
 
-	updated, requestErr := s.teamOps.UpdateMemberRoles(ctx, teamID, memberID, isOwner)
-	if requestErr != nil {
-		return nil, snd.MapError(requestErr, snd.WithResource(resources.Team, teamRef), snd.WithResource(resources.User, userRef))
+	updated, err := s.teamOps.UpdateMemberRoles(ctx, teamID, memberID, isOwner)
+	if err != nil {
+		return nil, err
 	}
 	return updated, nil
 }

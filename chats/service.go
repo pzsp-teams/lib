@@ -19,11 +19,11 @@ import (
 type service struct {
 	chatAPI      api.ChatAPI
 	chatResolver resolver.ChatResolver
-	userAPI      api.UsersAPI
+	userAPI      api.UserAPI
 }
 
 // NewService creates a new instance of the chat service.
-func NewService(chatAPI api.ChatAPI, cr resolver.ChatResolver, userAPI api.UsersAPI) Service {
+func NewService(chatAPI api.ChatAPI, cr resolver.ChatResolver, userAPI api.UserAPI) Service {
 	return &service{chatAPI: chatAPI, chatResolver: cr, userAPI: userAPI}
 }
 

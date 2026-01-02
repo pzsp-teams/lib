@@ -14,20 +14,20 @@ import (
 	"github.com/pzsp-teams/lib/internal/util"
 )
 
-type UsersAPI interface {
+type UserAPI interface {
 	GetUserByEmailOrUPN(ctx context.Context, emailOrUPN string) (msmodels.Userable, *sender.RequestError)
 }
 
-type usersAPI struct {
+type userAPI struct {
 	client    *graph.GraphServiceClient
 	snederCfg *config.SenderConfig
 }
 
-func NewUsers(client *graph.GraphServiceClient, senderCfg *config.SenderConfig) UsersAPI {
-	return &usersAPI{client, senderCfg}
+func NewUser(client *graph.GraphServiceClient, senderCfg *config.SenderConfig) UserAPI {
+	return &userAPI{client, senderCfg}
 }
 
-func (u *usersAPI) GetUserByEmailOrUPN(ctx context.Context, emailOrUPN string) (msmodels.Userable, *sender.RequestError) {
+func (u *userAPI) GetUserByEmailOrUPN(ctx context.Context, emailOrUPN string) (msmodels.Userable, *sender.RequestError) {
 	key := strings.TrimSpace(emailOrUPN)
 	if key == "" {
 		return nil, &sender.RequestError{Message: "emailOrUPN is empty"}
@@ -47,7 +47,7 @@ func (u *usersAPI) GetUserByEmailOrUPN(ctx context.Context, emailOrUPN string) (
 	return nil, reqErr
 }
 
-func (u *usersAPI) getUserByKey(ctx context.Context, key string) (msmodels.Userable, *sender.RequestError) {
+func (u *userAPI) getUserByKey(ctx context.Context, key string) (msmodels.Userable, *sender.RequestError) {
 	cfg := &graphusers.UserItemRequestBuilderGetRequestConfiguration{
 		QueryParameters: &graphusers.UserItemRequestBuilderGetQueryParameters{
 			Select: []string{"id", "displayName", "mail", "userPrincipalName"},
@@ -77,7 +77,7 @@ func (u *usersAPI) getUserByKey(ctx context.Context, key string) (msmodels.Usera
 	return userResp, nil
 }
 
-func (u *usersAPI) findUserByEmail(ctx context.Context, email string) (msmodels.Userable, *sender.RequestError) {
+func (u *userAPI) findUserByEmail(ctx context.Context, email string) (msmodels.Userable, *sender.RequestError) {
 	escaped := strings.ReplaceAll(strings.TrimSpace(email), "'", "''")
 	filter := fmt.Sprintf(
 		"mail eq '%[1]s' or userPrincipalName eq '%[1]s' or otherMails/any(x:x eq '%[1]s') or "+
