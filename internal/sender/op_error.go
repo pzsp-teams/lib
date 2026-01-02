@@ -12,6 +12,13 @@ type Param struct {
 	Value []string
 }
 
+func NewParam(key resources.Key, value ...string) Param {
+	return Param{
+		Key:   key,
+		Value: value,
+	}
+}
+
 type OpError struct {
 	Operation string
 	Params    []Param
