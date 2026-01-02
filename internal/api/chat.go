@@ -59,7 +59,7 @@ func (c *chatsAPI) CreateOneOnOneChat(ctx context.Context, userRef string) (msmo
 
 	userRefs := []string{*me.GetId(), userRef}
 	members := make([]msmodels.ConversationMemberable, 0, len(userRefs))
-	addToMembers(&members, userRefs, ownerRoles())
+	addToMembers(&members, userRefs, []string{roleOwner})
 	body.SetMembers(members)
 
 	call := func(ctx context.Context) (sender.Response, error) {
@@ -128,7 +128,7 @@ func (c *chatsAPI) CreateGroupChat(ctx context.Context, userRefs []string, topic
 	}
 
 	members := make([]msmodels.ConversationMemberable, 0, len(userRefs))
-	addToMembers(&members, userRefs, ownerRoles())
+	addToMembers(&members, userRefs, []string{roleOwner})
 	body.SetMembers(members)
 
 	call := func(ctx context.Context) (sender.Response, error) {

@@ -126,3 +126,20 @@ func (u *userAPI) findUserByEmail(ctx context.Context, email string) (msmodels.U
 
 	return u0, nil
 }
+
+func getMe(ctx context.Context, client *graph.GraphServiceClient, senderCfg *config.SenderConfig) (msmodels.Userable, *sender.RequestError) {
+	call := func(ctx context.Context) (sender.Response, error) {
+		return client.Me().Get(ctx, nil)
+	}
+
+	resp, err := sender.SendRequest(ctx, call, senderCfg)
+	if err != nil {
+		return nil, err
+	}
+
+	user, ok := resp.(msmodels.Userable)
+	if !ok {
+		return nil, newTypeError("msmodels.Userable")
+	}
+	return user, nil
+}

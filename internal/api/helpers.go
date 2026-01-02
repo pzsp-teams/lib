@@ -1,13 +1,10 @@
 package api
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 
-	graph "github.com/microsoftgraph/msgraph-sdk-go"
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
-	"github.com/pzsp-teams/lib/config"
 	"github.com/pzsp-teams/lib/internal/sender"
 )
 
@@ -21,23 +18,11 @@ const (
 	roleOwner           = "owner"
 )
 
-func ownerRoles() []string {
-	return []string{roleOwner}
-}
-
-func emptyRoles() []string {
-	return []string{}
-}
-
-func userBindValue(userRef string) string {
-	return fmt.Sprintf(graphUserBindFmt, userRef)
-}
-
 func newAadUserMemberBody(userRef string, roles []string) msmodels.ConversationMemberable {
 	m := msmodels.NewAadUserConversationMember()
 	m.SetRoles(roles)
 	m.SetAdditionalData(map[string]any{
-		graphUserBindKey: userBindValue(userRef),
+		graphUserBindKey: fmt.Sprintf(graphUserBindFmt, userRef),
 	})
 	return m
 }
@@ -63,23 +48,6 @@ func messageToGraph(content, contentType string) msmodels.ItemBodyable {
 	}
 	body.SetContentType(&ct)
 	return body
-}
-
-func getMe(ctx context.Context, client *graph.GraphServiceClient, senderCfg *config.SenderConfig) (msmodels.Userable, *sender.RequestError) {
-	call := func(ctx context.Context) (sender.Response, error) {
-		return client.Me().Get(ctx, nil)
-	}
-
-	resp, err := sender.SendRequest(ctx, call, senderCfg)
-	if err != nil {
-		return nil, err
-	}
-
-	user, ok := resp.(msmodels.Userable)
-	if !ok {
-		return nil, newTypeError("msmodels.Userable")
-	}
-	return user, nil
 }
 
 func newTypeError(expected string) *sender.RequestError {
