@@ -17,7 +17,6 @@ package teams
 import (
 	"context"
 
-	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
 	"github.com/pzsp-teams/lib/models"
 )
 
@@ -29,9 +28,6 @@ type Service interface {
 
 	// ListMyJoined returns all teams the authenticated user has joined.
 	ListMyJoined(ctx context.Context) ([]*models.Team, error)
-
-	// Update modifies a team's properties using a Graph patch object.
-	Update(ctx context.Context, teamRef string, patch *msmodels.Team) (*models.Team, error)
 
 	// CreateViaGroup creates a new team associated with a Microsoft 365 group.
 	CreateViaGroup(ctx context.Context, displayName, mailNickname, visibility string) (*models.Team, error)

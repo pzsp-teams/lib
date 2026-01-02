@@ -11,5 +11,5 @@ const (
 	User          Resource = "USER"
 	Message       Resource = "MESSAGE"
 	PinnedMessage Resource = "PINNED_MESSAGE"
-	Mention	   	  Resource = "MENTION"
+	Mention       Resource = "MENTION"
 )

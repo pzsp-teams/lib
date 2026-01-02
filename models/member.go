@@ -7,6 +7,6 @@ type Member struct {
 	DisplayName string
 	Role        string
 	Email       string
-	ThreadID	*string
-	TeamID    	*string
+	ThreadID    *string
+	TeamID      *string
 }
