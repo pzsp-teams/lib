@@ -181,11 +181,11 @@ func (o *opsWithCache) RemoveMember(ctx context.Context, teamID, channelID, memb
 }
 
 func (o *opsWithCache) addChannelsToCache(teamID string, chans ...models.Channel) {
-	if util.CheckIfAnyStringIsBlank(teamID) {
+	if util.AnyBlank(teamID) {
 		return
 	}
 	for _, ch := range chans {
-		if util.CheckIfAnyStringIsBlank(ch.Name) {
+		if util.AnyBlank(ch.Name) {
 			continue
 		}
 		key := cacher.NewChannelKey(teamID, ch.Name)
@@ -194,7 +194,7 @@ func (o *opsWithCache) addChannelsToCache(teamID string, chans ...models.Channel
 }
 
 func (o *opsWithCache) removeChannelFromCache(teamID, channelRef string) {
-	if util.CheckIfAnyStringIsBlank(teamID, channelRef) { 
+	if util.AnyBlank(teamID, channelRef) { 
 		return
 	}
 	key := cacher.NewChannelKey(teamID, channelRef)
@@ -202,11 +202,11 @@ func (o *opsWithCache) removeChannelFromCache(teamID, channelRef string) {
 }
 
 func (o *opsWithCache) addMembersToCache(teamID, channelID string, members ...models.Member) {
-	if util.CheckIfAnyStringIsBlank(teamID, channelID) {
+	if util.AnyBlank(teamID, channelID) {
 		return
 	}
 	for _, m := range members {
-		if util.CheckIfAnyStringIsBlank(m.Email) {
+		if util.AnyBlank(m.Email) {
 			continue
 		}
 		key := cacher.NewChannelMemberKey(teamID, channelID, m.Email, nil)
@@ -215,7 +215,7 @@ func (o *opsWithCache) addMembersToCache(teamID, channelID string, members ...mo
 }
 
 func (o *opsWithCache) removeMemberFromCache(teamID, channelID, userRef string) {
-	if util.CheckIfAnyStringIsBlank(teamID, channelID, userRef) {
+	if util.AnyBlank(teamID, channelID, userRef) {
 		return
 	}
 	key := cacher.NewChannelMemberKey(teamID, channelID, userRef, nil)

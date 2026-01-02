@@ -185,7 +185,7 @@ func (o *opsWithCache) RemoveMember(ctx context.Context, teamID, memberID, userR
 
 func (o *opsWithCache) addTeamsToCache(teams ...models.Team) {
 	for _, team := range teams {
-		if util.CheckIfAnyStringIsBlank(team.DisplayName) {
+		if util.AnyBlank(team.DisplayName) {
 			continue
 		}
 		key := cacher.NewTeamKey(team.DisplayName)
@@ -194,7 +194,7 @@ func (o *opsWithCache) addTeamsToCache(teams ...models.Team) {
 }
 
 func (o *opsWithCache) removeTeamFromCache(teamRef string) {
-	if util.CheckIfAnyStringIsBlank(teamRef) {
+	if util.AnyBlank(teamRef) {
 		return
 	}
 	key := cacher.NewTeamKey(teamRef)
@@ -202,11 +202,11 @@ func (o *opsWithCache) removeTeamFromCache(teamRef string) {
 }
 
 func (o *opsWithCache) addMembersToCache(teamID string, members ...models.Member) {
-	if util.CheckIfAnyStringIsBlank(teamID) {
+	if util.AnyBlank(teamID) {
 		return
 	}
 	for _, member := range members {
-		if util.CheckIfAnyStringIsBlank(member.Email) {
+		if util.AnyBlank(member.Email) {
 			continue
 		}
 		key := cacher.NewTeamMemberKey(teamID, member.Email, nil)
@@ -215,7 +215,7 @@ func (o *opsWithCache) addMembersToCache(teamID string, members ...models.Member
 }
 
 func (o *opsWithCache) removeMemberFromCache(teamID, userRef string) {
-	if util.CheckIfAnyStringIsBlank(teamID, userRef) {
+	if util.AnyBlank(teamID, userRef) {
 		return
 	}
 	key := cacher.NewTeamMemberKey(teamID, userRef, nil)
