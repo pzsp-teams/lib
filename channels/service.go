@@ -41,7 +41,7 @@ func (s *service) ListChannels(ctx context.Context, teamRef string) ([]*models.C
 func (s *service) Get(ctx context.Context, teamRef, channelRef string) (*models.Channel, error) {
 	teamID, channelID, err := s.resolveTeamAndChannelID(ctx, teamRef, channelRef)
 	if err != nil {
-		return nil, sender.Wrap("Get", err, 
+		return nil, sender.Wrap("Get", err,
 			sender.NewParam(resources.TeamRef, teamRef),
 			sender.NewParam(resources.ChannelRef, channelRef),
 		)
@@ -49,7 +49,7 @@ func (s *service) Get(ctx context.Context, teamRef, channelRef string) (*models.
 
 	out, err := s.ops.GetChannelByID(ctx, teamID, channelID)
 	if err != nil {
-		return nil, sender.Wrap("Get", err, 
+		return nil, sender.Wrap("Get", err,
 			sender.NewParam(resources.TeamRef, teamRef),
 			sender.NewParam(resources.ChannelRef, channelRef),
 		)
@@ -178,8 +178,8 @@ func (s *service) GetMessage(ctx context.Context, teamRef, channelRef, messageID
 			sender.NewParam(resources.TeamRef, teamRef),
 			sender.NewParam(resources.ChannelRef, channelRef),
 		)
-	} 
-	
+	}
+
 	return out, nil
 }
 
@@ -333,7 +333,7 @@ func (s *service) GetMentions(ctx context.Context, teamRef, channelRef string, r
 		)
 	}
 	out, err := s.ops.GetMentions(ctx, teamID, teamRef, channelRef, channelID, rawMentions)
-	
+
 	if err != nil {
 		return nil, sender.Wrap("GetMentions", err,
 			sender.NewParam(resources.TeamRef, teamRef),
@@ -341,7 +341,7 @@ func (s *service) GetMentions(ctx context.Context, teamRef, channelRef string, r
 			sender.NewParam(resources.MentionRef, rawMentions...),
 		)
 	}
-	
+
 	return out, nil
 }
 

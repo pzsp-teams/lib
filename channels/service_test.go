@@ -5,11 +5,9 @@ import (
 	"errors"
 	"testing"
 
-	gomock "github.com/golang/mock/gomock"
-	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
+	"github.com/golang/mock/gomock"
 	snd "github.com/pzsp-teams/lib/internal/sender"
 	"github.com/pzsp-teams/lib/internal/testutil"
-	"github.com/pzsp-teams/lib/internal/util"
 	"github.com/pzsp-teams/lib/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -19,7 +17,6 @@ type sutDeps struct {
 	ops             *testutil.MockchannelOps
 	teamResolver    *testutil.MockTeamResolver
 	channelResolver *testutil.MockChannelResolver
-	usersAPI        *testutil.MockUsersAPI
 }
 
 func newSUT(t *testing.T, setup func(d sutDeps)) (Service, context.Context) {
@@ -28,41 +25,42 @@ func newSUT(t *testing.T, setup func(d sutDeps)) (Service, context.Context) {
 	ctrl := gomock.NewController(t)
 	t.Cleanup(ctrl.Finish)
 
-	opsMock := testutil.NewMockchannelOps(ctrl)
-	trMock := testutil.NewMockTeamResolver(ctrl)
-	crMock := testutil.NewMockChannelResolver(ctrl)
-	usersMock := testutil.NewMockUsersAPI(ctrl)
-
-	if setup != nil {
-		setup(sutDeps{
-			ops:             opsMock,
-			teamResolver:    trMock,
-			channelResolver: crMock,
-			usersAPI:        usersMock,
-		})
+	d := sutDeps{
+		ops:             testutil.NewMockchannelOps(ctrl),
+		teamResolver:    testutil.NewMockTeamResolver(ctrl),
+		channelResolver: testutil.NewMockChannelResolver(ctrl),
 	}
 
-	return NewService(opsMock, trMock, crMock, usersMock), context.Background()
+	if setup != nil {
+		setup(d)
+	}
+
+	return NewService(d.ops, d.teamResolver, d.channelResolver), context.Background()
+}
+
+const (
+	defaultTeamRef    = "TeamA"
+	defaultTeamID     = "team-id"
+	defaultChannelRef = "ChanA"
+	defaultChannelID  = "chan-id"
+)
+
+func expectResolveTeam(t *testing.T, d sutDeps) {
+	t.Helper()
+	d.teamResolver.EXPECT().
+		ResolveTeamRefToID(gomock.Any(), defaultTeamRef).
+		Return(defaultTeamID, nil).
+		Times(1)
 }
 
 func expectResolveTeamAndChannel(t *testing.T, d sutDeps) {
 	t.Helper()
 
-	const (
-		teamRef    = "TeamA"
-		teamID     = "team-id"
-		channelRef = "ChanA"
-		channelID  = "chan-id"
-	)
-
-	d.teamResolver.EXPECT().
-		ResolveTeamRefToID(gomock.Any(), teamRef).
-		Return(teamID, nil).
-		Times(1)
+	expectResolveTeam(t, d)
 
 	d.channelResolver.EXPECT().
-		ResolveChannelRefToID(gomock.Any(), teamID, channelRef).
-		Return(channelID, nil).
+		ResolveChannelRefToID(gomock.Any(), defaultTeamID, defaultChannelRef).
+		Return(defaultChannelID, nil).
 		Times(1)
 }
 
@@ -72,7 +70,7 @@ func TestService_ListChannels(t *testing.T) {
 		teamRef    string
 		setupMocks func(d sutDeps)
 		wantLen    int
-		wantErrAs  any
+		assertErr  func(t *testing.T, err error)
 	}
 
 	testCases := []testCase{
@@ -80,11 +78,7 @@ func TestService_ListChannels(t *testing.T) {
 			name:    "success returns channels",
 			teamRef: "TeamA",
 			setupMocks: func(d sutDeps) {
-				d.teamResolver.EXPECT().
-					ResolveTeamRefToID(gomock.Any(), "TeamA").
-					Return("team-id", nil).
-					Times(1)
-
+				expectResolveTeam(t, d)
 				d.ops.EXPECT().
 					ListChannelsByTeamID(gomock.Any(), "team-id").
 					Return([]*models.Channel{
@@ -104,23 +98,19 @@ func TestService_ListChannels(t *testing.T) {
 					Return("", errors.New("boom")).
 					Times(1)
 			},
-			wantErrAs: new(error),
+			assertErr: func(t *testing.T, err error) { require.Error(t, err) },
 		},
 		{
-			name:    "maps ops error",
+			name:    "ops error is propagated",
 			teamRef: "TeamA",
 			setupMocks: func(d sutDeps) {
-				d.teamResolver.EXPECT().
-					ResolveTeamRefToID(gomock.Any(), "TeamA").
-					Return("team-id", nil).
-					Times(1)
-
+				expectResolveTeam(t, d)
 				d.ops.EXPECT().
 					ListChannelsByTeamID(gomock.Any(), "team-id").
-					Return(nil, &snd.RequestError{Code: 403, Message: "nope"}).
+					Return(nil, &snd.ErrAccessForbidden{Code: 403, OriginalMessage: "nope"}).
 					Times(1)
 			},
-			wantErrAs: new(snd.ErrAccessForbidden),
+			assertErr: func(t *testing.T, err error) { testutil.RequireReqErrCode(t, err, 403) },
 		},
 	}
 
@@ -130,16 +120,8 @@ func TestService_ListChannels(t *testing.T) {
 
 			got, err := svc.ListChannels(ctx, tc.teamRef)
 
-			if tc.wantErrAs != nil {
-				require.Error(t, err)
-				switch target := tc.wantErrAs.(type) {
-				case *snd.ErrAccessForbidden:
-					require.ErrorAs(t, err, target)
-				case *error:
-					// any error OK
-				default:
-					t.Fatalf("unsupported wantErrAs type: %T", tc.wantErrAs)
-				}
+			if tc.assertErr != nil {
+				tc.assertErr(t, err)
 				return
 			}
 
@@ -155,7 +137,7 @@ func TestService_Get(t *testing.T) {
 		name       string
 		setupMocks func(d sutDeps)
 		wantID     string
-		wantErrAs  any
+		assertErr  func(t *testing.T, err error)
 	}
 
 	testCases := []testCase{
@@ -163,7 +145,6 @@ func TestService_Get(t *testing.T) {
 			name: "success resolves team+channel and gets channel",
 			setupMocks: func(d sutDeps) {
 				expectResolveTeamAndChannel(t, d)
-
 				d.ops.EXPECT().
 					GetChannelByID(gomock.Any(), "team-id", "chan-id").
 					Return(&models.Channel{ID: "chan-id", Name: "ChanA"}, nil).
@@ -179,33 +160,29 @@ func TestService_Get(t *testing.T) {
 					Return("", errors.New("boom")).
 					Times(1)
 			},
-			wantErrAs: new(error),
+			assertErr: func(t *testing.T, err error) { require.Error(t, err) },
 		},
 		{
 			name: "channel resolver error is propagated",
 			setupMocks: func(d sutDeps) {
-				d.teamResolver.EXPECT().
-					ResolveTeamRefToID(gomock.Any(), "TeamA").
-					Return("team-id", nil).
-					Times(1)
+				expectResolveTeam(t, d)
 				d.channelResolver.EXPECT().
 					ResolveChannelRefToID(gomock.Any(), "team-id", "ChanA").
 					Return("", errors.New("boom")).
 					Times(1)
 			},
-			wantErrAs: new(error),
+			assertErr: func(t *testing.T, err error) { require.Error(t, err) },
 		},
 		{
-			name: "maps ops error",
+			name: "ops error is propagated",
 			setupMocks: func(d sutDeps) {
 				expectResolveTeamAndChannel(t, d)
-
 				d.ops.EXPECT().
 					GetChannelByID(gomock.Any(), "team-id", "chan-id").
-					Return(nil, &snd.RequestError{Code: 404, Message: "missing"}).
+					Return(nil, &snd.ErrResourceNotFound{Code: 404, OriginalMessage: "missing"}).
 					Times(1)
 			},
-			wantErrAs: new(snd.ErrResourceNotFound),
+			assertErr: func(t *testing.T, err error) { testutil.RequireReqErrCode(t, err, 404) },
 		},
 	}
 
@@ -215,15 +192,8 @@ func TestService_Get(t *testing.T) {
 
 			got, err := svc.Get(ctx, "TeamA", "ChanA")
 
-			if tc.wantErrAs != nil {
-				require.Error(t, err)
-				switch target := tc.wantErrAs.(type) {
-				case *snd.ErrResourceNotFound:
-					require.ErrorAs(t, err, target)
-				case *error:
-				default:
-					t.Fatalf("unsupported wantErrAs type: %T", tc.wantErrAs)
-				}
+			if tc.assertErr != nil {
+				tc.assertErr(t, err)
 				return
 			}
 
@@ -235,57 +205,139 @@ func TestService_Get(t *testing.T) {
 }
 
 func TestService_CreateStandardChannel(t *testing.T) {
-	svc, ctx := newSUT(t, func(d sutDeps) {
-		d.teamResolver.EXPECT().
-			ResolveTeamRefToID(gomock.Any(), "TeamA").
-			Return("team-id", nil).
-			Times(1)
+	type testCase struct {
+		name       string
+		setupMocks func(d sutDeps)
+		assertErr  func(t *testing.T, err error)
+	}
 
-		d.ops.EXPECT().
-			CreateStandardChannel(gomock.Any(), "team-id", "NewChan").
-			Return(&models.Channel{ID: "c1", Name: "NewChan"}, nil).
-			Times(1)
-	})
+	testCases := []testCase{
+		{
+			name: "success",
+			setupMocks: func(d sutDeps) {
+				expectResolveTeam(t, d)
+				d.ops.EXPECT().
+					CreateStandardChannel(gomock.Any(), "team-id", "NewChan").
+					Return(&models.Channel{ID: "c1", Name: "NewChan"}, nil).
+					Times(1)
+			},
+		},
+		{
+			name: "team resolver error",
+			setupMocks: func(d sutDeps) {
+				d.teamResolver.EXPECT().
+					ResolveTeamRefToID(gomock.Any(), "TeamA").
+					Return("", errors.New("boom")).
+					Times(1)
+			},
+			assertErr: func(t *testing.T, err error) { require.Error(t, err) },
+		},
+		{
+			name: "ops error propagated",
+			setupMocks: func(d sutDeps) {
+				expectResolveTeam(t, d)
+				d.ops.EXPECT().
+					CreateStandardChannel(gomock.Any(), "team-id", "NewChan").
+					Return(nil, &snd.ErrAccessForbidden{Code: 403, OriginalMessage: "nope"}).
+					Times(1)
+			},
+			assertErr: func(t *testing.T, err error) { testutil.RequireReqErrCode(t, err, 403) },
+		},
+	}
 
-	got, err := svc.CreateStandardChannel(ctx, "TeamA", "NewChan")
-	require.NoError(t, err)
-	require.NotNil(t, got)
-	assert.Equal(t, "c1", got.ID)
-	assert.Equal(t, "NewChan", got.Name)
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			svc, ctx := newSUT(t, tc.setupMocks)
+
+			got, err := svc.CreateStandardChannel(ctx, "TeamA", "NewChan")
+
+			if tc.assertErr != nil {
+				tc.assertErr(t, err)
+				return
+			}
+
+			require.NoError(t, err)
+			require.NotNil(t, got)
+			assert.Equal(t, "c1", got.ID)
+			assert.Equal(t, "NewChan", got.Name)
+		})
+	}
 }
 
 func TestService_CreatePrivateChannel(t *testing.T) {
-	svc, ctx := newSUT(t, func(d sutDeps) {
-		d.teamResolver.EXPECT().
-			ResolveTeamRefToID(gomock.Any(), "TeamA").
-			Return("team-id", nil).
-			Times(1)
+	type testCase struct {
+		name       string
+		setupMocks func(d sutDeps)
+		assertErr  func(t *testing.T, err error)
+	}
 
-		d.ops.EXPECT().
-			CreatePrivateChannel(gomock.Any(), "team-id", "Secret", []string{"u1", "u2"}, []string{"o1"}).
-			Return(&models.Channel{ID: "pc1", Name: "Secret"}, nil).
-			Times(1)
-	})
+	members := []string{"u1", "u2"}
+	owners := []string{"o1"}
 
-	got, err := svc.CreatePrivateChannel(ctx, "TeamA", "Secret", []string{"u1", "u2"}, []string{"o1"})
-	require.NoError(t, err)
-	require.NotNil(t, got)
-	assert.Equal(t, "pc1", got.ID)
+	testCases := []testCase{
+		{
+			name: "success",
+			setupMocks: func(d sutDeps) {
+				expectResolveTeam(t, d)
+				d.ops.EXPECT().
+					CreatePrivateChannel(gomock.Any(), "team-id", "Secret", members, owners).
+					Return(&models.Channel{ID: "pc1", Name: "Secret"}, nil).
+					Times(1)
+			},
+		},
+		{
+			name: "team resolver error",
+			setupMocks: func(d sutDeps) {
+				d.teamResolver.EXPECT().
+					ResolveTeamRefToID(gomock.Any(), "TeamA").
+					Return("", errors.New("boom")).
+					Times(1)
+			},
+			assertErr: func(t *testing.T, err error) { require.Error(t, err) },
+		},
+		{
+			name: "ops error propagated",
+			setupMocks: func(d sutDeps) {
+				expectResolveTeam(t, d)
+				d.ops.EXPECT().
+					CreatePrivateChannel(gomock.Any(), "team-id", "Secret", members, owners).
+					Return(nil, &snd.ErrResourceNotFound{Code: 404, OriginalMessage: "missing"}).
+					Times(1)
+			},
+			assertErr: func(t *testing.T, err error) { testutil.RequireReqErrCode(t, err, 404) },
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			svc, ctx := newSUT(t, tc.setupMocks)
+
+			got, err := svc.CreatePrivateChannel(ctx, "TeamA", "Secret", members, owners)
+
+			if tc.assertErr != nil {
+				tc.assertErr(t, err)
+				return
+			}
+
+			require.NoError(t, err)
+			require.NotNil(t, got)
+			assert.Equal(t, "pc1", got.ID)
+		})
+	}
 }
 
 func TestService_Delete(t *testing.T) {
 	type testCase struct {
-		name      string
-		setup     func(d sutDeps)
-		wantErrAs any
+		name       string
+		setupMocks func(d sutDeps)
+		assertErr  func(t *testing.T, err error)
 	}
 
 	testCases := []testCase{
 		{
 			name: "success passes channelRef to ops",
-			setup: func(d sutDeps) {
+			setupMocks: func(d sutDeps) {
 				expectResolveTeamAndChannel(t, d)
-
 				d.ops.EXPECT().
 					DeleteChannel(gomock.Any(), "team-id", "chan-id", "ChanA").
 					Return(nil).
@@ -293,216 +345,268 @@ func TestService_Delete(t *testing.T) {
 			},
 		},
 		{
-			name: "maps ops error",
-			setup: func(d sutDeps) {
+			name: "ops error propagated",
+			setupMocks: func(d sutDeps) {
 				expectResolveTeamAndChannel(t, d)
-
 				d.ops.EXPECT().
 					DeleteChannel(gomock.Any(), "team-id", "chan-id", "ChanA").
-					Return(&snd.RequestError{Code: 403, Message: "nope"}).
+					Return(&snd.ErrAccessForbidden{Code: 403, OriginalMessage: "nope"}).
 					Times(1)
 			},
-			wantErrAs: new(snd.ErrAccessForbidden),
+			assertErr: func(t *testing.T, err error) { testutil.RequireReqErrCode(t, err, 403) },
+		},
+		{
+			name: "team resolver error",
+			setupMocks: func(d sutDeps) {
+				d.teamResolver.EXPECT().
+					ResolveTeamRefToID(gomock.Any(), "TeamA").
+					Return("", errors.New("boom")).
+					Times(1)
+			},
+			assertErr: func(t *testing.T, err error) { require.Error(t, err) },
+		},
+		{
+			name: "channel resolver error",
+			setupMocks: func(d sutDeps) {
+				expectResolveTeam(t, d)
+				d.channelResolver.EXPECT().
+					ResolveChannelRefToID(gomock.Any(), "team-id", "ChanA").
+					Return("", errors.New("boom")).
+					Times(1)
+			},
+			assertErr: func(t *testing.T, err error) { require.Error(t, err) },
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			svc, ctx := newSUT(t, tc.setup)
+			svc, ctx := newSUT(t, tc.setupMocks)
 			err := svc.Delete(ctx, "TeamA", "ChanA")
-
-			if tc.wantErrAs == nil {
-				require.NoError(t, err)
+			if tc.assertErr != nil {
+				tc.assertErr(t, err)
 				return
 			}
-			require.Error(t, err)
-			switch target := tc.wantErrAs.(type) {
-			case *snd.ErrAccessForbidden:
-				require.ErrorAs(t, err, target)
-			default:
-				t.Fatalf("unsupported wantErrAs type: %T", tc.wantErrAs)
-			}
+			require.NoError(t, err)
 		})
 	}
 }
 
-func TestService_SendMessage(t *testing.T) {
-	body := models.MessageBody{Content: "hi", ContentType: models.MessageContentTypeText}
+func TestService_SendMessage_SendReply(t *testing.T) {
+	type testCase struct {
+		name       string
+		setupMocks func(d sutDeps)
+		call       func(svc Service, ctx context.Context) error
+		assertErr  func(t *testing.T, err error)
+	}
 
-	svc, ctx := newSUT(t, func(d sutDeps) {
-		expectResolveTeamAndChannel(t, d)
+	bodyMsg := models.MessageBody{Content: "hi", ContentType: models.MessageContentTypeText}
+	bodyReply := models.MessageBody{Content: "reply", ContentType: models.MessageContentTypeText}
 
-		d.ops.EXPECT().
-			SendMessage(gomock.Any(), "team-id", "chan-id", body).
-			Return(&models.Message{ID: "m1", Content: "hi"}, nil).
-			Times(1)
-	})
+	testCases := []testCase{
+		{
+			name: "SendMessage success",
+			setupMocks: func(d sutDeps) {
+				expectResolveTeamAndChannel(t, d)
+				d.ops.EXPECT().
+					SendMessage(gomock.Any(), "team-id", "chan-id", bodyMsg).
+					Return(&models.Message{ID: "m1"}, nil).
+					Times(1)
+			},
+			call: func(svc Service, ctx context.Context) error {
+				_, err := svc.SendMessage(ctx, "TeamA", "ChanA", bodyMsg)
+				return err
+			},
+		},
+		{
+			name: "SendReply success",
+			setupMocks: func(d sutDeps) {
+				expectResolveTeamAndChannel(t, d)
+				d.ops.EXPECT().
+					SendReply(gomock.Any(), "team-id", "chan-id", "msg-1", bodyReply).
+					Return(&models.Message{ID: "r1"}, nil).
+					Times(1)
+			},
+			call: func(svc Service, ctx context.Context) error {
+				_, err := svc.SendReply(ctx, "TeamA", "ChanA", "msg-1", bodyReply)
+				return err
+			},
+		},
+		{
+			name: "ops error propagated",
+			setupMocks: func(d sutDeps) {
+				expectResolveTeamAndChannel(t, d)
+				d.ops.EXPECT().
+					SendMessage(gomock.Any(), "team-id", "chan-id", bodyMsg).
+					Return(nil, &snd.ErrAccessForbidden{Code: 403, OriginalMessage: "nope"}).
+					Times(1)
+			},
+			call: func(svc Service, ctx context.Context) error {
+				_, err := svc.SendMessage(ctx, "TeamA", "ChanA", bodyMsg)
+				return err
+			},
+			assertErr: func(t *testing.T, err error) { testutil.RequireReqErrCode(t, err, 403) },
+		},
+	}
 
-	got, err := svc.SendMessage(ctx, "TeamA", "ChanA", body)
-	require.NoError(t, err)
-	require.NotNil(t, got)
-	assert.Equal(t, "m1", got.ID)
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			svc, ctx := newSUT(t, tc.setupMocks)
+			err := tc.call(svc, ctx)
+			if tc.assertErr != nil {
+				tc.assertErr(t, err)
+				return
+			}
+			require.NoError(t, err)
+		})
+	}
 }
 
-func TestService_SendReply(t *testing.T) {
-	body := models.MessageBody{Content: "reply", ContentType: models.MessageContentTypeText}
+func TestService_ListMessages_ListReplies(t *testing.T) {
+	t.Run("ListMessages passes opts through", func(t *testing.T) {
+		top := int32(5)
+		opts := &models.ListMessagesOptions{Top: &top}
 
-	svc, ctx := newSUT(t, func(d sutDeps) {
-		expectResolveTeamAndChannel(t, d)
+		svc, ctx := newSUT(t, func(d sutDeps) {
+			expectResolveTeamAndChannel(t, d)
+			d.ops.EXPECT().
+				ListMessages(gomock.Any(), "team-id", "chan-id", opts).
+				Return([]*models.Message{{ID: "m1"}, {ID: "m2"}}, nil).
+				Times(1)
+		})
 
-		d.ops.EXPECT().
-			SendReply(gomock.Any(), "team-id", "chan-id", "msg-1", body).
-			Return(&models.Message{ID: "r1", Content: "reply"}, nil).
-			Times(1)
+		got, err := svc.ListMessages(ctx, "TeamA", "ChanA", opts)
+		require.NoError(t, err)
+		require.Len(t, got, 2)
 	})
 
-	got, err := svc.SendReply(ctx, "TeamA", "ChanA", "msg-1", body)
-	require.NoError(t, err)
-	require.NotNil(t, got)
-	assert.Equal(t, "r1", got.ID)
+	t.Run("ListReplies builds opts from top pointer and passes it", func(t *testing.T) {
+		top := int32(10)
+
+		svc, ctx := newSUT(t, func(d sutDeps) {
+			expectResolveTeamAndChannel(t, d)
+			d.ops.EXPECT().
+				ListReplies(gomock.Any(), "team-id", "chan-id", "msg-1", gomock.Any()).
+				DoAndReturn(func(_ context.Context, teamID, channelID, msgID string, opts *models.ListMessagesOptions) ([]*models.Message, error) {
+					require.Equal(t, "team-id", teamID)
+					require.Equal(t, "chan-id", channelID)
+					require.Equal(t, "msg-1", msgID)
+					require.NotNil(t, opts)
+					require.NotNil(t, opts.Top)
+					assert.Equal(t, top, *opts.Top)
+					return []*models.Message{{ID: "r1"}}, nil
+				}).
+				Times(1)
+		})
+
+		got, err := svc.ListReplies(ctx, "TeamA", "ChanA", "msg-1", &top)
+		require.NoError(t, err)
+		require.Len(t, got, 1)
+	})
 }
 
-func TestService_ListMessages(t *testing.T) {
-	top := int32(5)
-	opts := &models.ListMessagesOptions{Top: &top}
+func TestService_GetMessage_GetReply(t *testing.T) {
+	t.Run("GetMessage delegates", func(t *testing.T) {
+		svc, ctx := newSUT(t, func(d sutDeps) {
+			expectResolveTeamAndChannel(t, d)
+			d.ops.EXPECT().
+				GetMessage(gomock.Any(), "team-id", "chan-id", "m1").
+				Return(&models.Message{ID: "m1"}, nil).
+				Times(1)
+		})
 
-	svc, ctx := newSUT(t, func(d sutDeps) {
-		expectResolveTeamAndChannel(t, d)
-
-		d.ops.EXPECT().
-			ListMessages(gomock.Any(), "team-id", "chan-id", opts).
-			Return([]*models.Message{{ID: "m1"}, {ID: "m2"}}, nil).
-			Times(1)
+		got, err := svc.GetMessage(ctx, "TeamA", "ChanA", "m1")
+		require.NoError(t, err)
+		require.NotNil(t, got)
+		assert.Equal(t, "m1", got.ID)
 	})
 
-	got, err := svc.ListMessages(ctx, "TeamA", "ChanA", opts)
-	require.NoError(t, err)
-	require.Len(t, got, 2)
+	t.Run("GetReply delegates", func(t *testing.T) {
+		svc, ctx := newSUT(t, func(d sutDeps) {
+			expectResolveTeamAndChannel(t, d)
+			d.ops.EXPECT().
+				GetReply(gomock.Any(), "team-id", "chan-id", "m1", "r1").
+				Return(&models.Message{ID: "r1"}, nil).
+				Times(1)
+		})
+
+		got, err := svc.GetReply(ctx, "TeamA", "ChanA", "m1", "r1")
+		require.NoError(t, err)
+		require.NotNil(t, got)
+		assert.Equal(t, "r1", got.ID)
+	})
 }
 
-func TestService_ListReplies_PassesTopInOptions(t *testing.T) {
-	top := int32(10)
+func TestService_ListMembers_AddMember(t *testing.T) {
+	t.Run("ListMembers delegates", func(t *testing.T) {
+		svc, ctx := newSUT(t, func(d sutDeps) {
+			expectResolveTeamAndChannel(t, d)
+			d.ops.EXPECT().
+				ListMembers(gomock.Any(), "team-id", "chan-id").
+				Return([]*models.Member{{ID: "m1"}, {ID: "m2"}}, nil).
+				Times(1)
+		})
 
-	svc, ctx := newSUT(t, func(d sutDeps) {
-		expectResolveTeamAndChannel(t, d)
-
-		d.ops.EXPECT().
-			ListReplies(gomock.Any(), "team-id", "chan-id", "msg-1", gomock.Any()).
-			DoAndReturn(func(_ context.Context, _ string, _ string, _ string, opts *models.ListMessagesOptions) ([]*models.Message, *snd.RequestError) {
-				require.NotNil(t, opts)
-				require.NotNil(t, opts.Top)
-				assert.Equal(t, top, *opts.Top)
-				return []*models.Message{{ID: "r1"}}, nil
-			}).
-			Times(1)
+		got, err := svc.ListMembers(ctx, "TeamA", "ChanA")
+		require.NoError(t, err)
+		require.Len(t, got, 2)
 	})
 
-	got, err := svc.ListReplies(ctx, "TeamA", "ChanA", "msg-1", &top)
-	require.NoError(t, err)
-	require.Len(t, got, 1)
+	t.Run("AddMember delegates", func(t *testing.T) {
+		svc, ctx := newSUT(t, func(d sutDeps) {
+			expectResolveTeamAndChannel(t, d)
+			d.ops.EXPECT().
+				AddMember(gomock.Any(), "team-id", "chan-id", "user@x.com", true).
+				Return(&models.Member{ID: "mem-1"}, nil).
+				Times(1)
+		})
+
+		got, err := svc.AddMember(ctx, "TeamA", "ChanA", "user@x.com", true)
+		require.NoError(t, err)
+		require.NotNil(t, got)
+		assert.Equal(t, "mem-1", got.ID)
+	})
 }
 
-func TestService_GetMessage(t *testing.T) {
-	svc, ctx := newSUT(t, func(d sutDeps) {
-		expectResolveTeamAndChannel(t, d)
+func TestService_UpdateMemberRoles_RemoveMember(t *testing.T) {
+	t.Run("UpdateMemberRoles resolves memberID and delegates", func(t *testing.T) {
+		svc, ctx := newSUT(t, func(d sutDeps) {
+			expectResolveTeamAndChannel(t, d)
 
-		d.ops.EXPECT().
-			GetMessage(gomock.Any(), "team-id", "chan-id", "m1").
-			Return(&models.Message{ID: "m1"}, nil).
-			Times(1)
+			d.channelResolver.EXPECT().
+				ResolveChannelMemberRefToID(gomock.Any(), "team-id", "chan-id", "user@x.com").
+				Return("member-id", nil).
+				Times(1)
+
+			d.ops.EXPECT().
+				UpdateMemberRoles(gomock.Any(), "team-id", "chan-id", "member-id", true).
+				Return(&models.Member{ID: "member-id"}, nil).
+				Times(1)
+		})
+
+		got, err := svc.UpdateMemberRoles(ctx, "TeamA", "ChanA", "user@x.com", true)
+		require.NoError(t, err)
+		require.NotNil(t, got)
+		assert.Equal(t, "member-id", got.ID)
 	})
 
-	got, err := svc.GetMessage(ctx, "TeamA", "ChanA", "m1")
-	require.NoError(t, err)
-	require.NotNil(t, got)
-	assert.Equal(t, "m1", got.ID)
-}
+	t.Run("RemoveMember resolves memberID and passes userRef to ops", func(t *testing.T) {
+		svc, ctx := newSUT(t, func(d sutDeps) {
+			expectResolveTeamAndChannel(t, d)
 
-func TestService_GetReply(t *testing.T) {
-	svc, ctx := newSUT(t, func(d sutDeps) {
-		expectResolveTeamAndChannel(t, d)
+			d.channelResolver.EXPECT().
+				ResolveChannelMemberRefToID(gomock.Any(), "team-id", "chan-id", "user@x.com").
+				Return("member-id", nil).
+				Times(1)
 
-		d.ops.EXPECT().
-			GetReply(gomock.Any(), "team-id", "chan-id", "m1", "r1").
-			Return(&models.Message{ID: "r1"}, nil).
-			Times(1)
+			d.ops.EXPECT().
+				RemoveMember(gomock.Any(), "team-id", "chan-id", "member-id", "user@x.com").
+				Return(nil).
+				Times(1)
+		})
+
+		err := svc.RemoveMember(ctx, "TeamA", "ChanA", "user@x.com")
+		require.NoError(t, err)
 	})
-
-	got, err := svc.GetReply(ctx, "TeamA", "ChanA", "m1", "r1")
-	require.NoError(t, err)
-	require.NotNil(t, got)
-	assert.Equal(t, "r1", got.ID)
-}
-
-func TestService_ListMembers(t *testing.T) {
-	svc, ctx := newSUT(t, func(d sutDeps) {
-		expectResolveTeamAndChannel(t, d)
-
-		d.ops.EXPECT().
-			ListMembers(gomock.Any(), "team-id", "chan-id").
-			Return([]*models.Member{{ID: "m1"}, {ID: "m2"}}, nil).
-			Times(1)
-	})
-
-	got, err := svc.ListMembers(ctx, "TeamA", "ChanA")
-	require.NoError(t, err)
-	require.Len(t, got, 2)
-}
-
-func TestService_AddMember(t *testing.T) {
-	svc, ctx := newSUT(t, func(d sutDeps) {
-		expectResolveTeamAndChannel(t, d)
-
-		d.ops.EXPECT().
-			AddMember(gomock.Any(), "team-id", "chan-id", "user@x.com", true).
-			Return(&models.Member{ID: "mem-1"}, nil).
-			Times(1)
-	})
-
-	got, err := svc.AddMember(ctx, "TeamA", "ChanA", "user@x.com", true)
-	require.NoError(t, err)
-	require.NotNil(t, got)
-	assert.Equal(t, "mem-1", got.ID)
-}
-
-func TestService_UpdateMemberRoles_ResolvesMemberID(t *testing.T) {
-	svc, ctx := newSUT(t, func(d sutDeps) {
-		expectResolveTeamAndChannel(t, d)
-
-		d.channelResolver.EXPECT().
-			ResolveChannelMemberRefToID(gomock.Any(), "team-id", "chan-id", "user@x.com").
-			Return("member-id", nil).
-			Times(1)
-
-		d.ops.EXPECT().
-			UpdateMemberRoles(gomock.Any(), "team-id", "chan-id", "member-id", true).
-			Return(&models.Member{ID: "member-id"}, nil).
-			Times(1)
-	})
-
-	got, err := svc.UpdateMemberRoles(ctx, "TeamA", "ChanA", "user@x.com", true)
-	require.NoError(t, err)
-	require.NotNil(t, got)
-	assert.Equal(t, "member-id", got.ID)
-}
-
-func TestService_RemoveMember_ResolvesMemberIDAndPassesUserRef(t *testing.T) {
-	svc, ctx := newSUT(t, func(d sutDeps) {
-		expectResolveTeamAndChannel(t, d)
-
-		d.channelResolver.EXPECT().
-			ResolveChannelMemberRefToID(gomock.Any(), "team-id", "chan-id", "user@x.com").
-			Return("member-id", nil).
-			Times(1)
-
-		d.ops.EXPECT().
-			RemoveMember(gomock.Any(), "team-id", "chan-id", "member-id", "user@x.com").
-			Return(nil).
-			Times(1)
-	})
-
-	err := svc.RemoveMember(ctx, "TeamA", "ChanA", "user@x.com")
-	require.NoError(t, err)
 }
 
 func TestService_GetMentions(t *testing.T) {
@@ -511,75 +615,71 @@ func TestService_GetMentions(t *testing.T) {
 		raw        []string
 		setupMocks func(d sutDeps)
 		wantLen    int
-		wantErr    bool
-		assertFn   func(t *testing.T, got []models.Mention)
+		assertErr  func(t *testing.T, err error)
 	}
 
 	testCases := []testCase{
 		{
-			name: "resolves user, team, channel and skips blanks",
-			raw:  []string{"  ", "alice@example.com", "team", "channel", "alice@example.com"},
+			name: "delegates to ops with resolved ids and original refs",
+			raw:  []string{"  ", "alice@example.com", "team", "channel"},
 			setupMocks: func(d sutDeps) {
 				expectResolveTeamAndChannel(t, d)
 
-				u := msmodels.NewUser()
-				u.SetId(util.Ptr("u-1"))
-				u.SetDisplayName(util.Ptr("Alice"))
-
-				d.usersAPI.EXPECT().
-					GetUserByEmailOrUPN(gomock.Any(), "alice@example.com").
-					Return(u, nil).
-					Times(2)
-			},
-			wantLen: 4,
-			assertFn: func(t *testing.T, got []models.Mention) {
-				require.Len(t, got, 4)
-
-				// user mention
-				assert.Equal(t, models.MentionUser, got[0].Kind)
-				assert.Equal(t, "u-1", got[0].TargetID)
-				assert.Equal(t, "Alice", got[0].Text)
-				assert.Equal(t, 0, int(got[0].AtID))
-
-				// team mention (text uses teamRef, target uses teamID)
-				assert.Equal(t, models.MentionTeam, got[1].Kind)
-				assert.Equal(t, "team-id", got[1].TargetID)
-				assert.NotEmpty(t, got[1].Text)
-				assert.Equal(t, 1, int(got[1].AtID))
-
-				// channel mention (text uses channelRef, target uses channelID)
-				assert.Equal(t, models.MentionChannel, got[2].Kind)
-				assert.Equal(t, "chan-id", got[2].TargetID)
-				assert.NotEmpty(t, got[2].Text)
-				assert.Equal(t, 2, int(got[2].AtID))
-
-				// second user mention
-				assert.Equal(t, models.MentionUser, got[3].Kind)
-				assert.Equal(t, "u-1", got[3].TargetID)
-				assert.Equal(t, "Alice", got[3].Text)
-				assert.Equal(t, 3, int(got[3].AtID))
-			},
-		},
-		{
-			name: "unknown ref returns error",
-			raw:  []string{"something-else"},
-			setupMocks: func(d sutDeps) {
-				expectResolveTeamAndChannel(t, d)
-			},
-			wantErr: true,
-		},
-		{
-			name: "user api error is propagated",
-			raw:  []string{"alice@example.com"},
-			setupMocks: func(d sutDeps) {
-				expectResolveTeamAndChannel(t, d)
-
-				d.usersAPI.EXPECT().
-					GetUserByEmailOrUPN(gomock.Any(), "alice@example.com").
-					Return(nil, &snd.RequestError{Code: 500, Message: "boom"}).
+				d.ops.EXPECT().
+					GetMentions(gomock.Any(), "team-id", "TeamA", "ChanA", "chan-id", gomock.Any()).
+					DoAndReturn(func(
+						_ context.Context,
+						teamID, teamRef, channelRef, channelID string,
+						raw []string,
+					) ([]models.Mention, error) {
+						require.Equal(t, "team-id", teamID)
+						require.Equal(t, "TeamA", teamRef)
+						require.Equal(t, "ChanA", channelRef)
+						require.Equal(t, "chan-id", channelID)
+						require.Equal(t, []string{"  ", "alice@example.com", "team", "channel"}, raw)
+						return []models.Mention{
+							{Kind: models.MentionUser, TargetID: "u-1", Text: "Alice", AtID: 0},
+							{Kind: models.MentionTeam, TargetID: "team-id", Text: "TeamA", AtID: 1},
+						}, nil
+					}).
 					Times(1)
 			},
-			wantErr: true,
+			wantLen: 2,
+		},
+		{
+			name: "team resolver error is propagated",
+			raw:  []string{"x"},
+			setupMocks: func(d sutDeps) {
+				d.teamResolver.EXPECT().
+					ResolveTeamRefToID(gomock.Any(), "TeamA").
+					Return("", errors.New("boom")).
+					Times(1)
+			},
+			assertErr: func(t *testing.T, err error) { require.Error(t, err) },
+		},
+		{
+			name: "channel resolver error is propagated",
+			raw:  []string{"x"},
+			setupMocks: func(d sutDeps) {
+				expectResolveTeam(t, d)
+				d.channelResolver.EXPECT().
+					ResolveChannelRefToID(gomock.Any(), "team-id", "ChanA").
+					Return("", errors.New("boom")).
+					Times(1)
+			},
+			assertErr: func(t *testing.T, err error) { require.Error(t, err) },
+		},
+		{
+			name: "ops error is propagated",
+			raw:  []string{"x"},
+			setupMocks: func(d sutDeps) {
+				expectResolveTeamAndChannel(t, d)
+				d.ops.EXPECT().
+					GetMentions(gomock.Any(), "team-id", "TeamA", "ChanA", "chan-id", []string{"x"}).
+					Return(nil, &snd.ErrAccessForbidden{Code: 403, OriginalMessage: "nope"}).
+					Times(1)
+			},
+			assertErr: func(t *testing.T, err error) { testutil.RequireReqErrCode(t, err, 403) },
 		},
 	}
 
@@ -589,16 +689,13 @@ func TestService_GetMentions(t *testing.T) {
 
 			got, err := svc.GetMentions(ctx, "TeamA", "ChanA", tc.raw)
 
-			if tc.wantErr {
-				require.Error(t, err)
+			if tc.assertErr != nil {
+				tc.assertErr(t, err)
 				return
 			}
 
 			require.NoError(t, err)
 			require.Len(t, got, tc.wantLen)
-			if tc.assertFn != nil {
-				tc.assertFn(t, got)
-			}
 		})
 	}
 }

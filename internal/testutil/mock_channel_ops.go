@@ -9,7 +9,6 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	sender "github.com/pzsp-teams/lib/internal/sender"
 	models "github.com/pzsp-teams/lib/models"
 )
 
@@ -37,11 +36,11 @@ func (m *MockchannelOps) EXPECT() *MockchannelOpsMockRecorder {
 }
 
 // AddMember mocks base method.
-func (m *MockchannelOps) AddMember(ctx context.Context, teamID, channelID, userID string, isOwner bool) (*models.Member, *sender.RequestError) {
+func (m *MockchannelOps) AddMember(ctx context.Context, teamID, channelID, userID string, isOwner bool) (*models.Member, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "AddMember", ctx, teamID, channelID, userID, isOwner)
 	ret0, _ := ret[0].(*models.Member)
-	ret1, _ := ret[1].(*sender.RequestError)
+	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
@@ -52,11 +51,11 @@ func (mr *MockchannelOpsMockRecorder) AddMember(ctx, teamID, channelID, userID, 
 }
 
 // CreatePrivateChannel mocks base method.
-func (m *MockchannelOps) CreatePrivateChannel(ctx context.Context, teamID, name string, memberIDs, ownerIDs []string) (*models.Channel, *sender.RequestError) {
+func (m *MockchannelOps) CreatePrivateChannel(ctx context.Context, teamID, name string, memberIDs, ownerIDs []string) (*models.Channel, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreatePrivateChannel", ctx, teamID, name, memberIDs, ownerIDs)
 	ret0, _ := ret[0].(*models.Channel)
-	ret1, _ := ret[1].(*sender.RequestError)
+	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
@@ -67,11 +66,11 @@ func (mr *MockchannelOpsMockRecorder) CreatePrivateChannel(ctx, teamID, name, me
 }
 
 // CreateStandardChannel mocks base method.
-func (m *MockchannelOps) CreateStandardChannel(ctx context.Context, teamID, name string) (*models.Channel, *sender.RequestError) {
+func (m *MockchannelOps) CreateStandardChannel(ctx context.Context, teamID, name string) (*models.Channel, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateStandardChannel", ctx, teamID, name)
 	ret0, _ := ret[0].(*models.Channel)
-	ret1, _ := ret[1].(*sender.RequestError)
+	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
@@ -82,10 +81,10 @@ func (mr *MockchannelOpsMockRecorder) CreateStandardChannel(ctx, teamID, name in
 }
 
 // DeleteChannel mocks base method.
-func (m *MockchannelOps) DeleteChannel(ctx context.Context, teamID, channelID, channelRef string) *sender.RequestError {
+func (m *MockchannelOps) DeleteChannel(ctx context.Context, teamID, channelID, channelRef string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeleteChannel", ctx, teamID, channelID, channelRef)
-	ret0, _ := ret[0].(*sender.RequestError)
+	ret0, _ := ret[0].(error)
 	return ret0
 }
 
@@ -96,11 +95,11 @@ func (mr *MockchannelOpsMockRecorder) DeleteChannel(ctx, teamID, channelID, chan
 }
 
 // GetChannelByID mocks base method.
-func (m *MockchannelOps) GetChannelByID(ctx context.Context, teamID, channelID string) (*models.Channel, *sender.RequestError) {
+func (m *MockchannelOps) GetChannelByID(ctx context.Context, teamID, channelID string) (*models.Channel, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetChannelByID", ctx, teamID, channelID)
 	ret0, _ := ret[0].(*models.Channel)
-	ret1, _ := ret[1].(*sender.RequestError)
+	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
@@ -110,12 +109,27 @@ func (mr *MockchannelOpsMockRecorder) GetChannelByID(ctx, teamID, channelID inte
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetChannelByID", reflect.TypeOf((*MockchannelOps)(nil).GetChannelByID), ctx, teamID, channelID)
 }
 
+// GetMentions mocks base method.
+func (m *MockchannelOps) GetMentions(ctx context.Context, teamID, teamRef, channelRef, channelID string, rawMentions []string) ([]models.Mention, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetMentions", ctx, teamID, teamRef, channelRef, channelID, rawMentions)
+	ret0, _ := ret[0].([]models.Mention)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetMentions indicates an expected call of GetMentions.
+func (mr *MockchannelOpsMockRecorder) GetMentions(ctx, teamID, teamRef, channelRef, channelID, rawMentions interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMentions", reflect.TypeOf((*MockchannelOps)(nil).GetMentions), ctx, teamID, teamRef, channelRef, channelID, rawMentions)
+}
+
 // GetMessage mocks base method.
-func (m *MockchannelOps) GetMessage(ctx context.Context, teamID, channelID, messageID string) (*models.Message, *sender.RequestError) {
+func (m *MockchannelOps) GetMessage(ctx context.Context, teamID, channelID, messageID string) (*models.Message, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetMessage", ctx, teamID, channelID, messageID)
 	ret0, _ := ret[0].(*models.Message)
-	ret1, _ := ret[1].(*sender.RequestError)
+	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
@@ -126,11 +140,11 @@ func (mr *MockchannelOpsMockRecorder) GetMessage(ctx, teamID, channelID, message
 }
 
 // GetReply mocks base method.
-func (m *MockchannelOps) GetReply(ctx context.Context, teamID, channelID, messageID, replyID string) (*models.Message, *sender.RequestError) {
+func (m *MockchannelOps) GetReply(ctx context.Context, teamID, channelID, messageID, replyID string) (*models.Message, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetReply", ctx, teamID, channelID, messageID, replyID)
 	ret0, _ := ret[0].(*models.Message)
-	ret1, _ := ret[1].(*sender.RequestError)
+	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
@@ -141,11 +155,11 @@ func (mr *MockchannelOpsMockRecorder) GetReply(ctx, teamID, channelID, messageID
 }
 
 // ListChannelsByTeamID mocks base method.
-func (m *MockchannelOps) ListChannelsByTeamID(ctx context.Context, teamID string) ([]*models.Channel, *sender.RequestError) {
+func (m *MockchannelOps) ListChannelsByTeamID(ctx context.Context, teamID string) ([]*models.Channel, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListChannelsByTeamID", ctx, teamID)
 	ret0, _ := ret[0].([]*models.Channel)
-	ret1, _ := ret[1].(*sender.RequestError)
+	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
@@ -156,11 +170,11 @@ func (mr *MockchannelOpsMockRecorder) ListChannelsByTeamID(ctx, teamID interface
 }
 
 // ListMembers mocks base method.
-func (m *MockchannelOps) ListMembers(ctx context.Context, teamID, channelID string) ([]*models.Member, *sender.RequestError) {
+func (m *MockchannelOps) ListMembers(ctx context.Context, teamID, channelID string) ([]*models.Member, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListMembers", ctx, teamID, channelID)
 	ret0, _ := ret[0].([]*models.Member)
-	ret1, _ := ret[1].(*sender.RequestError)
+	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
@@ -171,11 +185,11 @@ func (mr *MockchannelOpsMockRecorder) ListMembers(ctx, teamID, channelID interfa
 }
 
 // ListMessages mocks base method.
-func (m *MockchannelOps) ListMessages(ctx context.Context, teamID, channelID string, opts *models.ListMessagesOptions) ([]*models.Message, *sender.RequestError) {
+func (m *MockchannelOps) ListMessages(ctx context.Context, teamID, channelID string, opts *models.ListMessagesOptions) ([]*models.Message, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListMessages", ctx, teamID, channelID, opts)
 	ret0, _ := ret[0].([]*models.Message)
-	ret1, _ := ret[1].(*sender.RequestError)
+	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
@@ -186,11 +200,11 @@ func (mr *MockchannelOpsMockRecorder) ListMessages(ctx, teamID, channelID, opts 
 }
 
 // ListReplies mocks base method.
-func (m *MockchannelOps) ListReplies(ctx context.Context, teamID, channelID, messageID string, opts *models.ListMessagesOptions) ([]*models.Message, *sender.RequestError) {
+func (m *MockchannelOps) ListReplies(ctx context.Context, teamID, channelID, messageID string, opts *models.ListMessagesOptions) ([]*models.Message, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListReplies", ctx, teamID, channelID, messageID, opts)
 	ret0, _ := ret[0].([]*models.Message)
-	ret1, _ := ret[1].(*sender.RequestError)
+	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
@@ -201,10 +215,10 @@ func (mr *MockchannelOpsMockRecorder) ListReplies(ctx, teamID, channelID, messag
 }
 
 // RemoveMember mocks base method.
-func (m *MockchannelOps) RemoveMember(ctx context.Context, teamID, channelID, memberID, userRef string) *sender.RequestError {
+func (m *MockchannelOps) RemoveMember(ctx context.Context, teamID, channelID, memberID, userRef string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RemoveMember", ctx, teamID, channelID, memberID, userRef)
-	ret0, _ := ret[0].(*sender.RequestError)
+	ret0, _ := ret[0].(error)
 	return ret0
 }
 
@@ -215,11 +229,11 @@ func (mr *MockchannelOpsMockRecorder) RemoveMember(ctx, teamID, channelID, membe
 }
 
 // SendMessage mocks base method.
-func (m *MockchannelOps) SendMessage(ctx context.Context, teamID, channelID string, body models.MessageBody) (*models.Message, *sender.RequestError) {
+func (m *MockchannelOps) SendMessage(ctx context.Context, teamID, channelID string, body models.MessageBody) (*models.Message, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SendMessage", ctx, teamID, channelID, body)
 	ret0, _ := ret[0].(*models.Message)
-	ret1, _ := ret[1].(*sender.RequestError)
+	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
@@ -230,11 +244,11 @@ func (mr *MockchannelOpsMockRecorder) SendMessage(ctx, teamID, channelID, body i
 }
 
 // SendReply mocks base method.
-func (m *MockchannelOps) SendReply(ctx context.Context, teamID, channelID, messageID string, body models.MessageBody) (*models.Message, *sender.RequestError) {
+func (m *MockchannelOps) SendReply(ctx context.Context, teamID, channelID, messageID string, body models.MessageBody) (*models.Message, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SendReply", ctx, teamID, channelID, messageID, body)
 	ret0, _ := ret[0].(*models.Message)
-	ret1, _ := ret[1].(*sender.RequestError)
+	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
@@ -245,11 +259,11 @@ func (mr *MockchannelOpsMockRecorder) SendReply(ctx, teamID, channelID, messageI
 }
 
 // UpdateMemberRoles mocks base method.
-func (m *MockchannelOps) UpdateMemberRoles(ctx context.Context, teamID, channelID, memberID string, isOwner bool) (*models.Member, *sender.RequestError) {
+func (m *MockchannelOps) UpdateMemberRoles(ctx context.Context, teamID, channelID, memberID string, isOwner bool) (*models.Member, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateMemberRoles", ctx, teamID, channelID, memberID, isOwner)
 	ret0, _ := ret[0].(*models.Member)
-	ret1, _ := ret[1].(*sender.RequestError)
+	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
@@ -257,16 +271,4 @@ func (m *MockchannelOps) UpdateMemberRoles(ctx context.Context, teamID, channelI
 func (mr *MockchannelOpsMockRecorder) UpdateMemberRoles(ctx, teamID, channelID, memberID, isOwner interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateMemberRoles", reflect.TypeOf((*MockchannelOps)(nil).UpdateMemberRoles), ctx, teamID, channelID, memberID, isOwner)
-}
-
-// Wait mocks base method.
-func (m *MockchannelOps) Wait() {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "Wait")
-}
-
-// Wait indicates an expected call of Wait.
-func (mr *MockchannelOpsMockRecorder) Wait() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Wait", reflect.TypeOf((*MockchannelOps)(nil).Wait))
 }

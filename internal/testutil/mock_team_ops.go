@@ -9,7 +9,6 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	sender "github.com/pzsp-teams/lib/internal/sender"
 	models "github.com/pzsp-teams/lib/models"
 )
 
@@ -37,11 +36,11 @@ func (m *MockteamsOps) EXPECT() *MockteamsOpsMockRecorder {
 }
 
 // AddMember mocks base method.
-func (m *MockteamsOps) AddMember(ctx context.Context, teamID, userRef string, isOwner bool) (*models.Member, *sender.RequestError) {
+func (m *MockteamsOps) AddMember(ctx context.Context, teamID, userRef string, isOwner bool) (*models.Member, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "AddMember", ctx, teamID, userRef, isOwner)
 	ret0, _ := ret[0].(*models.Member)
-	ret1, _ := ret[1].(*sender.RequestError)
+	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
@@ -52,10 +51,10 @@ func (mr *MockteamsOpsMockRecorder) AddMember(ctx, teamID, userRef, isOwner inte
 }
 
 // Archive mocks base method.
-func (m *MockteamsOps) Archive(ctx context.Context, teamID, teamRef string, spoReadOnlyForMembers *bool) *sender.RequestError {
+func (m *MockteamsOps) Archive(ctx context.Context, teamID, teamRef string, spoReadOnlyForMembers *bool) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Archive", ctx, teamID, teamRef, spoReadOnlyForMembers)
-	ret0, _ := ret[0].(*sender.RequestError)
+	ret0, _ := ret[0].(error)
 	return ret0
 }
 
@@ -66,11 +65,11 @@ func (mr *MockteamsOpsMockRecorder) Archive(ctx, teamID, teamRef, spoReadOnlyFor
 }
 
 // CreateFromTemplate mocks base method.
-func (m *MockteamsOps) CreateFromTemplate(ctx context.Context, displayName, description string, ownerIDs []string) (string, *sender.RequestError) {
+func (m *MockteamsOps) CreateFromTemplate(ctx context.Context, displayName, description string, ownerIDs []string) (string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateFromTemplate", ctx, displayName, description, ownerIDs)
 	ret0, _ := ret[0].(string)
-	ret1, _ := ret[1].(*sender.RequestError)
+	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
@@ -81,11 +80,11 @@ func (mr *MockteamsOpsMockRecorder) CreateFromTemplate(ctx, displayName, descrip
 }
 
 // CreateViaGroup mocks base method.
-func (m *MockteamsOps) CreateViaGroup(ctx context.Context, displayName, mailNickname, visibility string) (*models.Team, *sender.RequestError) {
+func (m *MockteamsOps) CreateViaGroup(ctx context.Context, displayName, mailNickname, visibility string) (*models.Team, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateViaGroup", ctx, displayName, mailNickname, visibility)
 	ret0, _ := ret[0].(*models.Team)
-	ret1, _ := ret[1].(*sender.RequestError)
+	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
@@ -96,10 +95,10 @@ func (mr *MockteamsOpsMockRecorder) CreateViaGroup(ctx, displayName, mailNicknam
 }
 
 // DeleteTeam mocks base method.
-func (m *MockteamsOps) DeleteTeam(ctx context.Context, teamID, teamRef string) *sender.RequestError {
+func (m *MockteamsOps) DeleteTeam(ctx context.Context, teamID, teamRef string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeleteTeam", ctx, teamID, teamRef)
-	ret0, _ := ret[0].(*sender.RequestError)
+	ret0, _ := ret[0].(error)
 	return ret0
 }
 
@@ -110,11 +109,11 @@ func (mr *MockteamsOpsMockRecorder) DeleteTeam(ctx, teamID, teamRef interface{})
 }
 
 // GetMemberByID mocks base method.
-func (m *MockteamsOps) GetMemberByID(ctx context.Context, teamID, memberID string) (*models.Member, *sender.RequestError) {
+func (m *MockteamsOps) GetMemberByID(ctx context.Context, teamID, memberID string) (*models.Member, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetMemberByID", ctx, teamID, memberID)
 	ret0, _ := ret[0].(*models.Member)
-	ret1, _ := ret[1].(*sender.RequestError)
+	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
@@ -125,11 +124,11 @@ func (mr *MockteamsOpsMockRecorder) GetMemberByID(ctx, teamID, memberID interfac
 }
 
 // GetTeamByID mocks base method.
-func (m *MockteamsOps) GetTeamByID(ctx context.Context, teamID string) (*models.Team, *sender.RequestError) {
+func (m *MockteamsOps) GetTeamByID(ctx context.Context, teamID string) (*models.Team, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetTeamByID", ctx, teamID)
 	ret0, _ := ret[0].(*models.Team)
-	ret1, _ := ret[1].(*sender.RequestError)
+	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
@@ -140,11 +139,11 @@ func (mr *MockteamsOpsMockRecorder) GetTeamByID(ctx, teamID interface{}) *gomock
 }
 
 // ListMembers mocks base method.
-func (m *MockteamsOps) ListMembers(ctx context.Context, teamID string) ([]*models.Member, *sender.RequestError) {
+func (m *MockteamsOps) ListMembers(ctx context.Context, teamID string) ([]*models.Member, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListMembers", ctx, teamID)
 	ret0, _ := ret[0].([]*models.Member)
-	ret1, _ := ret[1].(*sender.RequestError)
+	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
@@ -155,11 +154,11 @@ func (mr *MockteamsOpsMockRecorder) ListMembers(ctx, teamID interface{}) *gomock
 }
 
 // ListMyJoinedTeams mocks base method.
-func (m *MockteamsOps) ListMyJoinedTeams(ctx context.Context) ([]*models.Team, *sender.RequestError) {
+func (m *MockteamsOps) ListMyJoinedTeams(ctx context.Context) ([]*models.Team, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListMyJoinedTeams", ctx)
 	ret0, _ := ret[0].([]*models.Team)
-	ret1, _ := ret[1].(*sender.RequestError)
+	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
@@ -170,10 +169,10 @@ func (mr *MockteamsOpsMockRecorder) ListMyJoinedTeams(ctx interface{}) *gomock.C
 }
 
 // RemoveMember mocks base method.
-func (m *MockteamsOps) RemoveMember(ctx context.Context, teamID, memberID, userRef string) *sender.RequestError {
+func (m *MockteamsOps) RemoveMember(ctx context.Context, teamID, memberID, userRef string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RemoveMember", ctx, teamID, memberID, userRef)
-	ret0, _ := ret[0].(*sender.RequestError)
+	ret0, _ := ret[0].(error)
 	return ret0
 }
 
@@ -184,11 +183,11 @@ func (mr *MockteamsOpsMockRecorder) RemoveMember(ctx, teamID, memberID, userRef 
 }
 
 // RestoreDeletedTeam mocks base method.
-func (m *MockteamsOps) RestoreDeletedTeam(ctx context.Context, deletedGroupID string) (string, *sender.RequestError) {
+func (m *MockteamsOps) RestoreDeletedTeam(ctx context.Context, deletedGroupID string) (string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RestoreDeletedTeam", ctx, deletedGroupID)
 	ret0, _ := ret[0].(string)
-	ret1, _ := ret[1].(*sender.RequestError)
+	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
@@ -199,10 +198,10 @@ func (mr *MockteamsOpsMockRecorder) RestoreDeletedTeam(ctx, deletedGroupID inter
 }
 
 // Unarchive mocks base method.
-func (m *MockteamsOps) Unarchive(ctx context.Context, teamID string) *sender.RequestError {
+func (m *MockteamsOps) Unarchive(ctx context.Context, teamID string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Unarchive", ctx, teamID)
-	ret0, _ := ret[0].(*sender.RequestError)
+	ret0, _ := ret[0].(error)
 	return ret0
 }
 
@@ -213,11 +212,11 @@ func (mr *MockteamsOpsMockRecorder) Unarchive(ctx, teamID interface{}) *gomock.C
 }
 
 // UpdateMemberRoles mocks base method.
-func (m *MockteamsOps) UpdateMemberRoles(ctx context.Context, teamID, memberID string, isOwner bool) (*models.Member, *sender.RequestError) {
+func (m *MockteamsOps) UpdateMemberRoles(ctx context.Context, teamID, memberID string, isOwner bool) (*models.Member, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateMemberRoles", ctx, teamID, memberID, isOwner)
 	ret0, _ := ret[0].(*models.Member)
-	ret1, _ := ret[1].(*sender.RequestError)
+	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
@@ -225,16 +224,4 @@ func (m *MockteamsOps) UpdateMemberRoles(ctx context.Context, teamID, memberID s
 func (mr *MockteamsOpsMockRecorder) UpdateMemberRoles(ctx, teamID, memberID, isOwner interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateMemberRoles", reflect.TypeOf((*MockteamsOps)(nil).UpdateMemberRoles), ctx, teamID, memberID, isOwner)
-}
-
-// Wait mocks base method.
-func (m *MockteamsOps) Wait() {
-	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "Wait")
-}
-
-// Wait indicates an expected call of Wait.
-func (mr *MockteamsOpsMockRecorder) Wait() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Wait", reflect.TypeOf((*MockteamsOps)(nil).Wait))
 }

@@ -52,16 +52,11 @@ func reqErr() *snd.RequestError {
 func TestNewOpsWithCache_WhenCacheNil_ReturnsOriginalOps(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	t.Cleanup(ctrl.Finish)
+
 	teamOps := testutil.NewMockteamsOps(ctrl)
 
 	got := NewOpsWithCache(teamOps, nil)
 	require.Same(t, teamOps, got)
-}
-
-func TestOpsWithCache_Wait(t *testing.T) {
-	sut, d := newSUTWithCache(t)
-	d.runner.EXPECT().Wait().Times(1)
-	sut.Wait()
 }
 
 func TestOpsWithCache_GetTeamByID(t *testing.T) {
@@ -86,30 +81,37 @@ func TestOpsWithCache_GetTeamByID(t *testing.T) {
 			name: "Success - Nil team - Does not cache",
 			setup: func(d sutDepsWithCache) {
 				d.teamOps.EXPECT().GetTeamByID(gomock.Any(), "id").Return(nil, nil)
+				// brak runner/cache expectations, bo nie powinno się wykonać
 			},
 			want: nil,
 		},
 		{
 			name: "Error - Clears cache",
 			setup: func(d sutDepsWithCache) {
-				d.teamOps.EXPECT().GetTeamByID(gomock.Any(), "id").Return(nil, reqErr())
+				e := reqErr()
+				d.teamOps.EXPECT().GetTeamByID(gomock.Any(), "id").Return(nil, e)
 				expectRunNow(d.runner)
 				d.cacher.EXPECT().Clear().Return(nil)
 			},
-			wantErr: reqErr(),
+			wantErr: reqErr(), // uwaga: w asercji użyjemy ErrorAs + Code, a nie Equal pointerów
 		},
 	}
 
 	for _, tc := range tests {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			sut, d := newSUTWithCache(t)
 			tc.setup(d)
+
 			got, err := sut.GetTeamByID(context.Background(), "id")
 
 			if tc.wantErr != nil {
-				require.Equal(t, tc.wantErr, err)
+				require.Error(t, err)
+				var re *snd.RequestError
+				require.ErrorAs(t, err, &re)
+				require.Equal(t, tc.wantErr.Code, re.Code)
 			} else {
-				require.Nil(t, err)
+				require.NoError(t, err)
 			}
 			assert.Equal(t, tc.want, got)
 		})
@@ -137,7 +139,8 @@ func TestOpsWithCache_ListMyJoinedTeams(t *testing.T) {
 		{
 			name: "Error - Clears cache",
 			setup: func(d sutDepsWithCache) {
-				d.teamOps.EXPECT().ListMyJoinedTeams(gomock.Any()).Return(nil, reqErr())
+				e := reqErr()
+				d.teamOps.EXPECT().ListMyJoinedTeams(gomock.Any()).Return(nil, e)
 				expectRunNow(d.runner)
 				d.cacher.EXPECT().Clear().Return(nil)
 			},
@@ -146,17 +149,23 @@ func TestOpsWithCache_ListMyJoinedTeams(t *testing.T) {
 	}
 
 	for _, tc := range tests {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			sut, d := newSUTWithCache(t)
 			tc.setup(d)
+
 			got, err := sut.ListMyJoinedTeams(context.Background())
 
 			if tc.wantErr != nil {
-				require.Equal(t, tc.wantErr, err)
+				require.Error(t, err)
+				var re *snd.RequestError
+				require.ErrorAs(t, err, &re)
+				require.Equal(t, tc.wantErr.Code, re.Code)
+				require.Nil(t, got)
 			} else {
-				require.Nil(t, err)
+				require.NoError(t, err)
+				assert.Equal(t, tc.want, got)
 			}
-			assert.Equal(t, tc.want, got)
 		})
 	}
 }
@@ -180,7 +189,8 @@ func TestOpsWithCache_CreateFromTemplate(t *testing.T) {
 		{
 			name: "Error - Clears cache",
 			setup: func(d sutDepsWithCache) {
-				d.teamOps.EXPECT().CreateFromTemplate(gomock.Any(), "Team A", "d", gomock.Any()).Return("id", reqErr())
+				e := reqErr()
+				d.teamOps.EXPECT().CreateFromTemplate(gomock.Any(), "Team A", "d", gomock.Any()).Return("id", e)
 				expectRunNow(d.runner)
 				d.cacher.EXPECT().Clear().Return(nil)
 			},
@@ -190,17 +200,22 @@ func TestOpsWithCache_CreateFromTemplate(t *testing.T) {
 	}
 
 	for _, tc := range tests {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			sut, d := newSUTWithCache(t)
 			tc.setup(d)
+
 			id, err := sut.CreateFromTemplate(context.Background(), "Team A", "d", []string{"u1"})
 
-			if tc.wantErr != nil {
-				require.Equal(t, tc.wantErr, err)
-			} else {
-				require.Nil(t, err)
-			}
 			assert.Equal(t, tc.wantID, id)
+			if tc.wantErr != nil {
+				require.Error(t, err)
+				var re *snd.RequestError
+				require.ErrorAs(t, err, &re)
+				require.Equal(t, tc.wantErr.Code, re.Code)
+			} else {
+				require.NoError(t, err)
+			}
 		})
 	}
 }
@@ -226,7 +241,8 @@ func TestOpsWithCache_CreateViaGroup(t *testing.T) {
 		{
 			name: "Error - Clears cache",
 			setup: func(d sutDepsWithCache) {
-				d.teamOps.EXPECT().CreateViaGroup(gomock.Any(), "Team A", "n", "p").Return(nil, reqErr())
+				e := reqErr()
+				d.teamOps.EXPECT().CreateViaGroup(gomock.Any(), "Team A", "n", "p").Return(nil, e)
 				expectRunNow(d.runner)
 				d.cacher.EXPECT().Clear().Return(nil)
 			},
@@ -235,17 +251,23 @@ func TestOpsWithCache_CreateViaGroup(t *testing.T) {
 	}
 
 	for _, tc := range tests {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			sut, d := newSUTWithCache(t)
 			tc.setup(d)
+
 			got, err := sut.CreateViaGroup(context.Background(), "Team A", "n", "p")
 
 			if tc.wantErr != nil {
-				require.Equal(t, tc.wantErr, err)
+				require.Error(t, err)
+				var re *snd.RequestError
+				require.ErrorAs(t, err, &re)
+				require.Equal(t, tc.wantErr.Code, re.Code)
+				require.Nil(t, got)
 			} else {
-				require.Nil(t, err)
+				require.NoError(t, err)
+				assert.Equal(t, tc.want, got)
 			}
-			assert.Equal(t, tc.want, got)
 		})
 	}
 }
@@ -267,7 +289,8 @@ func TestOpsWithCache_Archive(t *testing.T) {
 		{
 			name: "Error - Clears cache",
 			setup: func(d sutDepsWithCache) {
-				d.teamOps.EXPECT().Archive(gomock.Any(), "tid", "Team A", nil).Return(reqErr())
+				e := reqErr()
+				d.teamOps.EXPECT().Archive(gomock.Any(), "tid", "Team A", nil).Return(e)
 				expectRunNow(d.runner)
 				d.cacher.EXPECT().Clear().Return(nil)
 			},
@@ -276,11 +299,21 @@ func TestOpsWithCache_Archive(t *testing.T) {
 	}
 
 	for _, tc := range tests {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			sut, d := newSUTWithCache(t)
 			tc.setup(d)
+
 			err := sut.Archive(context.Background(), "tid", "Team A", nil)
-			require.Equal(t, tc.wantErr, err)
+
+			if tc.wantErr != nil {
+				require.Error(t, err)
+				var re *snd.RequestError
+				require.ErrorAs(t, err, &re)
+				require.Equal(t, tc.wantErr.Code, re.Code)
+			} else {
+				require.NoError(t, err)
+			}
 		})
 	}
 }
@@ -300,7 +333,8 @@ func TestOpsWithCache_Unarchive(t *testing.T) {
 		{
 			name: "Error - Clears cache",
 			setup: func(d sutDepsWithCache) {
-				d.teamOps.EXPECT().Unarchive(gomock.Any(), "tid").Return(reqErr())
+				e := reqErr()
+				d.teamOps.EXPECT().Unarchive(gomock.Any(), "tid").Return(e)
 				expectRunNow(d.runner)
 				d.cacher.EXPECT().Clear().Return(nil)
 			},
@@ -309,11 +343,21 @@ func TestOpsWithCache_Unarchive(t *testing.T) {
 	}
 
 	for _, tc := range tests {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			sut, d := newSUTWithCache(t)
 			tc.setup(d)
+
 			err := sut.Unarchive(context.Background(), "tid")
-			require.Equal(t, tc.wantErr, err)
+
+			if tc.wantErr != nil {
+				require.Error(t, err)
+				var re *snd.RequestError
+				require.ErrorAs(t, err, &re)
+				require.Equal(t, tc.wantErr.Code, re.Code)
+			} else {
+				require.NoError(t, err)
+			}
 		})
 	}
 }
@@ -335,7 +379,8 @@ func TestOpsWithCache_DeleteTeam(t *testing.T) {
 		{
 			name: "Error - Clears cache",
 			setup: func(d sutDepsWithCache) {
-				d.teamOps.EXPECT().DeleteTeam(gomock.Any(), "tid", "Team A").Return(reqErr())
+				e := reqErr()
+				d.teamOps.EXPECT().DeleteTeam(gomock.Any(), "tid", "Team A").Return(e)
 				expectRunNow(d.runner)
 				d.cacher.EXPECT().Clear().Return(nil)
 			},
@@ -344,11 +389,21 @@ func TestOpsWithCache_DeleteTeam(t *testing.T) {
 	}
 
 	for _, tc := range tests {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			sut, d := newSUTWithCache(t)
 			tc.setup(d)
+
 			err := sut.DeleteTeam(context.Background(), "tid", "Team A")
-			require.Equal(t, tc.wantErr, err)
+
+			if tc.wantErr != nil {
+				require.Error(t, err)
+				var re *snd.RequestError
+				require.ErrorAs(t, err, &re)
+				require.Equal(t, tc.wantErr.Code, re.Code)
+			} else {
+				require.NoError(t, err)
+			}
 		})
 	}
 }
@@ -370,7 +425,9 @@ func TestOpsWithCache_RestoreDeletedTeam(t *testing.T) {
 		{
 			name: "Error - Clears cache",
 			setup: func(d sutDepsWithCache) {
-				d.teamOps.EXPECT().RestoreDeletedTeam(gomock.Any(), "did").Return("", reqErr())
+				e := reqErr()
+				d.teamOps.EXPECT().RestoreDeletedTeam(gomock.Any(), "did").Return("", e)
+				// WithErrorClear powinno wyczyścić cache przy błędzie
 				expectRunNow(d.runner)
 				d.cacher.EXPECT().Clear().Return(nil)
 			},
@@ -379,12 +436,22 @@ func TestOpsWithCache_RestoreDeletedTeam(t *testing.T) {
 	}
 
 	for _, tc := range tests {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			sut, d := newSUTWithCache(t)
 			tc.setup(d)
+
 			id, err := sut.RestoreDeletedTeam(context.Background(), "did")
 			assert.Equal(t, tc.wantID, id)
-			require.Equal(t, tc.wantErr, err)
+
+			if tc.wantErr != nil {
+				require.Error(t, err)
+				var re *snd.RequestError
+				require.ErrorAs(t, err, &re)
+				require.Equal(t, tc.wantErr.Code, re.Code)
+			} else {
+				require.NoError(t, err)
+			}
 		})
 	}
 }
@@ -410,7 +477,8 @@ func TestOpsWithCache_ListMembers(t *testing.T) {
 		{
 			name: "Error - Clears cache",
 			setup: func(d sutDepsWithCache) {
-				d.teamOps.EXPECT().ListMembers(gomock.Any(), "tid").Return(nil, reqErr())
+				e := reqErr()
+				d.teamOps.EXPECT().ListMembers(gomock.Any(), "tid").Return(nil, e)
 				expectRunNow(d.runner)
 				d.cacher.EXPECT().Clear().Return(nil)
 			},
@@ -419,12 +487,23 @@ func TestOpsWithCache_ListMembers(t *testing.T) {
 	}
 
 	for _, tc := range tests {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			sut, d := newSUTWithCache(t)
 			tc.setup(d)
+
 			got, err := sut.ListMembers(context.Background(), "tid")
-			require.Equal(t, tc.wantErr, err)
-			assert.Equal(t, tc.want, got)
+
+			if tc.wantErr != nil {
+				require.Error(t, err)
+				var re *snd.RequestError
+				require.ErrorAs(t, err, &re)
+				require.Equal(t, tc.wantErr.Code, re.Code)
+				require.Nil(t, got)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tc.want, got)
+			}
 		})
 	}
 }
@@ -457,7 +536,8 @@ func TestOpsWithCache_GetMemberByID(t *testing.T) {
 		{
 			name: "Error - Clears cache",
 			setup: func(d sutDepsWithCache) {
-				d.teamOps.EXPECT().GetMemberByID(gomock.Any(), "tid", "mid").Return(nil, reqErr())
+				e := reqErr()
+				d.teamOps.EXPECT().GetMemberByID(gomock.Any(), "tid", "mid").Return(nil, e)
 				expectRunNow(d.runner)
 				d.cacher.EXPECT().Clear().Return(nil)
 			},
@@ -466,12 +546,23 @@ func TestOpsWithCache_GetMemberByID(t *testing.T) {
 	}
 
 	for _, tc := range tests {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			sut, d := newSUTWithCache(t)
 			tc.setup(d)
+
 			got, err := sut.GetMemberByID(context.Background(), "tid", "mid")
-			require.Equal(t, tc.wantErr, err)
-			assert.Equal(t, tc.want, got)
+
+			if tc.wantErr != nil {
+				require.Error(t, err)
+				var re *snd.RequestError
+				require.ErrorAs(t, err, &re)
+				require.Equal(t, tc.wantErr.Code, re.Code)
+				require.Nil(t, got)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tc.want, got)
+			}
 		})
 	}
 }
@@ -497,7 +588,8 @@ func TestOpsWithCache_AddMember(t *testing.T) {
 		{
 			name: "Error - Clears cache",
 			setup: func(d sutDepsWithCache) {
-				d.teamOps.EXPECT().AddMember(gomock.Any(), "tid", "uid", true).Return(nil, reqErr())
+				e := reqErr()
+				d.teamOps.EXPECT().AddMember(gomock.Any(), "tid", "uid", true).Return(nil, e)
 				expectRunNow(d.runner)
 				d.cacher.EXPECT().Clear().Return(nil)
 			},
@@ -506,12 +598,23 @@ func TestOpsWithCache_AddMember(t *testing.T) {
 	}
 
 	for _, tc := range tests {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			sut, d := newSUTWithCache(t)
 			tc.setup(d)
+
 			got, err := sut.AddMember(context.Background(), "tid", "uid", true)
-			require.Equal(t, tc.wantErr, err)
-			assert.Equal(t, tc.want, got)
+
+			if tc.wantErr != nil {
+				require.Error(t, err)
+				var re *snd.RequestError
+				require.ErrorAs(t, err, &re)
+				require.Equal(t, tc.wantErr.Code, re.Code)
+				require.Nil(t, got)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tc.want, got)
+			}
 		})
 	}
 }
@@ -535,7 +638,8 @@ func TestOpsWithCache_UpdateMemberRoles(t *testing.T) {
 		{
 			name: "Error - Clears cache",
 			setup: func(d sutDepsWithCache) {
-				d.teamOps.EXPECT().UpdateMemberRoles(gomock.Any(), "tid", "mid", true).Return(nil, reqErr())
+				e := reqErr()
+				d.teamOps.EXPECT().UpdateMemberRoles(gomock.Any(), "tid", "mid", true).Return(nil, e)
 				expectRunNow(d.runner)
 				d.cacher.EXPECT().Clear().Return(nil)
 			},
@@ -544,12 +648,23 @@ func TestOpsWithCache_UpdateMemberRoles(t *testing.T) {
 	}
 
 	for _, tc := range tests {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			sut, d := newSUTWithCache(t)
 			tc.setup(d)
+
 			got, err := sut.UpdateMemberRoles(context.Background(), "tid", "mid", true)
-			require.Equal(t, tc.wantErr, err)
-			assert.Equal(t, tc.want, got)
+
+			if tc.wantErr != nil {
+				require.Error(t, err)
+				var re *snd.RequestError
+				require.ErrorAs(t, err, &re)
+				require.Equal(t, tc.wantErr.Code, re.Code)
+				require.Nil(t, got)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tc.want, got)
+			}
 		})
 	}
 }
@@ -571,7 +686,8 @@ func TestOpsWithCache_RemoveMember(t *testing.T) {
 		{
 			name: "Error - Clears cache",
 			setup: func(d sutDepsWithCache) {
-				d.teamOps.EXPECT().RemoveMember(gomock.Any(), "tid", "mid", "a@b.com").Return(reqErr())
+				e := reqErr()
+				d.teamOps.EXPECT().RemoveMember(gomock.Any(), "tid", "mid", "a@b.com").Return(e)
 				expectRunNow(d.runner)
 				d.cacher.EXPECT().Clear().Return(nil)
 			},
@@ -580,11 +696,21 @@ func TestOpsWithCache_RemoveMember(t *testing.T) {
 	}
 
 	for _, tc := range tests {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			sut, d := newSUTWithCache(t)
 			tc.setup(d)
+
 			err := sut.RemoveMember(context.Background(), "tid", "mid", "a@b.com")
-			require.Equal(t, tc.wantErr, err)
+
+			if tc.wantErr != nil {
+				require.Error(t, err)
+				var re *snd.RequestError
+				require.ErrorAs(t, err, &re)
+				require.Equal(t, tc.wantErr.Code, re.Code)
+			} else {
+				require.NoError(t, err)
+			}
 		})
 	}
 }

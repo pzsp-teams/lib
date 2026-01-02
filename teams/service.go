@@ -70,7 +70,7 @@ func (s *service) Archive(ctx context.Context, teamRef string, spoReadOnlyForMem
 			sender.NewParam(resources.TeamRef, teamRef),
 		)
 	}
-	
+
 	if err = s.teamOps.Archive(ctx, teamID, teamRef, spoReadOnlyForMembers); err != nil {
 		return sender.Wrap("Archive", err,
 			sender.NewParam(resources.TeamRef, teamRef),

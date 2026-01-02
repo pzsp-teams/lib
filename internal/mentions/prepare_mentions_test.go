@@ -70,7 +70,6 @@ func TestMapMentions_MapsConversationMentions_ChannelTeamEveryone(t *testing.T) 
 		t.Fatalf("expected 3 mentions, got %d", len(got))
 	}
 
-	// Channel
 	m0 := got[0].(*msmodels.ChatMessageMention)
 	if m0.GetMentioned() == nil || m0.GetMentioned().GetConversation() == nil {
 		t.Fatalf("expected channel mention to have mentioned.conversation")
@@ -80,7 +79,6 @@ func TestMapMentions_MapsConversationMentions_ChannelTeamEveryone(t *testing.T) 
 		t.Fatalf("expected channel conversation.id=%q, got %#v", okThread, c0.GetId())
 	}
 
-	// Team
 	m1 := got[1].(*msmodels.ChatMessageMention)
 	c1 := m1.GetMentioned().GetConversation()
 	if c1 == nil {
@@ -90,7 +88,6 @@ func TestMapMentions_MapsConversationMentions_ChannelTeamEveryone(t *testing.T) 
 		t.Fatalf("expected team conversation.id=%q, got %#v", okGUID, c1.GetId())
 	}
 
-	// Everyone
 	m2 := got[2].(*msmodels.ChatMessageMention)
 	c2 := m2.GetMentioned().GetConversation()
 	if c2 == nil {
@@ -102,7 +99,6 @@ func TestMapMentions_MapsConversationMentions_ChannelTeamEveryone(t *testing.T) 
 }
 
 func TestMapMentions_ErrorIsWrappedWithIndex(t *testing.T) {
-	// invalid TargetID for user mention => should error; and MapMentions wraps with mention[0]:
 	in := []models.Mention{
 		{Kind: models.MentionUser, AtID: 0, Text: "Alice", TargetID: "not-a-guid"},
 	}
@@ -169,7 +165,7 @@ func TestValidateAtTags_DuplicateAtID_Error(t *testing.T) {
 func TestValidateAtTags_MissingSpecificAtIDTag_Error(t *testing.T) {
 	b := &models.MessageBody{
 		ContentType: models.MessageContentTypeHTML,
-		Content:     `<at id="0">A</at>`, // missing id="1"
+		Content:     `<at id="0">A</at>`,
 		Mentions: []models.Mention{
 			{Kind: models.MentionUser, AtID: 0, Text: "A", TargetID: okGUID},
 			{Kind: models.MentionUser, AtID: 1, Text: "B", TargetID: okGUID},
@@ -244,7 +240,6 @@ func TestBuildUserMentioned_SetsFields(t *testing.T) {
 	if u.GetDisplayName() == nil || *u.GetDisplayName() != "Alice" {
 		t.Fatalf("expected displayName=Alice, got %#v", u.GetDisplayName())
 	}
-	// additional data contains userIdentityType = aadUser
 	ad := u.GetAdditionalData()
 	if ad == nil || ad["userIdentityType"] != "aadUser" {
 		t.Fatalf("expected additionalData.userIdentityType=aadUser, got %#v", ad)
@@ -478,7 +473,6 @@ func TestPrepareMentions_EveryoneMention_Success(t *testing.T) {
 }
 
 func TestPrepareMentions_AtTagCheckIsCaseSensitiveOnIdAttribute(t *testing.T) {
-	// sanity check: ValidateAtTags looks for `<at id="%d"`
 	body := &models.MessageBody{
 		Content:     `<div><at ID="0">Alice</at></div>`,
 		ContentType: models.MessageContentTypeHTML,

@@ -22,7 +22,6 @@ func NewOps(teamAPI api.TeamAPI) teamsOps {
 	}
 }
 
-
 func (o *ops) GetTeamByID(ctx context.Context, teamID string) (*models.Team, error) {
 	resp, requestErr := o.teamAPI.Get(ctx, teamID)
 	if requestErr != nil {

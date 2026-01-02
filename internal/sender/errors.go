@@ -30,7 +30,6 @@ func (ed *ErrData) String() string {
 	return strings.Join(formatted, ", ")
 }
 
-
 type ErrAccessForbidden struct {
 	Code            int
 	OriginalMessage string
