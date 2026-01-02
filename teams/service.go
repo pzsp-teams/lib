@@ -3,7 +3,6 @@ package teams
 import (
 	"context"
 	"fmt"
-	"net/http"
 
 	"github.com/pzsp-teams/lib/internal/resolver"
 	"github.com/pzsp-teams/lib/internal/resources"
@@ -55,9 +54,6 @@ func (s *service) CreateViaGroup(ctx context.Context, displayName, mailNickname,
 func (s *service) CreateFromTemplate(ctx context.Context, displayName, description string, owners []string) (string, error) {
 	id, requestErr := s.teamOps.CreateFromTemplate(ctx, displayName, description, owners)
 	if requestErr != nil {
-		if requestErr.Code == http.StatusCreated {
-			return id, nil
-		}
 		return "", snd.MapError(requestErr, snd.WithResources(resources.User, owners))
 	}
 
