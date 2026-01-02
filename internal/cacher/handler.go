@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 
 	"github.com/pzsp-teams/lib/config"
+	snd "github.com/pzsp-teams/lib/internal/sender"
 	"github.com/pzsp-teams/lib/internal/util"
 )
 
@@ -12,6 +13,41 @@ type CacheHandler struct {
 	Cacher Cacher
 	Runner util.TaskRunner
 }
+
+func (h *CacheHandler) OnError(err *snd.RequestError) {
+	h.Runner.Run(func() {
+		if shouldClearCache(err) {
+			_ = h.Cacher.Clear()
+		}
+	})
+}
+
+func WithErrorClear[T any](
+	fn func() (T, *snd.RequestError), cacheHandler *CacheHandler,
+) (T, *snd.RequestError) {
+	res, err := fn()
+	if err != nil {
+		if shouldClearCache(err) {
+			cacheHandler.OnError(err)
+		}
+		var zero T
+		return zero, err
+	}
+	return res, nil
+}
+
+func shouldClearCache(err *snd.RequestError) bool {
+	if err == nil {
+		return false
+	}
+	switch err.Code {
+	case 400, 404, 409, 412, 413, 422:
+		return true
+	default:
+		return false
+	}
+}
+
 
 func NewCacheHandler(cfg *config.CacheConfig) *CacheHandler {
 	if cfg.Mode == config.CacheDisabled {

@@ -32,9 +32,7 @@ func (o *opsWithCache) Wait() {
 func (o *opsWithCache) ListChannelsByTeamID(ctx context.Context, teamID string) ([]*models.Channel, *snd.RequestError) {
 	out, requestErr := o.chanOps.ListChannelsByTeamID(ctx, teamID)
 	if requestErr != nil {
-		if shouldClearCache(requestErr) {
-			o.onError()
-		}
+		o.cacheHandler.OnError(requestErr)
 		return nil, requestErr
 	}
 	local := util.CopyNonNil(out)
@@ -47,9 +45,7 @@ func (o *opsWithCache) ListChannelsByTeamID(ctx context.Context, teamID string) 
 func (o *opsWithCache) GetChannelByID(ctx context.Context, teamID, channelID string) (*models.Channel, *snd.RequestError) {
 	ch, requestErr := o.chanOps.GetChannelByID(ctx, teamID, channelID)
 	if requestErr != nil {
-		if shouldClearCache(requestErr) {
-			o.onError()
-		}
+		o.cacheHandler.OnError(requestErr)
 		return nil, requestErr
 	}
 	if ch != nil {
@@ -64,9 +60,7 @@ func (o *opsWithCache) GetChannelByID(ctx context.Context, teamID, channelID str
 func (o *opsWithCache) CreateStandardChannel(ctx context.Context, teamID, name string) (*models.Channel, *snd.RequestError) {
 	ch, requestErr := o.chanOps.CreateStandardChannel(ctx, teamID, name)
 	if requestErr != nil {
-		if shouldClearCache(requestErr) {
-			o.onError()
-		}
+		o.cacheHandler.OnError(requestErr)
 		return nil, requestErr
 	}
 	if ch != nil {
@@ -81,9 +75,7 @@ func (o *opsWithCache) CreateStandardChannel(ctx context.Context, teamID, name s
 func (o *opsWithCache) CreatePrivateChannel(ctx context.Context, teamID, name string, memberIDs, ownerIDs []string) (*models.Channel, *snd.RequestError) {
 	ch, requestErr := o.chanOps.CreatePrivateChannel(ctx, teamID, name, memberIDs, ownerIDs)
 	if requestErr != nil {
-		if shouldClearCache(requestErr) {
-			o.onError()
-		}
+		o.cacheHandler.OnError(requestErr)
 		return nil, requestErr
 	}
 	if ch != nil {
@@ -98,9 +90,7 @@ func (o *opsWithCache) CreatePrivateChannel(ctx context.Context, teamID, name st
 func (o *opsWithCache) DeleteChannel(ctx context.Context, teamID, channelID, channelRef string) *snd.RequestError {
 	requestErr := o.chanOps.DeleteChannel(ctx, teamID, channelID, channelRef)
 	if requestErr != nil {
-		if shouldClearCache(requestErr) {
-			o.onError()
-		}
+		o.cacheHandler.OnError(requestErr)
 		return requestErr
 	}
 	o.cacheHandler.Runner.Run(func() {
@@ -110,47 +100,45 @@ func (o *opsWithCache) DeleteChannel(ctx context.Context, teamID, channelID, cha
 }
 
 func (o *opsWithCache) SendMessage(ctx context.Context, teamID, channelID string, body models.MessageBody) (*models.Message, *snd.RequestError) {
-	return withErrorClear(func() (*models.Message, *snd.RequestError) {
+	return cacher.WithErrorClear(func() (*models.Message, *snd.RequestError) {
 		return o.chanOps.SendMessage(ctx, teamID, channelID, body)
-	}, o)
+	}, o.cacheHandler)
 }
 
 func (o *opsWithCache) SendReply(ctx context.Context, teamID, channelID, messageID string, body models.MessageBody) (*models.Message, *snd.RequestError) {
-	return withErrorClear(func() (*models.Message, *snd.RequestError) {
+	return cacher.WithErrorClear(func() (*models.Message, *snd.RequestError) {
 		return o.chanOps.SendReply(ctx, teamID, channelID, messageID, body)
-	}, o)
+	}, o.cacheHandler)
 }
 
 func (o *opsWithCache) ListMessages(ctx context.Context, teamID, channelID string, opts *models.ListMessagesOptions) ([]*models.Message, *snd.RequestError) {
-	return withErrorClear(func() ([]*models.Message, *snd.RequestError) {
+	return cacher.WithErrorClear(func() ([]*models.Message, *snd.RequestError) {
 		return o.chanOps.ListMessages(ctx, teamID, channelID, opts)
-	}, o)
+	}, o.cacheHandler)
 }
 
 func (o *opsWithCache) ListReplies(ctx context.Context, teamID, channelID, messageID string, opts *models.ListMessagesOptions) ([]*models.Message, *snd.RequestError) {
-	return withErrorClear(func() ([]*models.Message, *snd.RequestError) {
+	return cacher.WithErrorClear(func() ([]*models.Message, *snd.RequestError) {
 		return o.chanOps.ListReplies(ctx, teamID, channelID, messageID, opts)
-	}, o)
+	}, o.cacheHandler)
 }
 
 func (o *opsWithCache) GetMessage(ctx context.Context, teamID, channelID, messageID string) (*models.Message, *snd.RequestError) {
-	return withErrorClear(func() (*models.Message, *snd.RequestError) {
+	return cacher.WithErrorClear(func() (*models.Message, *snd.RequestError) {
 		return o.chanOps.GetMessage(ctx, teamID, channelID, messageID)
-	}, o)
+	}, o.cacheHandler)
 }
 
 func (o *opsWithCache) GetReply(ctx context.Context, teamID, channelID, messageID, replyID string) (*models.Message, *snd.RequestError) {
-	return withErrorClear(func() (*models.Message, *snd.RequestError) {
+	return cacher.WithErrorClear(func() (*models.Message, *snd.RequestError) {
 		return o.chanOps.GetReply(ctx, teamID, channelID, messageID, replyID)
-	}, o)
+	}, o.cacheHandler)
 }
 
 func (o *opsWithCache) ListMembers(ctx context.Context, teamID, channelID string) ([]*models.Member, *snd.RequestError) {
 	members, requestErr := o.chanOps.ListMembers(ctx, teamID, channelID)
 	if requestErr != nil {
-		if shouldClearCache(requestErr) {
-			o.onError()
-		}
+		o.cacheHandler.OnError(requestErr)
 		return nil, requestErr
 	}
 	local := util.CopyNonNil(members)
@@ -163,9 +151,7 @@ func (o *opsWithCache) ListMembers(ctx context.Context, teamID, channelID string
 func (o *opsWithCache) AddMember(ctx context.Context, teamID, channelID, userID string, isOwner bool) (*models.Member, *snd.RequestError) {
 	member, requestErr := o.chanOps.AddMember(ctx, teamID, channelID, userID, isOwner)
 	if requestErr != nil {
-		if shouldClearCache(requestErr) {
-			o.onError()
-		}
+		o.cacheHandler.OnError(requestErr)
 		return nil, requestErr
 	}
 	if member != nil {
@@ -178,17 +164,15 @@ func (o *opsWithCache) AddMember(ctx context.Context, teamID, channelID, userID 
 }
 
 func (o *opsWithCache) UpdateMemberRoles(ctx context.Context, teamID, channelID, memberID string, isOwner bool) (*models.Member, *snd.RequestError) {
-	return withErrorClear(func() (*models.Member, *snd.RequestError) {
+	return cacher.WithErrorClear(func() (*models.Member, *snd.RequestError) {
 		return o.chanOps.UpdateMemberRoles(ctx, teamID, channelID, memberID, isOwner)
-	}, o)
+	}, o.cacheHandler)
 }
 
 func (o *opsWithCache) RemoveMember(ctx context.Context, teamID, channelID, memberID, userRef string) *snd.RequestError {
 	requestErr := o.chanOps.RemoveMember(ctx, teamID, channelID, memberID, userRef)
 	if requestErr != nil {
-		if shouldClearCache(requestErr) {
-			o.onError()
-		}
+		o.cacheHandler.OnError(requestErr)
 		return requestErr
 	}
 	o.cacheHandler.Runner.Run(func() {
@@ -225,34 +209,6 @@ func (o *opsWithCache) removeMemberFromCache(teamID, channelID, userRef string) 
 	_ = o.cacheHandler.Cacher.Invalidate(key)
 }
 
-func (o *opsWithCache) onError() {
-	o.cacheHandler.Runner.Run(func() {
-		_ = o.cacheHandler.Cacher.Clear()
-	})
-}
 
-func withErrorClear[T any](
-	fn func() (T, *snd.RequestError), o *opsWithCache,
-) (T, *snd.RequestError) {
-	res, err := fn()
-	if err != nil {
-		if shouldClearCache(err) {
-			o.onError()
-		}
-		var zero T
-		return zero, err
-	}
-	return res, nil
-}
 
-func shouldClearCache(err *snd.RequestError) bool {
-	if err == nil {
-		return false
-	}
-	switch err.Code {
-	case 400, 404, 409, 412, 413, 422:
-		return true
-	default:
-		return false
-	}
-}
+
