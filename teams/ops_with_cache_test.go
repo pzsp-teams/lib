@@ -13,7 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-
 type sutDepsWithCache struct {
 	teamOps *testutil.MockteamsOps
 	cacher  *testutil.MockCacher
@@ -49,7 +48,6 @@ func expectRunNow(r *testutil.MockTaskRunner) {
 func reqErr() *snd.RequestError {
 	return &snd.RequestError{Code: 400}
 }
-
 
 func TestNewOpsWithCache_WhenCacheNil_ReturnsOriginalOps(t *testing.T) {
 	ctrl := gomock.NewController(t)
