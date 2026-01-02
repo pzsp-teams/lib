@@ -50,15 +50,17 @@ func NewClientFromGraphClient(graphClient *graph.GraphServiceClient, senderCfg *
 	chatResolver := resolver.NewChatResolverCacheable(chatAPI, cacheHandler)
 
 	channelOps := channels.NewOps(channelsAPI)
-	teamSvc := teams.NewService(teamsAPI, teamResolver)
+	teamOps := teams.NewOps(teamsAPI)
+	
 
 	chatSvc := chats.NewService(chatAPI, chatResolver, userAPI)
 
 	if cacheHandler != nil {
 		channelOps = channels.NewOpsWithCache(channelOps, cacheHandler)
-		teamSvc = teams.NewServiceWithCache(teamSvc, cacheHandler, teamResolver)
+		teamOps = teams.NewOpsWithCache(teamOps, cacheHandler)
 	}
 	channelSvc := channels.NewService(channelOps, teamResolver, channelResolver, userAPI)
+	teamSvc := teams.NewService(teamOps, teamResolver)
 
 	return &Client{
 		Channels: channelSvc,
