@@ -5,7 +5,6 @@ import (
 	"errors"
 	"testing"
 
-	gomock "github.com/golang/mock/gomock"
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
 	"github.com/pzsp-teams/lib/internal/resources"
 	snd "github.com/pzsp-teams/lib/internal/sender"
@@ -14,6 +13,7 @@ import (
 	"github.com/pzsp-teams/lib/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
 type opsSUTDeps struct {
