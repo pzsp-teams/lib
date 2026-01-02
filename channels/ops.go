@@ -130,7 +130,12 @@ func (o *ops) ListReplies(ctx context.Context, teamID, channelID, messageID stri
 	}
 	resp, requestErr := o.channelAPI.ListReplies(ctx, teamID, channelID, messageID, top)
 	if requestErr != nil {
-		return nil, requestErr
+		return nil, snd.MapError(
+			requestErr, 
+			snd.WithResource(resources.Team, teamID),
+			snd.WithResource(resources.Channel, channelID), 
+			snd.WithResource(resources.Message, messageID),
+		)
 	}
 	return util.MapSlices(resp.GetValue(), adapter.MapGraphMessage), nil
 }
