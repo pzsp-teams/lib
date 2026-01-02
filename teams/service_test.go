@@ -6,10 +6,9 @@ import (
 	"testing"
 
 	gomock "github.com/golang/mock/gomock"
-	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
 	sender "github.com/pzsp-teams/lib/internal/sender"
 	"github.com/pzsp-teams/lib/internal/testutil"
-	"github.com/pzsp-teams/lib/internal/util"
+	"github.com/pzsp-teams/lib/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -39,25 +38,28 @@ func TestService_ListMyJoined(t *testing.T) {
 	type testCase struct {
 		name       string
 		setupMocks func(d sutDeps)
-		assertFn   func(t *testing.T, got any, err error)
+		assertFn   func(t *testing.T, got []*models.Team, err error)
 	}
 
 	testCases := []testCase{
 		{
 			name: "maps teams",
 			setupMocks: func(d sutDeps) {
-				col := msmodels.NewTeamCollectionResponse()
-				a := testutil.NewGraphTeam(&testutil.NewTeamParams{ID: util.Ptr("1"), DisplayName: util.Ptr("Alpha")})
-				b := testutil.NewGraphTeam(&testutil.NewTeamParams{ID: util.Ptr("2"), DisplayName: util.Ptr("Beta")})
-				col.SetValue([]msmodels.Teamable{a, b})
+				teams := []*models.Team{
+					{ID: "1", DisplayName: "Alpha"},
+					{ID: "2", DisplayName: "Beta"},
+				}
 
 				d.ops.EXPECT().
 					ListMyJoinedTeams(gomock.Any()).
-					Return(col, nil).
+					Return(teams, nil).
 					Times(1)
 			},
-			assertFn: func(t *testing.T, got any, err error) {
+			assertFn: func(t *testing.T, got []*models.Team, err error) {
 				require.NoError(t, err)
+				require.Len(t, got, 2)
+				assert.Equal(t, "1", got[0].ID)
+				assert.Equal(t, "Beta", got[1].DisplayName)
 			},
 		},
 	}
@@ -65,13 +67,8 @@ func TestService_ListMyJoined(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			svc, ctx := newSUT(t, tc.setupMocks)
-
 			got, err := svc.ListMyJoined(ctx)
-
-			require.NoError(t, err)
-			require.Len(t, got, 2)
-			assert.Equal(t, "1", got[0].ID)
-			assert.Equal(t, "Beta", got[1].DisplayName)
+			tc.assertFn(t, got, err)
 		})
 	}
 
@@ -113,7 +110,7 @@ func TestService_Get(t *testing.T) {
 
 				d.ops.EXPECT().
 					GetTeamByID(gomock.Any(), "resolved-42").
-					Return(testutil.NewGraphTeam(&testutil.NewTeamParams{ID: util.Ptr("42"), DisplayName: util.Ptr("X")}), nil).
+					Return(&models.Team{ID: "42", DisplayName: "X"}, nil).
 					Times(1)
 			},
 			wantID:   "42",
@@ -264,37 +261,17 @@ func TestService_CreateViaGroup(t *testing.T) {
 			setupMocks: func(d sutDeps) {
 				d.ops.EXPECT().
 					CreateViaGroup(gomock.Any(), "X", "x", "public").
-					Return("", &sender.RequestError{Code: 403, Message: "nope"}).
+					Return(nil, &sender.RequestError{Code: 403, Message: "nope"}).
 					Times(1)
 			},
 			wantErrAs: new(sender.ErrAccessForbidden),
-		},
-		{
-			name: "maps get error",
-			setupMocks: func(d sutDeps) {
-				d.ops.EXPECT().
-					CreateViaGroup(gomock.Any(), "X", "x", "public").
-					Return("team-xyz", nil).
-					Times(1)
-
-				d.ops.EXPECT().
-					GetTeamByID(gomock.Any(), "team-xyz").
-					Return(nil, &sender.RequestError{Code: 404, Message: "not ready"}).
-					Times(1)
-			},
-			wantErrAs: new(sender.ErrResourceNotFound),
 		},
 		{
 			name: "success maps team",
 			setupMocks: func(d sutDeps) {
 				d.ops.EXPECT().
 					CreateViaGroup(gomock.Any(), "X", "x", "public").
-					Return("team-xyz", nil).
-					Times(1)
-
-				d.ops.EXPECT().
-					GetTeamByID(gomock.Any(), "team-xyz").
-					Return(testutil.NewGraphTeam(&testutil.NewTeamParams{ID: util.Ptr("team-xyz"), DisplayName: util.Ptr("X")}), nil).
+					Return(&models.Team{ID: "team-xyz", DisplayName: "X"}, nil).
 					Times(1)
 			},
 			wantID: "team-xyz",
@@ -311,8 +288,6 @@ func TestService_CreateViaGroup(t *testing.T) {
 				require.Error(t, err)
 				switch target := tc.wantErrAs.(type) {
 				case *sender.ErrAccessForbidden:
-					require.ErrorAs(t, err, target)
-				case *sender.ErrResourceNotFound:
 					require.ErrorAs(t, err, target)
 				default:
 					t.Fatalf("unsupported wantErrAs type: %T", tc.wantErrAs)
@@ -345,16 +320,6 @@ func TestService_CreateFromTemplate(t *testing.T) {
 					Times(1)
 			},
 			wantID: "tmpl-123",
-		},
-		{
-			name: "treats 201 in RequestError as success",
-			setupMocks: func(d sutDeps) {
-				d.ops.EXPECT().
-					CreateFromTemplate(gomock.Any(), "Tpl", "Desc", gomock.Any()).
-					Return("tmpl-201", &sender.RequestError{Code: 201, Message: "created"}).
-					Times(1)
-			},
-			wantID: "tmpl-201",
 		},
 		{
 			name: "maps error",
@@ -524,13 +489,9 @@ func TestService_RestoreDeleted(t *testing.T) {
 		{
 			name: "returns id",
 			setupMocks: func(d sutDeps) {
-				obj := msmodels.NewDirectoryObject()
-				id := "restored-id"
-				obj.SetId(&id)
-
 				d.ops.EXPECT().
 					RestoreDeletedTeam(gomock.Any(), "deleted-1").
-					Return(obj, nil).
+					Return("restored-id", nil).
 					Times(1)
 			},
 			wantID: "restored-id",
@@ -540,18 +501,17 @@ func TestService_RestoreDeleted(t *testing.T) {
 			setupMocks: func(d sutDeps) {
 				d.ops.EXPECT().
 					RestoreDeletedTeam(gomock.Any(), "deleted-1").
-					Return(nil, &sender.RequestError{Code: 404, Message: "missing"}).
+					Return("", &sender.RequestError{Code: 404, Message: "missing"}).
 					Times(1)
 			},
 			wantErrAs: new(sender.ErrResourceNotFound),
 		},
 		{
-			name: "empty object returns error",
+			name: "empty id returns error",
 			setupMocks: func(d sutDeps) {
-				obj := msmodels.NewDirectoryObject()
 				d.ops.EXPECT().
 					RestoreDeletedTeam(gomock.Any(), "deleted-1").
-					Return(obj, nil).
+					Return("", nil).
 					Times(1)
 			},
 			wantErr: true,
@@ -604,19 +564,14 @@ func TestService_ListMembers(t *testing.T) {
 					Return("team-id", nil).
 					Times(1)
 
-				col := msmodels.NewConversationMemberCollectionResponse()
-				col.SetValue([]msmodels.ConversationMemberable{
-					testutil.NewGraphMember(&testutil.NewMemberParams{
-						ID: util.Ptr("m1"),
-					}),
-					testutil.NewGraphMember(&testutil.NewMemberParams{
-						ID: util.Ptr("m2"),
-					}),
-				})
+				members := []*models.Member{
+					{ID: "m1"},
+					{ID: "m2"},
+				}
 
 				d.ops.EXPECT().
 					ListMembers(gomock.Any(), "team-id").
-					Return(col, nil).
+					Return(members, nil).
 					Times(1)
 			},
 			wantIDs: []string{"m1", "m2"},
@@ -662,7 +617,6 @@ func TestService_ListMembers(t *testing.T) {
 				case *sender.ErrAccessForbidden:
 					require.ErrorAs(t, err, target)
 				case *error:
-					// any error ok
 				default:
 					t.Fatalf("unsupported wantErrAs type: %T", tc.wantErrAs)
 				}
@@ -702,13 +656,8 @@ func TestService_AddMember(t *testing.T) {
 					Times(1)
 
 				d.ops.EXPECT().
-					AddMember(gomock.Any(), "team-id", "user@x.com", gomock.Any()).
-					DoAndReturn(func(_ context.Context, _ string, _ string, roles []string) (msmodels.ConversationMemberable, *sender.RequestError) {
-						require.Equal(t, []string{"owner"}, roles)
-						return testutil.NewGraphMember(&testutil.NewMemberParams{
-							ID: util.Ptr("m1"),
-						}), nil
-					}).
+					AddMember(gomock.Any(), "team-id", "user@x.com", true).
+					Return(&models.Member{ID: "m1"}, nil).
 					Times(1)
 			},
 			wantID: "m1",
@@ -725,13 +674,8 @@ func TestService_AddMember(t *testing.T) {
 					Times(1)
 
 				d.ops.EXPECT().
-					AddMember(gomock.Any(), "team-id", "user@x.com", gomock.Any()).
-					DoAndReturn(func(_ context.Context, _ string, _ string, roles []string) (msmodels.ConversationMemberable, *sender.RequestError) {
-						require.Len(t, roles, 0)
-						return testutil.NewGraphMember(&testutil.NewMemberParams{
-							ID: util.Ptr("m2"),
-						}), nil
-					}).
+					AddMember(gomock.Any(), "team-id", "user@x.com", false).
+					Return(&models.Member{ID: "m2"}, nil).
 					Times(1)
 			},
 			wantID: "m2",
@@ -761,7 +705,7 @@ func TestService_AddMember(t *testing.T) {
 					Times(1)
 
 				d.ops.EXPECT().
-					AddMember(gomock.Any(), "team-id", "user@x.com", gomock.Any()).
+					AddMember(gomock.Any(), "team-id", "user@x.com", false).
 					Return(nil, &sender.RequestError{Code: 403, Message: "nope"}).
 					Times(1)
 			},
@@ -822,9 +766,7 @@ func TestService_GetMember(t *testing.T) {
 
 				d.ops.EXPECT().
 					GetMemberByID(gomock.Any(), "team-id", "member-id").
-					Return(testutil.NewGraphMember(&testutil.NewMemberParams{
-						ID: util.Ptr("member-id"),
-					}), nil).
+					Return(&models.Member{ID: "member-id"}, nil).
 					Times(1)
 			},
 			wantID: "member-id",
@@ -1031,13 +973,8 @@ func TestService_UpdateMemberRoles(t *testing.T) {
 					Times(1)
 
 				d.ops.EXPECT().
-					UpdateMemberRoles(gomock.Any(), "team-id", "member-id", gomock.Any()).
-					DoAndReturn(func(_ context.Context, _ string, _ string, roles []string) (msmodels.ConversationMemberable, *sender.RequestError) {
-						require.Equal(t, []string{"owner"}, roles)
-						return testutil.NewGraphMember(&testutil.NewMemberParams{
-							ID: util.Ptr("member-id"),
-						}), nil
-					}).
+					UpdateMemberRoles(gomock.Any(), "team-id", "member-id", true).
+					Return(&models.Member{ID: "member-id"}, nil).
 					Times(1)
 			},
 			wantID: "member-id",
@@ -1059,13 +996,8 @@ func TestService_UpdateMemberRoles(t *testing.T) {
 					Times(1)
 
 				d.ops.EXPECT().
-					UpdateMemberRoles(gomock.Any(), "team-id", "member-id", gomock.Any()).
-					DoAndReturn(func(_ context.Context, _ string, _ string, roles []string) (msmodels.ConversationMemberable, *sender.RequestError) {
-						require.Len(t, roles, 0)
-						return testutil.NewGraphMember(&testutil.NewMemberParams{
-							ID: util.Ptr("member-id"),
-						}), nil
-					}).
+					UpdateMemberRoles(gomock.Any(), "team-id", "member-id", false).
+					Return(&models.Member{ID: "member-id"}, nil).
 					Times(1)
 			},
 			wantID: "member-id",
