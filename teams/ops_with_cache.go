@@ -2,7 +2,6 @@ package teams
 
 import (
 	"context"
-	"strings"
 
 	"github.com/pzsp-teams/lib/internal/cacher"
 	snd "github.com/pzsp-teams/lib/internal/sender"
@@ -186,18 +185,16 @@ func (o *opsWithCache) RemoveMember(ctx context.Context, teamID, memberID, userR
 
 func (o *opsWithCache) addTeamsToCache(teams ...models.Team) {
 	for _, team := range teams {
-		name := strings.TrimSpace(team.DisplayName)
-		if name == "" {
+		if util.CheckIfAnyStringIsBlank(team.DisplayName) {
 			continue
 		}
-		key := cacher.NewTeamKey(name)
+		key := cacher.NewTeamKey(team.DisplayName)
 		_ = o.cacheHandler.Cacher.Set(key, team.ID)
 	}
 }
 
 func (o *opsWithCache) removeTeamFromCache(teamRef string) {
-	teamRef = strings.TrimSpace(teamRef)
-	if teamRef == "" {
+	if util.CheckIfAnyStringIsBlank(teamRef) {
 		return
 	}
 	key := cacher.NewTeamKey(teamRef)
@@ -205,24 +202,20 @@ func (o *opsWithCache) removeTeamFromCache(teamRef string) {
 }
 
 func (o *opsWithCache) addMembersToCache(teamID string, members ...models.Member) {
-	teamID = strings.TrimSpace(teamID)
-	if teamID == "" {
+	if util.CheckIfAnyStringIsBlank(teamID) {
 		return
 	}
 	for _, member := range members {
-		email := strings.TrimSpace(member.Email)
-		if email == "" {
+		if util.CheckIfAnyStringIsBlank(member.Email) {
 			continue
 		}
-		key := cacher.NewTeamMemberKey(teamID, email, nil)
+		key := cacher.NewTeamMemberKey(teamID, member.Email, nil)
 		_ = o.cacheHandler.Cacher.Set(key, member.ID)
 	}
 }
 
 func (o *opsWithCache) removeMemberFromCache(teamID, userRef string) {
-	teamID = strings.TrimSpace(teamID)
-	userRef = strings.TrimSpace(userRef)
-	if teamID == "" || userRef == "" {
+	if util.CheckIfAnyStringIsBlank(teamID, userRef) {
 		return
 	}
 	key := cacher.NewTeamMemberKey(teamID, userRef, nil)
