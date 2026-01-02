@@ -51,7 +51,6 @@ func NewClientFromGraphClient(graphClient *graph.GraphServiceClient, senderCfg *
 
 	channelOps := channels.NewOps(channelsAPI)
 	teamOps := teams.NewOps(teamsAPI)
-	
 
 	chatSvc := chats.NewService(chatAPI, chatResolver, userAPI)
 
