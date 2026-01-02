@@ -5,158 +5,168 @@ import (
 
 	"github.com/pzsp-teams/lib/internal/mentions"
 	"github.com/pzsp-teams/lib/models"
+	"github.com/stretchr/testify/assert"
 )
 
-func TestIsGroupChatRef_Group(t *testing.T) {
-	got, err := isGroupChatRef(GroupChatRef{Ref: "x"})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if !got {
-		t.Fatalf("expected true, got false")
-	}
-}
-
-func TestIsGroupChatRef_OneOnOne(t *testing.T) {
-	got, err := isGroupChatRef(OneOnOneChatRef{Ref: "x"})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if got {
-		t.Fatalf("expected false, got true")
-	}
-}
 
 type unknownChatRef struct{}
 
 func (u unknownChatRef) chatRef() {}
-func TestIsGroupChatRef_Unknown(t *testing.T) {
-	_, err := isGroupChatRef(unknownChatRef{})
-	if err == nil {
-		t.Fatalf("expected error, got nil")
+
+func TestIsGroupChatRef(t *testing.T) {
+
+	tests := []struct {
+		name      string
+		chatRef   any
+		wantGroup bool
+		wantErr   bool
+	}{
+		{
+			name:      "Group chat returns true",
+			chatRef:   GroupChatRef{Ref: "x"},
+			wantGroup: true,
+			wantErr:   false,
+		},
+		{
+			name:      "OneOnOne chat returns false",
+			chatRef:   OneOnOneChatRef{Ref: "x"},
+			wantGroup: false,
+			wantErr:   false,
+		},
+		{
+			name:      "Unknown chat ref returns error",
+			chatRef:   unknownChatRef{},
+			wantGroup: false,
+			wantErr:   true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := isGroupChatRef(tc.chatRef.(ChatRef))
+
+			if tc.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tc.wantGroup, got)
+			}
+		})
 	}
 }
 
-func TestTryAddEveryoneMention_NotEveryone_ReturnsFalseNoErrorAndDoesNotAdd(t *testing.T) {
-	out := make([]models.Mention, 0)
-	adder := mentions.NewMentionAdder(&out)
+func TestTryAddEveryoneMention(t *testing.T) {
+	const chatID = "chat-1"
 
-	ok, err := tryAddEveryoneMention(adder, "chat-1", true, "alice@example.com")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+	tests := []struct {
+		name         string
+		isGroup      bool
+		inputs       []string 
+		wantOK       bool
+		wantErr      bool
+		wantMentions []models.Mention
+	}{
+		{
+			name:    "Not everyone mention returns false and no error",
+			isGroup: true,
+			inputs:  []string{"alice@example.com"},
+			wantOK:  false,
+			wantErr: false,
+			wantMentions: []models.Mention{},
+		},
+		{
+			name:    "Group chat adds everyone mention",
+			isGroup: true,
+			inputs:  []string{"  @Everyone  "}, 
+			wantOK:  true,
+			wantErr: false,
+			wantMentions: []models.Mention{
+				{
+					Kind:     models.MentionEveryone,
+					TargetID: chatID,
+					Text:     "Everyone",
+					AtID:     0,
+				},
+			},
+		},
+		{
+			name:    "OneOnOne chat returns error for everyone mention",
+			isGroup: false,
+			inputs:  []string{"everyone"},
+			wantOK:  false,
+			wantErr: true,
+			wantMentions: []models.Mention{},
+		},
+		{
+			name:    "Duplicates allowed (adds multiple)",
+			isGroup: true,
+			inputs:  []string{"everyone", "@everyone"},
+			wantOK:  true,
+			wantErr: false,
+			wantMentions: []models.Mention{
+				{Kind: models.MentionEveryone, TargetID: chatID, Text: "Everyone"},
+				{Kind: models.MentionEveryone, TargetID: chatID, Text: "Everyone", AtID: 1},
+			},
+		},
 	}
-	if ok {
-		t.Fatalf("expected ok=false, got true")
-	}
-	if len(out) != 0 {
-		t.Fatalf("expected no mentions added, got %d", len(out))
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			out := make([]models.Mention, 0)
+			adder := mentions.NewMentionAdder(&out)
+
+			var lastOK bool
+			var lastErr error
+
+			for _, token := range tc.inputs {
+				lastOK, lastErr = tryAddEveryoneMention(adder, chatID, tc.isGroup, token)
+				
+				if lastErr != nil {
+					break
+				}
+			}
+
+			if tc.wantErr {
+				assert.Error(t, lastErr)
+			} else {
+				assert.NoError(t, lastErr)
+				assert.Equal(t, tc.wantOK, lastOK, "Unexpected boolean result (ok)")
+			}
+
+			assert.Equal(t, len(tc.wantMentions), len(out), "Number of mentions mismatch")
+			for i, wantM := range tc.wantMentions {
+				gotM := out[i]
+				assert.Equal(t, wantM.Kind, gotM.Kind)
+				assert.Equal(t, wantM.TargetID, gotM.TargetID)
+				assert.Equal(t, wantM.Text, gotM.Text)
+				assert.Equal(t, wantM.AtID, gotM.AtID)
+			}
+		})
 	}
 }
 
-func TestTryAddEveryoneMention_GroupChat_AddsEveryoneMention(t *testing.T) {
-	out := make([]models.Mention, 0)
-	adder := mentions.NewMentionAdder(&out)
-
-	ok, err := tryAddEveryoneMention(adder, "chat-1", true, "  @Everyone  ")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if !ok {
-		t.Fatalf("expected ok=true, got false")
-	}
-	if len(out) != 1 {
-		t.Fatalf("expected 1 mention added, got %d", len(out))
-	}
-
-	m := out[0]
-	if m.Kind != models.MentionEveryone {
-		t.Fatalf("expected kind=%q, got %q", models.MentionEveryone, m.Kind)
-	}
-	if m.TargetID != "chat-1" {
-		t.Fatalf("expected targetID=chat-1, got %q", m.TargetID)
-	}
-	if m.Text != "Everyone" {
-		t.Fatalf("expected text=Everyone, got %q", m.Text)
-	}
-	if m.AtID != 0 {
-		t.Fatalf("expected AtID=0, got %d", m.AtID)
-	}
-}
-
-func TestTryAddEveryoneMention_OneOnOneChat_ReturnsErrorAndDoesNotAdd(t *testing.T) {
-	out := make([]models.Mention, 0)
-	adder := mentions.NewMentionAdder(&out)
-
-	ok, err := tryAddEveryoneMention(adder, "chat-1", false, "everyone")
-	if err == nil {
-		t.Fatalf("expected error, got nil")
-	}
-	if ok {
-		t.Fatalf("expected ok=false, got true")
-	}
-	if len(out) != 0 {
-		t.Fatalf("expected no mentions added, got %d", len(out))
-	}
-}
-
-func TestTryAddEveryoneMention_DuplicatesAllowed(t *testing.T) {
-	out := make([]models.Mention, 0)
-	adder := mentions.NewMentionAdder(&out)
-
-	ok1, err1 := tryAddEveryoneMention(adder, "chat-1", true, "everyone")
-	if err1 != nil || !ok1 {
-		t.Fatalf("expected first add ok, got ok=%v err=%v", ok1, err1)
+func TestCheckThisMentionValidity(t *testing.T) {
+	tests := []struct {
+		name    string
+		isGroup bool
+		token   string
+		want    bool
+	}{
+		{"OneOnOne with 'this'", false, "this", true},
+		{"OneOnOne with '@this'", false, "@this", true},
+		{"OneOnOne with other name", false, "alice", false},
+		{"OneOnOne with other handle", false, "@alice", false},
+		
+		{"GroupChat with 'this'", true, "this", false},
+		{"GroupChat with '@this'", true, "@this", false},
+		{"GroupChat with other name", true, "alice", false},
+		{"GroupChat with other handle", true, "@alice", false},
 	}
 
-	ok2, err2 := tryAddEveryoneMention(adder, "chat-1", true, "@everyone")
-	if err2 != nil {
-		t.Fatalf("unexpected error: %v", err2)
-	}
-	if !ok2 {
-		t.Fatalf("expected ok=true (it recognized everyone), got false")
-	}
-
-	if len(out) != 2 {
-		t.Fatalf("expected dedup to keep 2 mentions, got %d", len(out))
-	}
-
-	if out[0].AtID != 0 {
-		t.Fatalf("expected AtID=0, got %d", out[0].AtID)
-	}
-}
-
-func TestCheckThisMentionValidity_OneOnOne_ThisMention(t *testing.T) {
-	if !checkThisMentionValidity(false, "this") {
-		t.Fatalf("expected true for 'this' in one-on-one chat")
-	}
-	if !checkThisMentionValidity(false, "@this") {
-		t.Fatalf("expected true for '@this' in one-on-one chat")
-	}
-}
-
-func TestCheckThisMentionValidity_OneOnOne_NonThisMention(t *testing.T) {
-	if checkThisMentionValidity(false, "alice") {
-		t.Fatalf("expected false for 'alice' in one-on-one chat")
-	}
-	if checkThisMentionValidity(false, "@alice") {
-		t.Fatalf("expected false for '@alice' in one-on-one chat")
-	}
-}
-
-func TestCheckThisMentionValidity_GroupChat(t *testing.T) {
-	if checkThisMentionValidity(true, "this") {
-		t.Fatalf("expected false for 'this' in group chat")
-	}
-	if checkThisMentionValidity(true, "@this") {
-		t.Fatalf("expected false for '@this' in group chat")
-	}
-}
-
-func TestCheckThisMentionValidity_GroupChat_NonThisMention(t *testing.T) {
-	if checkThisMentionValidity(true, "alice") {
-		t.Fatalf("expected false for 'alice' in group chat")
-	}
-	if checkThisMentionValidity(true, "@alice") {
-		t.Fatalf("expected false for '@alice' in group chat")
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := checkThisMentionValidity(tc.isGroup, tc.token)
+			assert.Equal(t, tc.want, got)
+		})
 	}
 }
