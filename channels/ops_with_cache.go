@@ -182,6 +182,10 @@ func (o *opsWithCache) RemoveMember(ctx context.Context, teamID, channelID, memb
 }
 
 func (o *opsWithCache) addChannelsToCache(teamID string, chans ...models.Channel) {
+	teamID = strings.TrimSpace(teamID)
+	if teamID == "" {
+		return
+	}
 	for _, ch := range chans {
 		name := strings.TrimSpace(ch.Name)
 		if name == "" {
@@ -193,19 +197,39 @@ func (o *opsWithCache) addChannelsToCache(teamID string, chans ...models.Channel
 }
 
 func (o *opsWithCache) removeChannelFromCache(teamID, channelRef string) {
-	key := cacher.NewChannelKey(teamID, strings.TrimSpace(channelRef))
+	teamID = strings.TrimSpace(teamID)
+	channelRef = strings.TrimSpace(channelRef)
+	if teamID == "" || channelRef == "" {
+		return
+	}
+	key := cacher.NewChannelKey(teamID, channelRef)
 	_ = o.cacheHandler.Cacher.Invalidate(key)
 }
 
 func (o *opsWithCache) addMembersToCache(teamID, channelID string, members ...models.Member) {
+	teamID = strings.TrimSpace(teamID)
+	channelID = strings.TrimSpace(channelID)
+	if teamID == "" || channelID == "" {
+		return
+	}
 	for _, m := range members {
-		key := cacher.NewChannelMemberKey(teamID, channelID, m.Email, nil)
+		email := strings.TrimSpace(m.Email)
+		if email == "" {
+			continue
+		}
+		key := cacher.NewChannelMemberKey(teamID, channelID, email, nil)
 		_ = o.cacheHandler.Cacher.Set(key, m.ID)
 	}
 }
 
 func (o *opsWithCache) removeMemberFromCache(teamID, channelID, userRef string) {
-	key := cacher.NewChannelMemberKey(teamID, channelID, strings.TrimSpace(userRef), nil)
+	teamID = strings.TrimSpace(teamID)
+	channelID = strings.TrimSpace(channelID)
+	userRef = strings.TrimSpace(userRef)
+	if teamID == "" || channelID == "" || userRef == "" {
+		return
+	}
+	key := cacher.NewChannelMemberKey(teamID, channelID, userRef, nil)
 	_ = o.cacheHandler.Cacher.Invalidate(key)
 }
 

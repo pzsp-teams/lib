@@ -196,13 +196,25 @@ func (o *opsWithCache) addTeamsToCache(teams ...models.Team) {
 }
 
 func (o *opsWithCache) removeTeamFromCache(teamRef string) {
+	teamRef = strings.TrimSpace(teamRef)
+	if teamRef == "" {
+		return
+	}
 	key := cacher.NewTeamKey(teamRef)
 	_ = o.cacheHandler.Cacher.Invalidate(key)
 }
 
 func (o *opsWithCache) addMembersToCache(teamID string, members ...models.Member) {
+	teamID = strings.TrimSpace(teamID)
+	if teamID == "" {
+		return
+	}
 	for _, member := range members {
-		key := cacher.NewTeamMemberKey(teamID, member.Email, nil)
+		email := strings.TrimSpace(member.Email)
+		if email == "" {
+			continue
+		}
+		key := cacher.NewTeamMemberKey(teamID, email, nil)
 		_ = o.cacheHandler.Cacher.Set(key, member.ID)
 	}
 }
