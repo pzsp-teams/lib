@@ -5,30 +5,49 @@ import (
 
 	"github.com/pzsp-teams/lib/internal/mentions"
 	"github.com/pzsp-teams/lib/models"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestIsTeamRef(t *testing.T) {
 	teamRef := "team-A"
 	teamID := "tid-1"
 
-	cases := []struct {
+	tests := []struct {
 		name string
 		low  string
 		raw  string
 		want bool
 	}{
-		{"keyword team", "team", "team", true},
-		{"match by ref", "team-a", teamRef, true},
-		{"match by id", "tid-1", teamID, true},
-		{"not match", "x", "x", false},
+		{
+			name: "keyword team",
+			low:  "team",
+			raw:  "team",
+			want: true,
+		},
+		{
+			name: "match by ref",
+			low:  "team-a",
+			raw:  teamRef,
+			want: true,
+		},
+		{
+			name: "match by id",
+			low:  "tid-1",
+			raw:  teamID,
+			want: true,
+		},
+		{
+			name: "not match",
+			low:  "x",
+			raw:  "x",
+			want: false,
+		},
 	}
 
-	for _, tc := range cases {
+	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			got := isTeamRef(tc.low, tc.raw, teamRef, teamID)
-			if got != tc.want {
-				t.Fatalf("got %v, want %v", got, tc.want)
-			}
+			assert.Equal(t, tc.want, got)
 		})
 	}
 }
@@ -37,122 +56,127 @@ func TestIsChannelRef(t *testing.T) {
 	channelRef := "General"
 	channelID := "cid-1"
 
-	cases := []struct {
+	tests := []struct {
 		name string
 		low  string
 		raw  string
 		want bool
 	}{
-		{"keyword channel", "channel", "channel", true},
-		{"match by ref", "general", channelRef, true},
-		{"match by id", "cid-1", channelID, true},
-		{"not match", "x", "x", false},
+		{
+			name: "keyword channel",
+			low:  "channel",
+			raw:  "channel",
+			want: true,
+		},
+		{
+			name: "match by ref",
+			low:  "general",
+			raw:  channelRef,
+			want: true,
+		},
+		{
+			name: "match by id",
+			low:  "cid-1",
+			raw:  channelID,
+			want: true,
+		},
+		{
+			name: "not match",
+			low:  "x",
+			raw:  "x",
+			want: false,
+		},
 	}
 
-	for _, tc := range cases {
+	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			got := isChannelRef(tc.low, tc.raw, channelRef, channelID)
-			if got != tc.want {
-				t.Fatalf("got %v, want %v", got, tc.want)
-			}
+			assert.Equal(t, tc.want, got)
 		})
 	}
 }
 
-func TestTryAddTeamOrChannelMention_AddsTeamByKeyword(t *testing.T) {
-	teamRef := "team-A"
-	teamID := "tid-1"
-	channelRef := "General"
-	channelID := "cid-1"
+func TestTryAddTeamOrChannelMention(t *testing.T) {
+	const (
+		defaultTeamRef    = "team-A"
+		defaultTeamID     = "tid-1"
+		defaultChannelRef = "General"
+		defaultChannelID  = "cid-1"
+	)
 
-	out := make([]models.Mention, 0)
-	adder := mentions.NewMentionAdder(&out)
+	tests := []struct {
+		name         string
+		token        string
+		teamRef      string 
+		channelRef   string
+		wantOK       bool
+		wantMentions []models.Mention
+	}{
+		{
+			name:  "Adds Team by keyword (uppercase input)",
+			token: "TEAM",
+			wantOK: true,
+			wantMentions: []models.Mention{
+				{
+					Kind:     models.MentionTeam,
+					TargetID: defaultTeamID,
+					Text:     defaultTeamRef,
+					AtID:     0,
+				},
+			},
+		},
+		{
+			name:  "Adds Channel by keyword (lowercase input)",
+			token: "channel",
+			wantOK: true,
+			wantMentions: []models.Mention{
+				{
+					Kind:     models.MentionChannel,
+					TargetID: defaultChannelID,
+					Text:     defaultChannelRef,
+				},
+			},
+		},
+		{
+			name:       "Team takes precedence over Channel when names collide",
+			token:      "team",
+			teamRef:    "my-team",
+			channelRef: "team",
+			wantOK:     true,
+			wantMentions: []models.Mention{
+				{
+					Kind:     models.MentionTeam,
+					TargetID: defaultTeamID,
+					Text:     "my-team",
+				},
+			},
+		},
+		{
+			name:         "Returns false and does not add mention when no match",
+			token:        "random",
+			wantOK:       false,
+			wantMentions: []models.Mention{}, 
+		},
+	}
 
-	ok := tryAddTeamOrChannelMention(adder, "TEAM", teamRef, teamID, channelRef, channelID)
-	if !ok {
-		t.Fatalf("expected ok=true")
-	}
-	if len(out) != 1 {
-		t.Fatalf("expected 1 mention, got %d", len(out))
-	}
-	m := out[0]
-	if m.Kind != models.MentionTeam {
-		t.Fatalf("expected kind=%q, got %q", models.MentionTeam, m.Kind)
-	}
-	if m.TargetID != teamID {
-		t.Fatalf("expected targetID=%q, got %q", teamID, m.TargetID)
-	}
-	if m.Text != teamRef {
-		t.Fatalf("expected text=%q, got %q", teamRef, m.Text)
-	}
-	if m.AtID != 0 {
-		t.Fatalf("expected AtID=0, got %d", m.AtID)
-	}
-}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tRef := defaultTeamRef
+			if tc.teamRef != "" {
+				tRef = tc.teamRef
+			}
+			cRef := defaultChannelRef
+			if tc.channelRef != "" {
+				cRef = tc.channelRef
+			}
 
-func TestTryAddTeamOrChannelMention_AddsChannelByKeyword(t *testing.T) {
-	teamRef := "team-A"
-	teamID := "tid-1"
-	channelRef := "General"
-	channelID := "cid-1"
+			out := make([]models.Mention, 0)
+			adder := mentions.NewMentionAdder(&out)
 
-	out := make([]models.Mention, 0)
-	adder := mentions.NewMentionAdder(&out)
+			gotOK := tryAddTeamOrChannelMention(adder, tc.token, tRef, defaultTeamID, cRef, defaultChannelID)
 
-	ok := tryAddTeamOrChannelMention(adder, "channel", teamRef, teamID, channelRef, channelID)
-	if !ok {
-		t.Fatalf("expected ok=true")
-	}
-	if len(out) != 1 {
-		t.Fatalf("expected 1 mention, got %d", len(out))
-	}
-	m := out[0]
-	if m.Kind != models.MentionChannel {
-		t.Fatalf("expected kind=%q, got %q", models.MentionChannel, m.Kind)
-	}
-	if m.TargetID != channelID {
-		t.Fatalf("expected targetID=%q, got %q", channelID, m.TargetID)
-	}
-	if m.Text != channelRef {
-		t.Fatalf("expected text=%q, got %q", channelRef, m.Text)
-	}
-}
-
-func TestTryAddTeamOrChannelMention_TeamTakesPrecedenceOverChannel(t *testing.T) {
-	teamRef := "my-team"
-	teamID := "tid-1"
-	channelRef := "team"
-	channelID := "cid-1"
-
-	out := make([]models.Mention, 0)
-	adder := mentions.NewMentionAdder(&out)
-
-	ok := tryAddTeamOrChannelMention(adder, "team", teamRef, teamID, channelRef, channelID)
-	if !ok {
-		t.Fatalf("expected ok=true")
-	}
-	if len(out) != 1 {
-		t.Fatalf("expected 1 mention, got %d", len(out))
-	}
-	if out[0].Kind != models.MentionTeam {
-		t.Fatalf("expected TEAM mention precedence, got %q", out[0].Kind)
-	}
-}
-
-func TestTryAddTeamOrChannelMention_ReturnsFalseAndDoesNotAdd(t *testing.T) {
-	teamRef := "team-A"
-	teamID := "tid-1"
-	channelRef := "General"
-	channelID := "cid-1"
-
-	out := make([]models.Mention, 0)
-	adder := mentions.NewMentionAdder(&out)
-
-	ok := tryAddTeamOrChannelMention(adder, "random", teamRef, teamID, channelRef, channelID)
-	if ok {
-		t.Fatalf("expected ok=false")
-	}
-	if len(out) != 0 {
-		t.Fatalf("expected no mentions added, got %d", len(out))
+			assert.Equal(t, tc.wantOK, gotOK, "Incorrect boolean return value")
+			assert.Equal(t, tc.wantMentions, out, "Mentions slice mismatch")
+		})
 	}
 }
