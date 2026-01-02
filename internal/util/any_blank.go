@@ -4,7 +4,7 @@ import (
 	"strings"
 )
 
-func CheckIfAnyStringIsBlank(strs ...string) bool {
+func AnyBlank(strs ...string) bool {
 	for _, str := range strs {
 		str = strings.TrimSpace(str)
 		if str == "" {
