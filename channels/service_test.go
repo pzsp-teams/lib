@@ -45,8 +45,15 @@ func newSUT(t *testing.T, setup func(d sutDeps)) (Service, context.Context) {
 	return NewService(opsMock, trMock, crMock, usersMock), context.Background()
 }
 
-func expectResolveTeamAndChannel(t *testing.T, d sutDeps, teamRef, teamID, channelRef, channelID string) {
+func expectResolveTeamAndChannel(t *testing.T, d sutDeps) {
 	t.Helper()
+
+	const (
+		teamRef    = "TeamA"
+		teamID     = "team-id"
+		channelRef = "ChanA"
+		channelID  = "chan-id"
+	)
 
 	d.teamResolver.EXPECT().
 		ResolveTeamRefToID(gomock.Any(), teamRef).
@@ -155,7 +162,7 @@ func TestService_Get(t *testing.T) {
 		{
 			name: "success resolves team+channel and gets channel",
 			setupMocks: func(d sutDeps) {
-				expectResolveTeamAndChannel(t, d, "TeamA", "team-id", "ChanA", "chan-id")
+				expectResolveTeamAndChannel(t, d)
 
 				d.ops.EXPECT().
 					GetChannelByID(gomock.Any(), "team-id", "chan-id").
@@ -191,7 +198,7 @@ func TestService_Get(t *testing.T) {
 		{
 			name: "maps ops error",
 			setupMocks: func(d sutDeps) {
-				expectResolveTeamAndChannel(t, d, "TeamA", "team-id", "ChanA", "chan-id")
+				expectResolveTeamAndChannel(t, d)
 
 				d.ops.EXPECT().
 					GetChannelByID(gomock.Any(), "team-id", "chan-id").
@@ -277,7 +284,7 @@ func TestService_Delete(t *testing.T) {
 		{
 			name: "success passes channelRef to ops",
 			setup: func(d sutDeps) {
-				expectResolveTeamAndChannel(t, d, "TeamA", "team-id", "ChanA", "chan-id")
+				expectResolveTeamAndChannel(t, d)
 
 				d.ops.EXPECT().
 					DeleteChannel(gomock.Any(), "team-id", "chan-id", "ChanA").
@@ -288,7 +295,7 @@ func TestService_Delete(t *testing.T) {
 		{
 			name: "maps ops error",
 			setup: func(d sutDeps) {
-				expectResolveTeamAndChannel(t, d, "TeamA", "team-id", "ChanA", "chan-id")
+				expectResolveTeamAndChannel(t, d)
 
 				d.ops.EXPECT().
 					DeleteChannel(gomock.Any(), "team-id", "chan-id", "ChanA").
@@ -323,7 +330,7 @@ func TestService_SendMessage(t *testing.T) {
 	body := models.MessageBody{Content: "hi", ContentType: models.MessageContentTypeText}
 
 	svc, ctx := newSUT(t, func(d sutDeps) {
-		expectResolveTeamAndChannel(t, d, "TeamA", "team-id", "ChanA", "chan-id")
+		expectResolveTeamAndChannel(t, d)
 
 		d.ops.EXPECT().
 			SendMessage(gomock.Any(), "team-id", "chan-id", body).
@@ -341,7 +348,7 @@ func TestService_SendReply(t *testing.T) {
 	body := models.MessageBody{Content: "reply", ContentType: models.MessageContentTypeText}
 
 	svc, ctx := newSUT(t, func(d sutDeps) {
-		expectResolveTeamAndChannel(t, d, "TeamA", "team-id", "ChanA", "chan-id")
+		expectResolveTeamAndChannel(t, d)
 
 		d.ops.EXPECT().
 			SendReply(gomock.Any(), "team-id", "chan-id", "msg-1", body).
@@ -360,7 +367,7 @@ func TestService_ListMessages(t *testing.T) {
 	opts := &models.ListMessagesOptions{Top: &top}
 
 	svc, ctx := newSUT(t, func(d sutDeps) {
-		expectResolveTeamAndChannel(t, d, "TeamA", "team-id", "ChanA", "chan-id")
+		expectResolveTeamAndChannel(t, d)
 
 		d.ops.EXPECT().
 			ListMessages(gomock.Any(), "team-id", "chan-id", opts).
@@ -377,7 +384,7 @@ func TestService_ListReplies_PassesTopInOptions(t *testing.T) {
 	top := int32(10)
 
 	svc, ctx := newSUT(t, func(d sutDeps) {
-		expectResolveTeamAndChannel(t, d, "TeamA", "team-id", "ChanA", "chan-id")
+		expectResolveTeamAndChannel(t, d)
 
 		d.ops.EXPECT().
 			ListReplies(gomock.Any(), "team-id", "chan-id", "msg-1", gomock.Any()).
@@ -397,7 +404,7 @@ func TestService_ListReplies_PassesTopInOptions(t *testing.T) {
 
 func TestService_GetMessage(t *testing.T) {
 	svc, ctx := newSUT(t, func(d sutDeps) {
-		expectResolveTeamAndChannel(t, d, "TeamA", "team-id", "ChanA", "chan-id")
+		expectResolveTeamAndChannel(t, d)
 
 		d.ops.EXPECT().
 			GetMessage(gomock.Any(), "team-id", "chan-id", "m1").
@@ -413,7 +420,7 @@ func TestService_GetMessage(t *testing.T) {
 
 func TestService_GetReply(t *testing.T) {
 	svc, ctx := newSUT(t, func(d sutDeps) {
-		expectResolveTeamAndChannel(t, d, "TeamA", "team-id", "ChanA", "chan-id")
+		expectResolveTeamAndChannel(t, d)
 
 		d.ops.EXPECT().
 			GetReply(gomock.Any(), "team-id", "chan-id", "m1", "r1").
@@ -429,7 +436,7 @@ func TestService_GetReply(t *testing.T) {
 
 func TestService_ListMembers(t *testing.T) {
 	svc, ctx := newSUT(t, func(d sutDeps) {
-		expectResolveTeamAndChannel(t, d, "TeamA", "team-id", "ChanA", "chan-id")
+		expectResolveTeamAndChannel(t, d)
 
 		d.ops.EXPECT().
 			ListMembers(gomock.Any(), "team-id", "chan-id").
@@ -444,7 +451,7 @@ func TestService_ListMembers(t *testing.T) {
 
 func TestService_AddMember(t *testing.T) {
 	svc, ctx := newSUT(t, func(d sutDeps) {
-		expectResolveTeamAndChannel(t, d, "TeamA", "team-id", "ChanA", "chan-id")
+		expectResolveTeamAndChannel(t, d)
 
 		d.ops.EXPECT().
 			AddMember(gomock.Any(), "team-id", "chan-id", "user@x.com", true).
@@ -460,7 +467,7 @@ func TestService_AddMember(t *testing.T) {
 
 func TestService_UpdateMemberRoles_ResolvesMemberID(t *testing.T) {
 	svc, ctx := newSUT(t, func(d sutDeps) {
-		expectResolveTeamAndChannel(t, d, "TeamA", "team-id", "ChanA", "chan-id")
+		expectResolveTeamAndChannel(t, d)
 
 		d.channelResolver.EXPECT().
 			ResolveChannelMemberRefToID(gomock.Any(), "team-id", "chan-id", "user@x.com").
@@ -481,7 +488,7 @@ func TestService_UpdateMemberRoles_ResolvesMemberID(t *testing.T) {
 
 func TestService_RemoveMember_ResolvesMemberIDAndPassesUserRef(t *testing.T) {
 	svc, ctx := newSUT(t, func(d sutDeps) {
-		expectResolveTeamAndChannel(t, d, "TeamA", "team-id", "ChanA", "chan-id")
+		expectResolveTeamAndChannel(t, d)
 
 		d.channelResolver.EXPECT().
 			ResolveChannelMemberRefToID(gomock.Any(), "team-id", "chan-id", "user@x.com").
@@ -513,7 +520,7 @@ func TestService_GetMentions(t *testing.T) {
 			name: "resolves user, team, channel and skips blanks",
 			raw:  []string{"  ", "alice@example.com", "team", "channel", "alice@example.com"},
 			setupMocks: func(d sutDeps) {
-				expectResolveTeamAndChannel(t, d, "TeamA", "team-id", "ChanA", "chan-id")
+				expectResolveTeamAndChannel(t, d)
 
 				u := msmodels.NewUser()
 				u.SetId(util.Ptr("u-1"))
@@ -557,7 +564,7 @@ func TestService_GetMentions(t *testing.T) {
 			name: "unknown ref returns error",
 			raw:  []string{"something-else"},
 			setupMocks: func(d sutDeps) {
-				expectResolveTeamAndChannel(t, d, "TeamA", "team-id", "ChanA", "chan-id")
+				expectResolveTeamAndChannel(t, d)
 			},
 			wantErr: true,
 		},
@@ -565,7 +572,7 @@ func TestService_GetMentions(t *testing.T) {
 			name: "user api error is propagated",
 			raw:  []string{"alice@example.com"},
 			setupMocks: func(d sutDeps) {
-				expectResolveTeamAndChannel(t, d, "TeamA", "team-id", "ChanA", "chan-id")
+				expectResolveTeamAndChannel(t, d)
 
 				d.usersAPI.EXPECT().
 					GetUserByEmailOrUPN(gomock.Any(), "alice@example.com").

@@ -8,13 +8,11 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-
 type unknownChatRef struct{}
 
 func (u unknownChatRef) chatRef() {}
 
 func TestIsGroupChatRef(t *testing.T) {
-
 	tests := []struct {
 		name      string
 		chatRef   any
@@ -61,23 +59,23 @@ func TestTryAddEveryoneMention(t *testing.T) {
 	tests := []struct {
 		name         string
 		isGroup      bool
-		inputs       []string 
+		inputs       []string
 		wantOK       bool
 		wantErr      bool
 		wantMentions []models.Mention
 	}{
 		{
-			name:    "Not everyone mention returns false and no error",
-			isGroup: true,
-			inputs:  []string{"alice@example.com"},
-			wantOK:  false,
-			wantErr: false,
+			name:         "Not everyone mention returns false and no error",
+			isGroup:      true,
+			inputs:       []string{"alice@example.com"},
+			wantOK:       false,
+			wantErr:      false,
 			wantMentions: []models.Mention{},
 		},
 		{
 			name:    "Group chat adds everyone mention",
 			isGroup: true,
-			inputs:  []string{"  @Everyone  "}, 
+			inputs:  []string{"  @Everyone  "},
 			wantOK:  true,
 			wantErr: false,
 			wantMentions: []models.Mention{
@@ -90,11 +88,11 @@ func TestTryAddEveryoneMention(t *testing.T) {
 			},
 		},
 		{
-			name:    "OneOnOne chat returns error for everyone mention",
-			isGroup: false,
-			inputs:  []string{"everyone"},
-			wantOK:  false,
-			wantErr: true,
+			name:         "OneOnOne chat returns error for everyone mention",
+			isGroup:      false,
+			inputs:       []string{"everyone"},
+			wantOK:       false,
+			wantErr:      true,
 			wantMentions: []models.Mention{},
 		},
 		{
@@ -120,7 +118,7 @@ func TestTryAddEveryoneMention(t *testing.T) {
 
 			for _, token := range tc.inputs {
 				lastOK, lastErr = tryAddEveryoneMention(adder, chatID, tc.isGroup, token)
-				
+
 				if lastErr != nil {
 					break
 				}
@@ -156,7 +154,7 @@ func TestCheckThisMentionValidity(t *testing.T) {
 		{"OneOnOne with '@this'", false, "@this", true},
 		{"OneOnOne with other name", false, "alice", false},
 		{"OneOnOne with other handle", false, "@alice", false},
-		
+
 		{"GroupChat with 'this'", true, "this", false},
 		{"GroupChat with '@this'", true, "@this", false},
 		{"GroupChat with other name", true, "alice", false},
