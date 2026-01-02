@@ -220,6 +220,11 @@ func (o *opsWithCache) addMembersToCache(teamID string, members ...models.Member
 }
 
 func (o *opsWithCache) removeMemberFromCache(teamID, userRef string) {
+	teamID = strings.TrimSpace(teamID)
+	userRef = strings.TrimSpace(userRef)
+	if teamID == "" || userRef == "" {
+		return
+	}
 	key := cacher.NewTeamMemberKey(teamID, userRef, nil)
 	_ = o.cacheHandler.Cacher.Invalidate(key)
 }
