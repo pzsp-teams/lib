@@ -19,7 +19,7 @@ type TeamResolver interface {
 	// If the reference already appears to be an team ID,
 	// it may be returned directly.
 	ResolveTeamRefToID(ctx context.Context, teamRef string) (string, error)
-	
+
 	// ResolveTeamMemberRefToID resolves a user reference (email or ID) to a member ID within the specified team.
 	//
 	// If the reference already appears to be a member ID,

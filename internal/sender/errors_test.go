@@ -24,19 +24,19 @@ func TestErrData(t *testing.T) {
 	}{
 		{
 			name: "empty map",
-			ed:   ErrData{ResourceRefs: map[resources.Resource]string{}},
+			ed:   ErrData{ResourceRefs: map[resources.Resource][]string{}},
 			want: []string{},
 		},
 		{
 			name: "single entry",
-			ed:   ErrData{ResourceRefs: map[resources.Resource]string{resources.Team: "z1"}},
+			ed:   ErrData{ResourceRefs: map[resources.Resource][]string{resources.Team: {"z1"}}},
 			want: []string{"TEAM(z1)"},
 		},
 		{
 			name: "multiple entries",
-			ed: ErrData{ResourceRefs: map[resources.Resource]string{
-				resources.Team:    "z1",
-				resources.Channel: "general",
+			ed: ErrData{ResourceRefs: map[resources.Resource][]string{
+				resources.Team:    {"z1"},
+				resources.Channel: {"general"},
 			}},
 			want: []string{"TEAM(z1)", "CHANNEL(general)"},
 		},
@@ -58,8 +58,8 @@ func TestErrAccessForbidden(t *testing.T) {
 	e := ErrAccessForbidden{
 		Code:            http.StatusForbidden,
 		OriginalMessage: "Bad scopes",
-		ErrData: ErrData{ResourceRefs: map[resources.Resource]string{
-			resources.Team: "z1",
+		ErrData: ErrData{ResourceRefs: map[resources.Resource][]string{
+			resources.Team: {"z1"},
 		}},
 	}
 
@@ -76,8 +76,8 @@ func TestErrResourceNotFound_Table(t *testing.T) {
 	e := ErrResourceNotFound{
 		Code:            http.StatusNotFound,
 		OriginalMessage: "Bad scopes",
-		ErrData: ErrData{ResourceRefs: map[resources.Resource]string{
-			resources.Channel: "general",
+		ErrData: ErrData{ResourceRefs: map[resources.Resource][]string{
+			resources.Channel: {"general"},
 		}},
 	}
 

@@ -22,13 +22,14 @@ func WithResources(resType resources.Resource, resRefs []string) Option {
 		if data.ResourceRefs == nil {
 			data.ResourceRefs = make(map[resources.Resource][]string)
 		}
-		for _, ref := range resRefs {
-			data.ResourceRefs[resType] = append(data.ResourceRefs[resType], ref)
-		}
+		data.ResourceRefs[resType] = append(data.ResourceRefs[resType], resRefs...)
 	}
 }
 
 func MapError(e *RequestError, opts ...Option) error {
+	if e == nil {
+		return nil
+	}
 	data := ErrData{}
 	for _, opt := range opts {
 		opt(&data)
@@ -45,4 +46,3 @@ func MapError(e *RequestError, opts ...Option) error {
 		return &c
 	}
 }
-

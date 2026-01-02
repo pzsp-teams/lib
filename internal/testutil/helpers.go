@@ -1,9 +1,13 @@
 package testutil
 
 import (
+	"errors"
+	"testing"
 	"time"
 
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
+	sender "github.com/pzsp-teams/lib/internal/sender"
+	"github.com/stretchr/testify/require"
 )
 
 // TEAM UTILS
@@ -176,4 +180,39 @@ func NewGraphMessage(params *NewMessageParams) msmodels.ChatMessageable {
 	}
 
 	return graphMessage
+}
+
+func RequireWrapped(t *testing.T, err error) *sender.OpError {
+	t.Helper()
+	require.Error(t, err)
+
+	var opErr *sender.OpError
+	require.ErrorAs(t, err, &opErr)
+	return opErr
+}
+
+func RequireReqErrCode(t *testing.T, err error, wantCode int) {
+	t.Helper()
+	_ = RequireWrapped(t, err)
+
+	var re *sender.RequestError
+	if errors.As(err, &re) {
+		require.Equal(t, wantCode, re.Code)
+		return
+	}
+
+	var forbidden *sender.ErrAccessForbidden
+	if errors.As(err, &forbidden) {
+		require.Equal(t, wantCode, 403)
+		return
+	}
+
+	var notFound *sender.ErrResourceNotFound
+	if errors.As(err, &notFound) {
+		require.Equal(t, wantCode, 404)
+		return
+	}
+
+	t.Fatalf("expected error with code=%d (RequestError/ErrAccessForbidden/ErrResourceNotFound), got: %T: %v",
+		wantCode, err, err)
 }

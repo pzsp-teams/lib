@@ -17,7 +17,7 @@ import (
 )
 
 type ops struct {
-	userAPI   api.UserAPI
+	userAPI    api.UserAPI
 	channelAPI api.ChannelAPI
 }
 
@@ -27,8 +27,6 @@ func NewOps(channelAPI api.ChannelAPI, userAPI api.UserAPI) channelOps {
 		userAPI:    userAPI,
 	}
 }
-
-
 
 func (o *ops) ListChannelsByTeamID(ctx context.Context, teamID string) ([]*models.Channel, error) {
 	resp, requestErr := o.channelAPI.ListChannels(ctx, teamID)
@@ -114,9 +112,9 @@ func (o *ops) GetMessage(ctx context.Context, teamID, channelID, messageID strin
 	resp, requestErr := o.channelAPI.GetMessage(ctx, teamID, channelID, messageID)
 	if requestErr != nil {
 		return nil, snd.MapError(
-			requestErr, 
+			requestErr,
 			snd.WithResource(resources.Team, teamID),
-			snd.WithResource(resources.Channel, channelID), 
+			snd.WithResource(resources.Channel, channelID),
 			snd.WithResource(resources.Message, messageID),
 		)
 	}
@@ -131,9 +129,9 @@ func (o *ops) ListReplies(ctx context.Context, teamID, channelID, messageID stri
 	resp, requestErr := o.channelAPI.ListReplies(ctx, teamID, channelID, messageID, top)
 	if requestErr != nil {
 		return nil, snd.MapError(
-			requestErr, 
+			requestErr,
 			snd.WithResource(resources.Team, teamID),
-			snd.WithResource(resources.Channel, channelID), 
+			snd.WithResource(resources.Channel, channelID),
 			snd.WithResource(resources.Message, messageID),
 		)
 	}
@@ -144,9 +142,9 @@ func (o *ops) GetReply(ctx context.Context, teamID, channelID, messageID, replyI
 	resp, requestErr := o.channelAPI.GetReply(ctx, teamID, channelID, messageID, replyID)
 	if requestErr != nil {
 		return nil, snd.MapError(
-			requestErr, 
+			requestErr,
 			snd.WithResource(resources.Team, teamID),
-			snd.WithResource(resources.Channel, channelID), 
+			snd.WithResource(resources.Channel, channelID),
 			snd.WithResource(resources.Message, messageID),
 			snd.WithResource(resources.Message, replyID),
 		)

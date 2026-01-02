@@ -221,7 +221,7 @@ func (o *opsWithCache) removeMemberFromCache(teamID, channelID, userRef string) 
 	_ = o.cacheHandler.Cacher.Invalidate(key)
 }
 
-func (o *opsWithCache) GetMentions(ctx context.Context, teamID, teamRef, channelRef string, channelID string, rawMentions []string) ([]models.Mention, error) {
+func (o *opsWithCache) GetMentions(ctx context.Context, teamID, teamRef, channelRef, channelID string, rawMentions []string) ([]models.Mention, error) {
 	return cacher.WithErrorClear(func() ([]models.Mention, error) {
 		return o.chanOps.GetMentions(ctx, teamID, teamRef, channelRef, channelID, rawMentions)
 	}, o.cacheHandler)

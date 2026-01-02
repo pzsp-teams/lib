@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	gomock "github.com/golang/mock/gomock"
+	"github.com/golang/mock/gomock"
 	sender "github.com/pzsp-teams/lib/internal/sender"
 	"github.com/pzsp-teams/lib/internal/testutil"
 	"github.com/pzsp-teams/lib/models"
@@ -49,17 +49,26 @@ func TestService_ListMyJoined(t *testing.T) {
 					{ID: "1", DisplayName: "Alpha"},
 					{ID: "2", DisplayName: "Beta"},
 				}
-
-				d.ops.EXPECT().
-					ListMyJoinedTeams(gomock.Any()).
-					Return(teams, nil).
-					Times(1)
+				d.ops.EXPECT().ListMyJoinedTeams(gomock.Any()).Return(teams, nil).Times(1)
 			},
 			assertFn: func(t *testing.T, got []*models.Team, err error) {
 				require.NoError(t, err)
 				require.Len(t, got, 2)
 				assert.Equal(t, "1", got[0].ID)
 				assert.Equal(t, "Beta", got[1].DisplayName)
+			},
+		},
+		{
+			name: "wraps api error (403)",
+			setupMocks: func(d sutDeps) {
+				d.ops.EXPECT().
+					ListMyJoinedTeams(gomock.Any()).
+					Return(nil, &sender.RequestError{Code: 403, Message: "nope"}).
+					Times(1)
+			},
+			assertFn: func(t *testing.T, got []*models.Team, err error) {
+				require.Nil(t, got)
+				testutil.RequireReqErrCode(t, err, 403)
 			},
 		},
 	}
@@ -71,31 +80,17 @@ func TestService_ListMyJoined(t *testing.T) {
 			tc.assertFn(t, got, err)
 		})
 	}
-
-	t.Run("maps api error", func(t *testing.T) {
-		svc, ctx := newSUT(t, func(d sutDeps) {
-			d.ops.EXPECT().
-				ListMyJoinedTeams(gomock.Any()).
-				Return(nil, &sender.RequestError{Code: 403, Message: "nope"}).
-				Times(1)
-		})
-
-		_, err := svc.ListMyJoined(ctx)
-		require.Error(t, err)
-
-		var forbidden sender.ErrAccessForbidden
-		require.ErrorAs(t, err, &forbidden)
-	})
 }
 
 func TestService_Get(t *testing.T) {
 	type testCase struct {
-		name       string
-		teamRef    string
-		setupMocks func(d sutDeps)
-		wantID     string
-		wantName   string
-		wantErrAs  any
+		name        string
+		teamRef     string
+		setupMocks  func(d sutDeps)
+		wantID      string
+		wantName    string
+		wantReqCode int
+		wantAnyErr  bool
 	}
 
 	testCases := []testCase{
@@ -117,7 +112,7 @@ func TestService_Get(t *testing.T) {
 			wantName: "X",
 		},
 		{
-			name:    "resolver error is propagated",
+			name:    "resolver error is wrapped",
 			teamRef: "team-x",
 			setupMocks: func(d sutDeps) {
 				d.resolver.EXPECT().
@@ -125,10 +120,10 @@ func TestService_Get(t *testing.T) {
 					Return("", errors.New("boom")).
 					Times(1)
 			},
-			wantErrAs: new(error),
+			wantAnyErr: true,
 		},
 		{
-			name:    "api error is mapped",
+			name:    "wraps api error (404)",
 			teamRef: "missing-team",
 			setupMocks: func(d sutDeps) {
 				d.resolver.EXPECT().
@@ -141,7 +136,7 @@ func TestService_Get(t *testing.T) {
 					Return(nil, &sender.RequestError{Code: 404, Message: "no such team"}).
 					Times(1)
 			},
-			wantErrAs: new(sender.ErrResourceNotFound),
+			wantReqCode: 404,
 		},
 	}
 
@@ -151,15 +146,13 @@ func TestService_Get(t *testing.T) {
 
 			got, err := svc.Get(ctx, tc.teamRef)
 
-			if tc.wantErrAs != nil {
-				require.Error(t, err)
-				switch target := tc.wantErrAs.(type) {
-				case *sender.ErrResourceNotFound:
-					require.ErrorAs(t, err, target)
-				case *error:
-				default:
-					t.Fatalf("unsupported wantErrAs type: %T", tc.wantErrAs)
-				}
+			if tc.wantReqCode != 0 {
+				require.Nil(t, got)
+				testutil.RequireReqErrCode(t, err, tc.wantReqCode)
+				return
+			}
+			if tc.wantAnyErr {
+				_ = testutil.RequireWrapped(t, err)
 				return
 			}
 
@@ -173,10 +166,11 @@ func TestService_Get(t *testing.T) {
 
 func TestService_Delete(t *testing.T) {
 	type testCase struct {
-		name       string
-		teamRef    string
-		setupMocks func(d sutDeps)
-		wantErrAs  any
+		name        string
+		teamRef     string
+		setupMocks  func(d sutDeps)
+		wantReqCode int
+		wantAnyErr  bool
 	}
 
 	testCases := []testCase{
@@ -196,7 +190,7 @@ func TestService_Delete(t *testing.T) {
 			},
 		},
 		{
-			name:    "maps forbidden",
+			name:    "wraps forbidden (403)",
 			teamRef: "MyTeam",
 			setupMocks: func(d sutDeps) {
 				d.resolver.EXPECT().
@@ -209,10 +203,10 @@ func TestService_Delete(t *testing.T) {
 					Return(&sender.RequestError{Code: 403, Message: "nope"}).
 					Times(1)
 			},
-			wantErrAs: new(sender.ErrAccessForbidden),
+			wantReqCode: 403,
 		},
 		{
-			name:    "resolver error is propagated",
+			name:    "resolver error is wrapped",
 			teamRef: "MyTeam",
 			setupMocks: func(d sutDeps) {
 				d.resolver.EXPECT().
@@ -220,7 +214,7 @@ func TestService_Delete(t *testing.T) {
 					Return("", errors.New("resolver boom")).
 					Times(1)
 			},
-			wantErrAs: new(error),
+			wantAnyErr: true,
 		},
 	}
 
@@ -230,41 +224,37 @@ func TestService_Delete(t *testing.T) {
 
 			err := svc.Delete(ctx, tc.teamRef)
 
-			if tc.wantErrAs == nil {
-				require.NoError(t, err)
+			if tc.wantReqCode != 0 {
+				testutil.RequireReqErrCode(t, err, tc.wantReqCode)
 				return
 			}
-
-			require.Error(t, err)
-			switch target := tc.wantErrAs.(type) {
-			case *sender.ErrAccessForbidden:
-				require.ErrorAs(t, err, target)
-			case *error:
-			default:
-				t.Fatalf("unsupported wantErrAs type: %T", tc.wantErrAs)
+			if tc.wantAnyErr {
+				_ = testutil.RequireWrapped(t, err)
+				return
 			}
+			require.NoError(t, err)
 		})
 	}
 }
 
 func TestService_CreateViaGroup(t *testing.T) {
 	type testCase struct {
-		name       string
-		setupMocks func(d sutDeps)
-		wantErrAs  any
-		wantID     string
+		name        string
+		setupMocks  func(d sutDeps)
+		wantReqCode int
+		wantID      string
 	}
 
 	testCases := []testCase{
 		{
-			name: "maps create error",
+			name: "wraps create error (403)",
 			setupMocks: func(d sutDeps) {
 				d.ops.EXPECT().
 					CreateViaGroup(gomock.Any(), "X", "x", "public").
 					Return(nil, &sender.RequestError{Code: 403, Message: "nope"}).
 					Times(1)
 			},
-			wantErrAs: new(sender.ErrAccessForbidden),
+			wantReqCode: 403,
 		},
 		{
 			name: "success maps team",
@@ -284,14 +274,9 @@ func TestService_CreateViaGroup(t *testing.T) {
 
 			got, err := svc.CreateViaGroup(ctx, "X", "x", "public")
 
-			if tc.wantErrAs != nil {
-				require.Error(t, err)
-				switch target := tc.wantErrAs.(type) {
-				case *sender.ErrAccessForbidden:
-					require.ErrorAs(t, err, target)
-				default:
-					t.Fatalf("unsupported wantErrAs type: %T", tc.wantErrAs)
-				}
+			if tc.wantReqCode != 0 {
+				require.Nil(t, got)
+				testutil.RequireReqErrCode(t, err, tc.wantReqCode)
 				return
 			}
 
@@ -304,10 +289,10 @@ func TestService_CreateViaGroup(t *testing.T) {
 
 func TestService_CreateFromTemplate(t *testing.T) {
 	type testCase struct {
-		name       string
-		setupMocks func(d sutDeps)
-		wantID     string
-		wantErrAs  any
+		name        string
+		setupMocks  func(d sutDeps)
+		wantID      string
+		wantReqCode int
 	}
 
 	testCases := []testCase{
@@ -322,14 +307,15 @@ func TestService_CreateFromTemplate(t *testing.T) {
 			wantID: "tmpl-123",
 		},
 		{
-			name: "maps error",
+			name: "wraps error (403) and returns empty id",
 			setupMocks: func(d sutDeps) {
 				d.ops.EXPECT().
 					CreateFromTemplate(gomock.Any(), "Tpl", "Desc", gomock.Any()).
 					Return("", &sender.RequestError{Code: 403, Message: "nope"}).
 					Times(1)
 			},
-			wantErrAs: new(sender.ErrAccessForbidden),
+			wantID:      "",
+			wantReqCode: 403,
 		},
 	}
 
@@ -339,14 +325,9 @@ func TestService_CreateFromTemplate(t *testing.T) {
 
 			got, err := svc.CreateFromTemplate(ctx, "Tpl", "Desc", nil)
 
-			if tc.wantErrAs != nil {
-				require.Error(t, err)
-				switch target := tc.wantErrAs.(type) {
-				case *sender.ErrAccessForbidden:
-					require.ErrorAs(t, err, target)
-				default:
-					t.Fatalf("unsupported wantErrAs type: %T", tc.wantErrAs)
-				}
+			if tc.wantReqCode != 0 {
+				assert.Equal(t, tc.wantID, got)
+				testutil.RequireReqErrCode(t, err, tc.wantReqCode)
 				return
 			}
 
@@ -357,41 +338,30 @@ func TestService_CreateFromTemplate(t *testing.T) {
 }
 
 func TestService_Archive(t *testing.T) {
-	type testCase struct {
-		name       string
-		setupMocks func(d sutDeps)
-		wantErrAs  any
-	}
-
 	readOnly := false
+
+	type testCase struct {
+		name        string
+		setupMocks  func(d sutDeps)
+		wantReqCode int
+	}
 
 	testCases := []testCase{
 		{
 			name: "success",
 			setupMocks: func(d sutDeps) {
-				d.resolver.EXPECT().
-					ResolveTeamRefToID(gomock.Any(), "T1").
-					Return("team-id", nil).
-					Times(1)
-				d.ops.EXPECT().
-					Archive(gomock.Any(), "team-id", "T1", &readOnly).
-					Return(nil).
-					Times(1)
+				d.resolver.EXPECT().ResolveTeamRefToID(gomock.Any(), "T1").Return("team-id", nil).Times(1)
+				d.ops.EXPECT().Archive(gomock.Any(), "team-id", "T1", &readOnly).Return(nil).Times(1)
 			},
 		},
 		{
-			name: "maps forbidden",
+			name: "wraps forbidden (403)",
 			setupMocks: func(d sutDeps) {
-				d.resolver.EXPECT().
-					ResolveTeamRefToID(gomock.Any(), "T1").
-					Return("team-id", nil).
-					Times(1)
-				d.ops.EXPECT().
-					Archive(gomock.Any(), "team-id", "T1", &readOnly).
-					Return(&sender.RequestError{Code: 403, Message: "nope"}).
-					Times(1)
+				d.resolver.EXPECT().ResolveTeamRefToID(gomock.Any(), "T1").Return("team-id", nil).Times(1)
+				d.ops.EXPECT().Archive(gomock.Any(), "team-id", "T1", &readOnly).
+					Return(&sender.RequestError{Code: 403, Message: "nope"}).Times(1)
 			},
-			wantErrAs: new(sender.ErrAccessForbidden),
+			wantReqCode: 403,
 		},
 	}
 
@@ -401,56 +371,38 @@ func TestService_Archive(t *testing.T) {
 
 			err := svc.Archive(ctx, "T1", &readOnly)
 
-			if tc.wantErrAs == nil {
-				require.NoError(t, err)
+			if tc.wantReqCode != 0 {
+				testutil.RequireReqErrCode(t, err, tc.wantReqCode)
 				return
 			}
-
-			require.Error(t, err)
-			switch target := tc.wantErrAs.(type) {
-			case *sender.ErrAccessForbidden:
-				require.ErrorAs(t, err, target)
-			default:
-				t.Fatalf("unsupported wantErrAs type: %T", tc.wantErrAs)
-			}
+			require.NoError(t, err)
 		})
 	}
 }
 
 func TestService_Unarchive(t *testing.T) {
 	type testCase struct {
-		name       string
-		setupMocks func(d sutDeps)
-		wantErrAs  any
+		name        string
+		setupMocks  func(d sutDeps)
+		wantReqCode int
 	}
 
 	testCases := []testCase{
 		{
 			name: "success",
 			setupMocks: func(d sutDeps) {
-				d.resolver.EXPECT().
-					ResolveTeamRefToID(gomock.Any(), "T1").
-					Return("team-id", nil).
-					Times(1)
-				d.ops.EXPECT().
-					Unarchive(gomock.Any(), "team-id").
-					Return(nil).
-					Times(1)
+				d.resolver.EXPECT().ResolveTeamRefToID(gomock.Any(), "T1").Return("team-id", nil).Times(1)
+				d.ops.EXPECT().Unarchive(gomock.Any(), "team-id").Return(nil).Times(1)
 			},
 		},
 		{
-			name: "maps forbidden",
+			name: "wraps forbidden (403)",
 			setupMocks: func(d sutDeps) {
-				d.resolver.EXPECT().
-					ResolveTeamRefToID(gomock.Any(), "T1").
-					Return("team-id", nil).
-					Times(1)
-				d.ops.EXPECT().
-					Unarchive(gomock.Any(), "team-id").
-					Return(&sender.RequestError{Code: 403, Message: "nope"}).
-					Times(1)
+				d.resolver.EXPECT().ResolveTeamRefToID(gomock.Any(), "T1").Return("team-id", nil).Times(1)
+				d.ops.EXPECT().Unarchive(gomock.Any(), "team-id").
+					Return(&sender.RequestError{Code: 403, Message: "nope"}).Times(1)
 			},
-			wantErrAs: new(sender.ErrAccessForbidden),
+			wantReqCode: 403,
 		},
 	}
 
@@ -460,29 +412,21 @@ func TestService_Unarchive(t *testing.T) {
 
 			err := svc.Unarchive(ctx, "T1")
 
-			if tc.wantErrAs == nil {
-				require.NoError(t, err)
+			if tc.wantReqCode != 0 {
+				testutil.RequireReqErrCode(t, err, tc.wantReqCode)
 				return
 			}
-
-			require.Error(t, err)
-			switch target := tc.wantErrAs.(type) {
-			case *sender.ErrAccessForbidden:
-				require.ErrorAs(t, err, target)
-			default:
-				t.Fatalf("unsupported wantErrAs type: %T", tc.wantErrAs)
-			}
+			require.NoError(t, err)
 		})
 	}
 }
 
 func TestService_RestoreDeleted(t *testing.T) {
 	type testCase struct {
-		name       string
-		setupMocks func(d sutDeps)
-		wantID     string
-		wantErrAs  any
-		wantErr    bool
+		name        string
+		setupMocks  func(d sutDeps)
+		wantID      string
+		wantReqCode int
 	}
 
 	testCases := []testCase{
@@ -497,24 +441,24 @@ func TestService_RestoreDeleted(t *testing.T) {
 			wantID: "restored-id",
 		},
 		{
-			name: "maps not found",
+			name: "wraps not found (404)",
 			setupMocks: func(d sutDeps) {
 				d.ops.EXPECT().
 					RestoreDeletedTeam(gomock.Any(), "deleted-1").
 					Return("", &sender.RequestError{Code: 404, Message: "missing"}).
 					Times(1)
 			},
-			wantErrAs: new(sender.ErrResourceNotFound),
+			wantReqCode: 404,
 		},
 		{
-			name: "empty id returns error",
+			name: "empty id is allowed (service does not validate)",
 			setupMocks: func(d sutDeps) {
 				d.ops.EXPECT().
 					RestoreDeletedTeam(gomock.Any(), "deleted-1").
 					Return("", nil).
 					Times(1)
 			},
-			wantErr: true,
+			wantID: "",
 		},
 	}
 
@@ -524,18 +468,9 @@ func TestService_RestoreDeleted(t *testing.T) {
 
 			got, err := svc.RestoreDeleted(ctx, "deleted-1")
 
-			if tc.wantErrAs != nil {
-				require.Error(t, err)
-				switch target := tc.wantErrAs.(type) {
-				case *sender.ErrResourceNotFound:
-					require.ErrorAs(t, err, target)
-				default:
-					t.Fatalf("unsupported wantErrAs type: %T", tc.wantErrAs)
-				}
-				return
-			}
-			if tc.wantErr {
-				require.Error(t, err)
+			if tc.wantReqCode != 0 {
+				require.Equal(t, "", got)
+				testutil.RequireReqErrCode(t, err, tc.wantReqCode)
 				return
 			}
 
@@ -547,11 +482,12 @@ func TestService_RestoreDeleted(t *testing.T) {
 
 func TestService_ListMembers(t *testing.T) {
 	type testCase struct {
-		name       string
-		teamRef    string
-		setupMocks func(d sutDeps)
-		wantIDs    []string
-		wantErrAs  any
+		name        string
+		teamRef     string
+		setupMocks  func(d sutDeps)
+		wantIDs     []string
+		wantReqCode int
+		wantAnyErr  bool
 	}
 
 	testCases := []testCase{
@@ -559,49 +495,29 @@ func TestService_ListMembers(t *testing.T) {
 			name:    "success maps members",
 			teamRef: "TeamX",
 			setupMocks: func(d sutDeps) {
-				d.resolver.EXPECT().
-					ResolveTeamRefToID(gomock.Any(), "TeamX").
-					Return("team-id", nil).
-					Times(1)
-
-				members := []*models.Member{
-					{ID: "m1"},
-					{ID: "m2"},
-				}
-
-				d.ops.EXPECT().
-					ListMembers(gomock.Any(), "team-id").
-					Return(members, nil).
-					Times(1)
+				d.resolver.EXPECT().ResolveTeamRefToID(gomock.Any(), "TeamX").Return("team-id", nil).Times(1)
+				members := []*models.Member{{ID: "m1"}, {ID: "m2"}}
+				d.ops.EXPECT().ListMembers(gomock.Any(), "team-id").Return(members, nil).Times(1)
 			},
 			wantIDs: []string{"m1", "m2"},
 		},
 		{
-			name:    "resolver error is propagated",
+			name:    "resolver error is wrapped",
 			teamRef: "TeamX",
 			setupMocks: func(d sutDeps) {
-				d.resolver.EXPECT().
-					ResolveTeamRefToID(gomock.Any(), "TeamX").
-					Return("", errors.New("boom")).
-					Times(1)
+				d.resolver.EXPECT().ResolveTeamRefToID(gomock.Any(), "TeamX").Return("", errors.New("boom")).Times(1)
 			},
-			wantErrAs: new(error),
+			wantAnyErr: true,
 		},
 		{
-			name:    "api error is mapped",
+			name:    "wraps api error (403)",
 			teamRef: "TeamX",
 			setupMocks: func(d sutDeps) {
-				d.resolver.EXPECT().
-					ResolveTeamRefToID(gomock.Any(), "TeamX").
-					Return("team-id", nil).
-					Times(1)
-
-				d.ops.EXPECT().
-					ListMembers(gomock.Any(), "team-id").
-					Return(nil, &sender.RequestError{Code: 403, Message: "nope"}).
-					Times(1)
+				d.resolver.EXPECT().ResolveTeamRefToID(gomock.Any(), "TeamX").Return("team-id", nil).Times(1)
+				d.ops.EXPECT().ListMembers(gomock.Any(), "team-id").
+					Return(nil, &sender.RequestError{Code: 403, Message: "nope"}).Times(1)
 			},
-			wantErrAs: new(sender.ErrAccessForbidden),
+			wantReqCode: 403,
 		},
 	}
 
@@ -611,15 +527,13 @@ func TestService_ListMembers(t *testing.T) {
 
 			got, err := svc.ListMembers(ctx, tc.teamRef)
 
-			if tc.wantErrAs != nil {
-				require.Error(t, err)
-				switch target := tc.wantErrAs.(type) {
-				case *sender.ErrAccessForbidden:
-					require.ErrorAs(t, err, target)
-				case *error:
-				default:
-					t.Fatalf("unsupported wantErrAs type: %T", tc.wantErrAs)
-				}
+			if tc.wantReqCode != 0 {
+				require.Nil(t, got)
+				testutil.RequireReqErrCode(t, err, tc.wantReqCode)
+				return
+			}
+			if tc.wantAnyErr {
+				_ = testutil.RequireWrapped(t, err)
 				return
 			}
 
@@ -634,13 +548,14 @@ func TestService_ListMembers(t *testing.T) {
 
 func TestService_AddMember(t *testing.T) {
 	type testCase struct {
-		name       string
-		teamRef    string
-		userRef    string
-		isOwner    bool
-		setupMocks func(d sutDeps)
-		wantID     string
-		wantErrAs  any
+		name        string
+		teamRef     string
+		userRef     string
+		isOwner     bool
+		setupMocks  func(d sutDeps)
+		wantID      string
+		wantReqCode int
+		wantAnyErr  bool
 	}
 
 	testCases := []testCase{
@@ -650,66 +565,33 @@ func TestService_AddMember(t *testing.T) {
 			userRef: "user@x.com",
 			isOwner: true,
 			setupMocks: func(d sutDeps) {
-				d.resolver.EXPECT().
-					ResolveTeamRefToID(gomock.Any(), "TeamX").
-					Return("team-id", nil).
-					Times(1)
-
-				d.ops.EXPECT().
-					AddMember(gomock.Any(), "team-id", "user@x.com", true).
-					Return(&models.Member{ID: "m1"}, nil).
-					Times(1)
+				d.resolver.EXPECT().ResolveTeamRefToID(gomock.Any(), "TeamX").Return("team-id", nil).Times(1)
+				d.ops.EXPECT().AddMember(gomock.Any(), "team-id", "user@x.com", true).
+					Return(&models.Member{ID: "m1"}, nil).Times(1)
 			},
 			wantID: "m1",
 		},
 		{
-			name:    "success adds member (no owner role)",
+			name:    "resolver error is wrapped",
 			teamRef: "TeamX",
 			userRef: "user@x.com",
 			isOwner: false,
 			setupMocks: func(d sutDeps) {
-				d.resolver.EXPECT().
-					ResolveTeamRefToID(gomock.Any(), "TeamX").
-					Return("team-id", nil).
-					Times(1)
-
-				d.ops.EXPECT().
-					AddMember(gomock.Any(), "team-id", "user@x.com", false).
-					Return(&models.Member{ID: "m2"}, nil).
-					Times(1)
+				d.resolver.EXPECT().ResolveTeamRefToID(gomock.Any(), "TeamX").Return("", errors.New("boom")).Times(1)
 			},
-			wantID: "m2",
+			wantAnyErr: true,
 		},
 		{
-			name:    "resolver error is propagated",
+			name:    "wraps api error (403)",
 			teamRef: "TeamX",
 			userRef: "user@x.com",
 			isOwner: false,
 			setupMocks: func(d sutDeps) {
-				d.resolver.EXPECT().
-					ResolveTeamRefToID(gomock.Any(), "TeamX").
-					Return("", errors.New("boom")).
-					Times(1)
+				d.resolver.EXPECT().ResolveTeamRefToID(gomock.Any(), "TeamX").Return("team-id", nil).Times(1)
+				d.ops.EXPECT().AddMember(gomock.Any(), "team-id", "user@x.com", false).
+					Return(nil, &sender.RequestError{Code: 403, Message: "nope"}).Times(1)
 			},
-			wantErrAs: new(error),
-		},
-		{
-			name:    "api error is mapped",
-			teamRef: "TeamX",
-			userRef: "user@x.com",
-			isOwner: false,
-			setupMocks: func(d sutDeps) {
-				d.resolver.EXPECT().
-					ResolveTeamRefToID(gomock.Any(), "TeamX").
-					Return("team-id", nil).
-					Times(1)
-
-				d.ops.EXPECT().
-					AddMember(gomock.Any(), "team-id", "user@x.com", false).
-					Return(nil, &sender.RequestError{Code: 403, Message: "nope"}).
-					Times(1)
-			},
-			wantErrAs: new(sender.ErrAccessForbidden),
+			wantReqCode: 403,
 		},
 	}
 
@@ -719,15 +601,13 @@ func TestService_AddMember(t *testing.T) {
 
 			got, err := svc.AddMember(ctx, tc.teamRef, tc.userRef, tc.isOwner)
 
-			if tc.wantErrAs != nil {
-				require.Error(t, err)
-				switch target := tc.wantErrAs.(type) {
-				case *sender.ErrAccessForbidden:
-					require.ErrorAs(t, err, target)
-				case *error:
-				default:
-					t.Fatalf("unsupported wantErrAs type: %T", tc.wantErrAs)
-				}
+			if tc.wantReqCode != 0 {
+				require.Nil(t, got)
+				testutil.RequireReqErrCode(t, err, tc.wantReqCode)
+				return
+			}
+			if tc.wantAnyErr {
+				_ = testutil.RequireWrapped(t, err)
 				return
 			}
 
@@ -740,12 +620,13 @@ func TestService_AddMember(t *testing.T) {
 
 func TestService_GetMember(t *testing.T) {
 	type testCase struct {
-		name       string
-		teamRef    string
-		userRef    string
-		setupMocks func(d sutDeps)
-		wantID     string
-		wantErrAs  any
+		name        string
+		teamRef     string
+		userRef     string
+		setupMocks  func(d sutDeps)
+		wantID      string
+		wantReqCode int
+		wantAnyErr  bool
 	}
 
 	testCases := []testCase{
@@ -754,73 +635,44 @@ func TestService_GetMember(t *testing.T) {
 			teamRef: "TeamX",
 			userRef: "user@x.com",
 			setupMocks: func(d sutDeps) {
-				d.resolver.EXPECT().
-					ResolveTeamRefToID(gomock.Any(), "TeamX").
-					Return("team-id", nil).
-					Times(1)
-
-				d.resolver.EXPECT().
-					ResolveTeamMemberRefToID(gomock.Any(), "team-id", "user@x.com").
-					Return("member-id", nil).
-					Times(1)
-
-				d.ops.EXPECT().
-					GetMemberByID(gomock.Any(), "team-id", "member-id").
-					Return(&models.Member{ID: "member-id"}, nil).
-					Times(1)
+				d.resolver.EXPECT().ResolveTeamRefToID(gomock.Any(), "TeamX").Return("team-id", nil).Times(1)
+				d.resolver.EXPECT().ResolveTeamMemberRefToID(gomock.Any(), "team-id", "user@x.com").Return("member-id", nil).Times(1)
+				d.ops.EXPECT().GetMemberByID(gomock.Any(), "team-id", "member-id").
+					Return(&models.Member{ID: "member-id"}, nil).Times(1)
 			},
 			wantID: "member-id",
 		},
 		{
-			name:    "team resolver error is propagated",
+			name:    "team resolver error is wrapped",
 			teamRef: "TeamX",
 			userRef: "user@x.com",
 			setupMocks: func(d sutDeps) {
-				d.resolver.EXPECT().
-					ResolveTeamRefToID(gomock.Any(), "TeamX").
-					Return("", errors.New("boom")).
-					Times(1)
+				d.resolver.EXPECT().ResolveTeamRefToID(gomock.Any(), "TeamX").Return("", errors.New("boom")).Times(1)
 			},
-			wantErrAs: new(error),
+			wantAnyErr: true,
 		},
 		{
-			name:    "member resolver error is propagated",
+			name:    "member resolver error is wrapped",
 			teamRef: "TeamX",
 			userRef: "user@x.com",
 			setupMocks: func(d sutDeps) {
-				d.resolver.EXPECT().
-					ResolveTeamRefToID(gomock.Any(), "TeamX").
-					Return("team-id", nil).
-					Times(1)
-
-				d.resolver.EXPECT().
-					ResolveTeamMemberRefToID(gomock.Any(), "team-id", "user@x.com").
-					Return("", errors.New("resolve member boom")).
-					Times(1)
+				d.resolver.EXPECT().ResolveTeamRefToID(gomock.Any(), "TeamX").Return("team-id", nil).Times(1)
+				d.resolver.EXPECT().ResolveTeamMemberRefToID(gomock.Any(), "team-id", "user@x.com").
+					Return("", errors.New("resolve member boom")).Times(1)
 			},
-			wantErrAs: new(error),
+			wantAnyErr: true,
 		},
 		{
-			name:    "api error is mapped",
+			name:    "wraps api error (404)",
 			teamRef: "TeamX",
 			userRef: "user@x.com",
 			setupMocks: func(d sutDeps) {
-				d.resolver.EXPECT().
-					ResolveTeamRefToID(gomock.Any(), "TeamX").
-					Return("team-id", nil).
-					Times(1)
-
-				d.resolver.EXPECT().
-					ResolveTeamMemberRefToID(gomock.Any(), "team-id", "user@x.com").
-					Return("member-id", nil).
-					Times(1)
-
-				d.ops.EXPECT().
-					GetMemberByID(gomock.Any(), "team-id", "member-id").
-					Return(nil, &sender.RequestError{Code: 404, Message: "missing"}).
-					Times(1)
+				d.resolver.EXPECT().ResolveTeamRefToID(gomock.Any(), "TeamX").Return("team-id", nil).Times(1)
+				d.resolver.EXPECT().ResolveTeamMemberRefToID(gomock.Any(), "team-id", "user@x.com").Return("member-id", nil).Times(1)
+				d.ops.EXPECT().GetMemberByID(gomock.Any(), "team-id", "member-id").
+					Return(nil, &sender.RequestError{Code: 404, Message: "missing"}).Times(1)
 			},
-			wantErrAs: new(sender.ErrResourceNotFound),
+			wantReqCode: 404,
 		},
 	}
 
@@ -830,15 +682,13 @@ func TestService_GetMember(t *testing.T) {
 
 			got, err := svc.GetMember(ctx, tc.teamRef, tc.userRef)
 
-			if tc.wantErrAs != nil {
-				require.Error(t, err)
-				switch target := tc.wantErrAs.(type) {
-				case *sender.ErrResourceNotFound:
-					require.ErrorAs(t, err, target)
-				case *error:
-				default:
-					t.Fatalf("unsupported wantErrAs type: %T", tc.wantErrAs)
-				}
+			if tc.wantReqCode != 0 {
+				require.Nil(t, got)
+				testutil.RequireReqErrCode(t, err, tc.wantReqCode)
+				return
+			}
+			if tc.wantAnyErr {
+				_ = testutil.RequireWrapped(t, err)
 				return
 			}
 
@@ -851,11 +701,12 @@ func TestService_GetMember(t *testing.T) {
 
 func TestService_RemoveMember(t *testing.T) {
 	type testCase struct {
-		name       string
-		teamRef    string
-		userRef    string
-		setupMocks func(d sutDeps)
-		wantErrAs  any
+		name        string
+		teamRef     string
+		userRef     string
+		setupMocks  func(d sutDeps)
+		wantReqCode int
+		wantAnyErr  bool
 	}
 
 	testCases := []testCase{
@@ -864,60 +715,33 @@ func TestService_RemoveMember(t *testing.T) {
 			teamRef: "TeamX",
 			userRef: "user@x.com",
 			setupMocks: func(d sutDeps) {
-				d.resolver.EXPECT().
-					ResolveTeamRefToID(gomock.Any(), "TeamX").
-					Return("team-id", nil).
-					Times(1)
-
-				d.resolver.EXPECT().
-					ResolveTeamMemberRefToID(gomock.Any(), "team-id", "user@x.com").
-					Return("member-id", nil).
-					Times(1)
-
-				d.ops.EXPECT().
-					RemoveMember(gomock.Any(), "team-id", "member-id", "user@x.com").
-					Return(nil).
-					Times(1)
+				d.resolver.EXPECT().ResolveTeamRefToID(gomock.Any(), "TeamX").Return("team-id", nil).Times(1)
+				d.resolver.EXPECT().ResolveTeamMemberRefToID(gomock.Any(), "team-id", "user@x.com").Return("member-id", nil).Times(1)
+				d.ops.EXPECT().RemoveMember(gomock.Any(), "team-id", "member-id", "user@x.com").Return(nil).Times(1)
 			},
 		},
 		{
-			name:    "member resolver error is propagated",
+			name:    "member resolver error is wrapped",
 			teamRef: "TeamX",
 			userRef: "user@x.com",
 			setupMocks: func(d sutDeps) {
-				d.resolver.EXPECT().
-					ResolveTeamRefToID(gomock.Any(), "TeamX").
-					Return("team-id", nil).
-					Times(1)
-
-				d.resolver.EXPECT().
-					ResolveTeamMemberRefToID(gomock.Any(), "team-id", "user@x.com").
-					Return("", errors.New("boom")).
-					Times(1)
+				d.resolver.EXPECT().ResolveTeamRefToID(gomock.Any(), "TeamX").Return("team-id", nil).Times(1)
+				d.resolver.EXPECT().ResolveTeamMemberRefToID(gomock.Any(), "team-id", "user@x.com").
+					Return("", errors.New("boom")).Times(1)
 			},
-			wantErrAs: new(error),
+			wantAnyErr: true,
 		},
 		{
-			name:    "api error is mapped",
+			name:    "wraps api error (403)",
 			teamRef: "TeamX",
 			userRef: "user@x.com",
 			setupMocks: func(d sutDeps) {
-				d.resolver.EXPECT().
-					ResolveTeamRefToID(gomock.Any(), "TeamX").
-					Return("team-id", nil).
-					Times(1)
-
-				d.resolver.EXPECT().
-					ResolveTeamMemberRefToID(gomock.Any(), "team-id", "user@x.com").
-					Return("member-id", nil).
-					Times(1)
-
-				d.ops.EXPECT().
-					RemoveMember(gomock.Any(), "team-id", "member-id", "user@x.com").
-					Return(&sender.RequestError{Code: 403, Message: "nope"}).
-					Times(1)
+				d.resolver.EXPECT().ResolveTeamRefToID(gomock.Any(), "TeamX").Return("team-id", nil).Times(1)
+				d.resolver.EXPECT().ResolveTeamMemberRefToID(gomock.Any(), "team-id", "user@x.com").Return("member-id", nil).Times(1)
+				d.ops.EXPECT().RemoveMember(gomock.Any(), "team-id", "member-id", "user@x.com").
+					Return(&sender.RequestError{Code: 403, Message: "nope"}).Times(1)
 			},
-			wantErrAs: new(sender.ErrAccessForbidden),
+			wantReqCode: 403,
 		},
 	}
 
@@ -927,32 +751,28 @@ func TestService_RemoveMember(t *testing.T) {
 
 			err := svc.RemoveMember(ctx, tc.teamRef, tc.userRef)
 
-			if tc.wantErrAs == nil {
-				require.NoError(t, err)
+			if tc.wantReqCode != 0 {
+				testutil.RequireReqErrCode(t, err, tc.wantReqCode)
 				return
 			}
-
-			require.Error(t, err)
-			switch target := tc.wantErrAs.(type) {
-			case *sender.ErrAccessForbidden:
-				require.ErrorAs(t, err, target)
-			case *error:
-			default:
-				t.Fatalf("unsupported wantErrAs type: %T", tc.wantErrAs)
+			if tc.wantAnyErr {
+				_ = testutil.RequireWrapped(t, err)
+				return
 			}
+			require.NoError(t, err)
 		})
 	}
 }
 
 func TestService_UpdateMemberRoles(t *testing.T) {
 	type testCase struct {
-		name       string
-		teamRef    string
-		userRef    string
-		isOwner    bool
-		setupMocks func(d sutDeps)
-		wantID     string
-		wantErrAs  any
+		name        string
+		teamRef     string
+		userRef     string
+		isOwner     bool
+		setupMocks  func(d sutDeps)
+		wantID      string
+		wantReqCode int
 	}
 
 	testCases := []testCase{
@@ -962,68 +782,25 @@ func TestService_UpdateMemberRoles(t *testing.T) {
 			userRef: "user@x.com",
 			isOwner: true,
 			setupMocks: func(d sutDeps) {
-				d.resolver.EXPECT().
-					ResolveTeamRefToID(gomock.Any(), "TeamX").
-					Return("team-id", nil).
-					Times(1)
-
-				d.resolver.EXPECT().
-					ResolveTeamMemberRefToID(gomock.Any(), "team-id", "user@x.com").
-					Return("member-id", nil).
-					Times(1)
-
-				d.ops.EXPECT().
-					UpdateMemberRoles(gomock.Any(), "team-id", "member-id", true).
-					Return(&models.Member{ID: "member-id"}, nil).
-					Times(1)
+				d.resolver.EXPECT().ResolveTeamRefToID(gomock.Any(), "TeamX").Return("team-id", nil).Times(1)
+				d.resolver.EXPECT().ResolveTeamMemberRefToID(gomock.Any(), "team-id", "user@x.com").Return("member-id", nil).Times(1)
+				d.ops.EXPECT().UpdateMemberRoles(gomock.Any(), "team-id", "member-id", true).
+					Return(&models.Member{ID: "member-id"}, nil).Times(1)
 			},
 			wantID: "member-id",
 		},
 		{
-			name:    "success demotes to member",
-			teamRef: "TeamX",
-			userRef: "user@x.com",
-			isOwner: false,
-			setupMocks: func(d sutDeps) {
-				d.resolver.EXPECT().
-					ResolveTeamRefToID(gomock.Any(), "TeamX").
-					Return("team-id", nil).
-					Times(1)
-
-				d.resolver.EXPECT().
-					ResolveTeamMemberRefToID(gomock.Any(), "team-id", "user@x.com").
-					Return("member-id", nil).
-					Times(1)
-
-				d.ops.EXPECT().
-					UpdateMemberRoles(gomock.Any(), "team-id", "member-id", false).
-					Return(&models.Member{ID: "member-id"}, nil).
-					Times(1)
-			},
-			wantID: "member-id",
-		},
-		{
-			name:    "api error is mapped",
+			name:    "wraps api error (403)",
 			teamRef: "TeamX",
 			userRef: "user@x.com",
 			isOwner: true,
 			setupMocks: func(d sutDeps) {
-				d.resolver.EXPECT().
-					ResolveTeamRefToID(gomock.Any(), "TeamX").
-					Return("team-id", nil).
-					Times(1)
-
-				d.resolver.EXPECT().
-					ResolveTeamMemberRefToID(gomock.Any(), "team-id", "user@x.com").
-					Return("member-id", nil).
-					Times(1)
-
-				d.ops.EXPECT().
-					UpdateMemberRoles(gomock.Any(), "team-id", "member-id", gomock.Any()).
-					Return(nil, &sender.RequestError{Code: 403, Message: "nope"}).
-					Times(1)
+				d.resolver.EXPECT().ResolveTeamRefToID(gomock.Any(), "TeamX").Return("team-id", nil).Times(1)
+				d.resolver.EXPECT().ResolveTeamMemberRefToID(gomock.Any(), "team-id", "user@x.com").Return("member-id", nil).Times(1)
+				d.ops.EXPECT().UpdateMemberRoles(gomock.Any(), "team-id", "member-id", gomock.Any()).
+					Return(nil, &sender.RequestError{Code: 403, Message: "nope"}).Times(1)
 			},
-			wantErrAs: new(sender.ErrAccessForbidden),
+			wantReqCode: 403,
 		},
 	}
 
@@ -1033,14 +810,9 @@ func TestService_UpdateMemberRoles(t *testing.T) {
 
 			got, err := svc.UpdateMemberRoles(ctx, tc.teamRef, tc.userRef, tc.isOwner)
 
-			if tc.wantErrAs != nil {
-				require.Error(t, err)
-				switch target := tc.wantErrAs.(type) {
-				case *sender.ErrAccessForbidden:
-					require.ErrorAs(t, err, target)
-				default:
-					t.Fatalf("unsupported wantErrAs type: %T", tc.wantErrAs)
-				}
+			if tc.wantReqCode != 0 {
+				require.Nil(t, got)
+				testutil.RequireReqErrCode(t, err, tc.wantReqCode)
 				return
 			}
 
