@@ -107,14 +107,14 @@ func TestTryAddTeamOrChannelMention(t *testing.T) {
 	tests := []struct {
 		name         string
 		token        string
-		teamRef      string 
+		teamRef      string
 		channelRef   string
 		wantOK       bool
 		wantMentions []models.Mention
 	}{
 		{
-			name:  "Adds Team by keyword (uppercase input)",
-			token: "TEAM",
+			name:   "Adds Team by keyword (uppercase input)",
+			token:  "TEAM",
 			wantOK: true,
 			wantMentions: []models.Mention{
 				{
@@ -126,8 +126,8 @@ func TestTryAddTeamOrChannelMention(t *testing.T) {
 			},
 		},
 		{
-			name:  "Adds Channel by keyword (lowercase input)",
-			token: "channel",
+			name:   "Adds Channel by keyword (lowercase input)",
+			token:  "channel",
 			wantOK: true,
 			wantMentions: []models.Mention{
 				{
@@ -155,7 +155,7 @@ func TestTryAddTeamOrChannelMention(t *testing.T) {
 			name:         "Returns false and does not add mention when no match",
 			token:        "random",
 			wantOK:       false,
-			wantMentions: []models.Mention{}, 
+			wantMentions: []models.Mention{},
 		},
 	}
 

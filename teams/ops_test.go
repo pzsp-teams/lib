@@ -13,7 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-
 type opsSUTDeps struct {
 	teamAPI *testutil.MockTeamAPI
 }
@@ -45,13 +44,13 @@ func TestOps_Wait_DoesNothing(t *testing.T) {
 func TestOps_GetTeamByID(t *testing.T) {
 	t.Parallel()
 
-		type testCase struct {
-			name    string
-			teamID  string
-			setup   func(ctx context.Context, d *opsSUTDeps)
-			wantErr *snd.RequestError
-			assert  func(t *testing.T, got *models.Team, err *snd.RequestError)
-		}
+	type testCase struct {
+		name    string
+		teamID  string
+		setup   func(ctx context.Context, d *opsSUTDeps)
+		wantErr *snd.RequestError
+		assert  func(t *testing.T, got *models.Team, err *snd.RequestError)
+	}
 
 	testCases := []testCase{
 		{
@@ -77,12 +76,12 @@ func TestOps_GetTeamByID(t *testing.T) {
 						DisplayName: util.Ptr("Team Two"),
 					}), nil)
 			},
-				assert: func(t *testing.T, got *models.Team, err *snd.RequestError) {
-					require.Nil(t, err)
-					require.NotNil(t, got)
-					require.Equal(t, "id-2", got.ID)
-					require.Equal(t, "Team Two", got.DisplayName)
-				},
+			assert: func(t *testing.T, got *models.Team, err *snd.RequestError) {
+				require.Nil(t, err)
+				require.NotNil(t, got)
+				require.Equal(t, "id-2", got.ID)
+				require.Equal(t, "Team Two", got.DisplayName)
+			},
 		},
 	}
 
@@ -392,11 +391,11 @@ func TestOps_ListMembers(t *testing.T) {
 				resp := msmodels.NewConversationMemberCollectionResponse()
 				resp.SetValue([]msmodels.ConversationMemberable{
 					testutil.NewGraphMember(&testutil.NewMemberParams{
-						ID:          util.Ptr("m1"),
+						ID:    util.Ptr("m1"),
 						Email: util.Ptr("a@b.com"),
 					}),
 					testutil.NewGraphMember(&testutil.NewMemberParams{
-						ID:          util.Ptr("m2"),
+						ID:    util.Ptr("m2"),
 						Email: util.Ptr("c@d.com"),
 					}),
 				})
