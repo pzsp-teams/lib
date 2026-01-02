@@ -4,7 +4,6 @@ import (
 	"context"
 	"strings"
 
-	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
 	"github.com/pzsp-teams/lib/internal/cacher"
 	"github.com/pzsp-teams/lib/internal/resolver"
 	"github.com/pzsp-teams/lib/internal/util"
@@ -51,19 +50,6 @@ func (s *serviceWithCache) ListMyJoined(ctx context.Context) ([]*models.Team, er
 		s.addTeamsToCache(vals...)
 	})
 	return teams, nil
-}
-
-func (s *serviceWithCache) Update(ctx context.Context, teamRef string, patch *msmodels.Team) (*models.Team, error) {
-	team, err := s.svc.Update(ctx, teamRef, patch)
-	if err != nil {
-		s.onError()
-		return nil, err
-	}
-	s.cacheHandler.Runner.Run(func() {
-		s.removeTeamsFromCache(teamRef)
-		s.addTeamsToCache(*team)
-	})
-	return team, nil
 }
 
 func (s *serviceWithCache) CreateFromTemplate(ctx context.Context, displayName, description string, owners []string) (string, error) {

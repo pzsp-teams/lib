@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 
-	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
 	"github.com/pzsp-teams/lib/internal/adapter"
 	"github.com/pzsp-teams/lib/internal/api"
 	"github.com/pzsp-teams/lib/internal/resolver"
@@ -45,20 +44,6 @@ func (s *service) ListMyJoined(ctx context.Context) ([]*models.Team, error) {
 		return nil, snd.MapError(requestErr)
 	}
 	return util.MapSlices(resp.GetValue(), adapter.MapGraphTeam), nil
-}
-
-func (s *service) Update(ctx context.Context, teamRef string, patch *msmodels.Team) (*models.Team, error) {
-	teamID, err := s.teamResolver.ResolveTeamRefToID(ctx, teamRef)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, requestErr := s.teamAPI.Update(ctx, teamID, patch)
-	if requestErr != nil {
-		return nil, snd.MapError(requestErr, snd.WithResource(resources.Team, teamID))
-	}
-
-	return adapter.MapGraphTeam(resp), nil
 }
 
 func (s *service) CreateViaGroup(ctx context.Context, displayName, mailNickname, visibility string) (*models.Team, error) {

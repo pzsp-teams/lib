@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
-	"github.com/pzsp-teams/lib/internal/adapter"
 	"github.com/pzsp-teams/lib/internal/api"
 	"github.com/pzsp-teams/lib/internal/mentions"
 	"github.com/pzsp-teams/lib/internal/resolver"
@@ -17,15 +15,15 @@ import (
 )
 
 type service struct {
-	channelAPI      api.ChannelAPI
+	ops             channelOps
 	teamResolver    resolver.TeamResolver
 	channelResolver resolver.ChannelResolver
 	userAPI         api.UsersAPI
 }
 
 // NewService creates a new channels Service instance
-func NewService(channelsAPI api.ChannelAPI, tr resolver.TeamResolver, cr resolver.ChannelResolver, userAPI api.UsersAPI) Service {
-	return &service{channelAPI: channelsAPI, teamResolver: tr, channelResolver: cr, userAPI: userAPI}
+func NewService(ops channelOps, tr resolver.TeamResolver, cr resolver.ChannelResolver, userAPI api.UsersAPI) Service {
+	return &service{ops: ops, teamResolver: tr, channelResolver: cr, userAPI: userAPI}
 }
 
 func (s *service) ListChannels(ctx context.Context, teamRef string) ([]*models.Channel, error) {
@@ -34,15 +32,12 @@ func (s *service) ListChannels(ctx context.Context, teamRef string) ([]*models.C
 		return nil, err
 	}
 
-	resp, requestErr := s.channelAPI.ListChannels(ctx, teamID)
+	out, requestErr := s.ops.ListChannelsByTeamID(ctx, teamID)
 	if requestErr != nil {
 		return nil, snd.MapError(requestErr, snd.WithResource(resources.Team, teamRef))
 	}
-	return util.MapSlices(resp.GetValue(), func (channel msmodels.Channelable) *models.Channel {
-		out := adapter.MapGraphChannel(channel)
-		out.TeamID = teamID
-		return out
-	}), nil
+
+	return out, nil
 }
 
 func (s *service) Get(ctx context.Context, teamRef, channelRef string) (*models.Channel, error) {
@@ -51,13 +46,10 @@ func (s *service) Get(ctx context.Context, teamRef, channelRef string) (*models.
 		return nil, err
 	}
 
-	resp, requestErr := s.channelAPI.GetChannel(ctx, teamID, channelID)
+	out, requestErr := s.ops.GetChannelByID(ctx, teamID, channelID)
 	if requestErr != nil {
 		return nil, snd.MapError(requestErr, snd.WithResource(resources.Team, teamRef), snd.WithResource(resources.Channel, channelRef))
 	}
-
-	out := adapter.MapGraphChannel(resp)
-	out.TeamID = teamID
 	return out, nil
 }
 
@@ -67,16 +59,10 @@ func (s *service) CreateStandardChannel(ctx context.Context, teamRef, name strin
 		return nil, err
 	}
 
-	newChannel := msmodels.NewChannel()
-	newChannel.SetDisplayName(&name)
-
-	created, requestErr := s.channelAPI.CreateStandardChannel(ctx, teamID, newChannel)
+	out, requestErr := s.ops.CreateStandardChannel(ctx, teamID, name)
 	if requestErr != nil {
 		return nil, snd.MapError(requestErr, snd.WithResource(resources.Team, teamRef))
 	}
-
-	out := adapter.MapGraphChannel(created)
-	out.TeamID = teamID
 	return out, nil
 }
 
@@ -86,13 +72,10 @@ func (s *service) CreatePrivateChannel(ctx context.Context, teamRef, name string
 		return nil, err
 	}
 
-	created, requestErr := s.channelAPI.CreatePrivateChannelWithMembers(ctx, teamID, name, memberRefs, ownerRefs)
+	out, requestErr := s.ops.CreatePrivateChannel(ctx, teamID, name, memberRefs, ownerRefs)
 	if requestErr != nil {
-		return nil, snd.MapError(requestErr, snd.WithResource(resources.Team, teamRef), snd.WithResources(resources.User, append(memberRefs, ownerRefs...)))
+		return nil, snd.MapError(requestErr, snd.WithResource(resources.Team, teamRef))
 	}
-
-	out := adapter.MapGraphChannel(created)
-	out.TeamID = teamID
 	return out, nil
 }
 
@@ -102,7 +85,7 @@ func (s *service) Delete(ctx context.Context, teamRef, channelRef string) error 
 		return err
 	}
 
-	requestErr := s.channelAPI.DeleteChannel(ctx, teamID, channelID)
+	requestErr := s.ops.DeleteChannel(ctx, teamID, channelID, channelRef)
 	if requestErr != nil {
 		return snd.MapError(requestErr, snd.WithResource(resources.Team, teamRef), snd.WithResource(resources.Channel, channelRef))
 	}
@@ -116,17 +99,12 @@ func (s *service) SendMessage(ctx context.Context, teamRef, channelRef string, b
 		return nil, err
 	}
 
-	ments, err := mentions.PrepareMentions(&body)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, requestErr := s.channelAPI.SendMessage(ctx, teamID, channelID, body.Content, string(body.ContentType), ments)
+	out, requestErr := s.ops.SendMessage(ctx, teamID, channelID, body)
 	if requestErr != nil {
 		return nil, snd.MapError(requestErr, snd.WithResource(resources.Team, teamRef), snd.WithResource(resources.Channel, channelRef))
 	}
 
-	return adapter.MapGraphMessage(resp), nil
+	return out, nil
 }
 
 func (s *service) SendReply(ctx context.Context, teamRef, channelRef, messageID string, body models.MessageBody) (*models.Message, error) {
@@ -135,17 +113,12 @@ func (s *service) SendReply(ctx context.Context, teamRef, channelRef, messageID 
 		return nil, err
 	}
 
-	ments, err := mentions.PrepareMentions(&body)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, requestErr := s.channelAPI.SendReply(ctx, teamID, channelID, messageID, body.Content, string(body.ContentType), ments)
+	out, requestErr := s.ops.SendReply(ctx, teamID, channelID, messageID, body)
 	if requestErr != nil {
 		return nil, snd.MapError(requestErr, snd.WithResource(resources.Team, teamRef), snd.WithResource(resources.Channel, channelRef), snd.WithResource(resources.Message, messageID))
 	}
 
-	return adapter.MapGraphMessage(resp), nil
+	return out, nil
 }
 
 func (s *service) ListMessages(ctx context.Context, teamRef, channelRef string, opts *models.ListMessagesOptions) ([]*models.Message, error) {
@@ -153,15 +126,11 @@ func (s *service) ListMessages(ctx context.Context, teamRef, channelRef string, 
 	if err != nil {
 		return nil, err
 	}
-	var top *int32
-	if opts != nil && opts.Top != nil {
-		top = opts.Top
-	}
-	resp, requestErr := s.channelAPI.ListMessages(ctx, teamID, channelID, top)
+	out, requestErr := s.ops.ListMessages(ctx, teamID, channelID, opts)
 	if requestErr != nil {
 		return nil, snd.MapError(requestErr, snd.WithResource(resources.Team, teamRef), snd.WithResource(resources.Channel, channelRef))
 	}
-	return util.MapSlices(resp.GetValue(), adapter.MapGraphMessage), nil
+	return out, nil
 }
 
 func (s *service) GetMessage(ctx context.Context, teamRef, channelRef, messageID string) (*models.Message, error) {
@@ -170,12 +139,12 @@ func (s *service) GetMessage(ctx context.Context, teamRef, channelRef, messageID
 		return nil, err
 	}
 
-	resp, requestErr := s.channelAPI.GetMessage(ctx, teamID, channelID, messageID)
+	out, requestErr := s.ops.GetMessage(ctx, teamID, channelID, messageID)
 	if requestErr != nil {
 		return nil, snd.MapError(requestErr, snd.WithResource(resources.Team, teamRef), snd.WithResource(resources.Channel, channelRef), snd.WithResource(resources.Message, messageID))
 	}
 
-	return adapter.MapGraphMessage(resp), nil
+	return out, nil
 }
 
 func (s *service) ListReplies(ctx context.Context, teamRef, channelRef, messageID string, top *int32) ([]*models.Message, error) {
@@ -184,11 +153,11 @@ func (s *service) ListReplies(ctx context.Context, teamRef, channelRef, messageI
 		return nil, err
 	}
 
-	resp, requestErr := s.channelAPI.ListReplies(ctx, teamID, channelID, messageID, top)
+	out, requestErr := s.ops.ListReplies(ctx, teamID, channelID, messageID, &models.ListMessagesOptions{Top: top})
 	if requestErr != nil {
 		return nil, snd.MapError(requestErr, snd.WithResource(resources.Team, teamRef), snd.WithResource(resources.Channel, channelRef), snd.WithResource(resources.Message, messageID))
 	}
-	return util.MapSlices(resp.GetValue(), adapter.MapGraphMessage), nil
+	return out, nil
 }
 
 func (s *service) GetReply(ctx context.Context, teamRef, channelRef, messageID, replyID string) (*models.Message, error) {
@@ -197,12 +166,12 @@ func (s *service) GetReply(ctx context.Context, teamRef, channelRef, messageID, 
 		return nil, err
 	}
 
-	resp, requestErr := s.channelAPI.GetReply(ctx, teamID, channelID, messageID, replyID)
+	out, requestErr := s.ops.GetReply(ctx, teamID, channelID, messageID, replyID)
 	if requestErr != nil {
 		return nil, snd.MapError(requestErr, snd.WithResource(resources.Team, teamRef), snd.WithResource(resources.Channel, channelRef), snd.WithResource(resources.Message, messageID))
 	}
 
-	return adapter.MapGraphMessage(resp), nil
+	return out, nil
 }
 
 func (s *service) ListMembers(ctx context.Context, teamRef, channelRef string) ([]*models.Member, error) {
@@ -211,16 +180,11 @@ func (s *service) ListMembers(ctx context.Context, teamRef, channelRef string) (
 		return nil, err
 	}
 
-	resp, requestErr := s.channelAPI.ListMembers(ctx, teamID, channelID)
+	out, requestErr := s.ops.ListMembers(ctx, teamID, channelID)
 	if requestErr != nil {
 		return nil, snd.MapError(requestErr, snd.WithResource(resources.Team, teamRef), snd.WithResource(resources.Channel, channelRef))
 	}
-	return util.MapSlices(resp.GetValue(), func(channelMember msmodels.ConversationMemberable) *models.Member {
-		out := adapter.MapGraphMember(channelMember)
-		out.TeamID = &teamID
-		out.ThreadID = &channelID
-		return out
-	}), nil
+	return out, nil
 }
 
 func (s *service) AddMember(ctx context.Context, teamRef, channelRef, userRef string, isOwner bool) (*models.Member, error) {
@@ -228,15 +192,11 @@ func (s *service) AddMember(ctx context.Context, teamRef, channelRef, userRef st
 	if err != nil {
 		return nil, err
 	}
-	roles := util.MemberRole(isOwner)
-	created, requestErr := s.channelAPI.AddMember(ctx, teamID, channelID, userRef, roles)
+	out, requestErr := s.ops.AddMember(ctx, teamID, channelID, userRef, isOwner)
 	if requestErr != nil {
 		return nil, snd.MapError(requestErr, snd.WithResource(resources.Team, teamRef), snd.WithResource(resources.Channel, channelRef), snd.WithResource(resources.User, userRef))
 	}
 
-	out := adapter.MapGraphMember(created)
-	out.TeamID = &teamID
-	out.ThreadID = &channelID
 	return out, nil
 }
 
@@ -251,16 +211,10 @@ func (s *service) UpdateMemberRoles(ctx context.Context, teamRef, channelRef, us
 		return nil, err
 	}
 
-	roles := util.MemberRole(isOwner)
-
-	updated, requestErr := s.channelAPI.UpdateMemberRoles(ctx, teamID, channelID, memberID, roles)
+	out, requestErr := s.ops.UpdateMemberRoles(ctx, teamID, channelID, memberID, isOwner)
 	if requestErr != nil {
 		return nil, snd.MapError(requestErr, snd.WithResource(resources.Team, teamRef), snd.WithResource(resources.Channel, channelRef), snd.WithResource(resources.User, userRef))
 	}
-
-	out := adapter.MapGraphMember(updated)
-	out.TeamID = &teamID
-	out.ThreadID = &channelID
 	return out, nil
 }
 
@@ -275,7 +229,7 @@ func (s *service) RemoveMember(ctx context.Context, teamRef, channelRef, userRef
 		return err
 	}
 
-	requestErr := s.channelAPI.RemoveMember(ctx, teamID, channelID, memberID)
+	requestErr := s.ops.RemoveMember(ctx, teamID, channelID, memberID, userRef)
 	if requestErr != nil {
 		return snd.MapError(requestErr, snd.WithResource(resources.Team, teamRef), snd.WithResource(resources.Channel, channelRef), snd.WithResource(resources.User, userRef))
 	}

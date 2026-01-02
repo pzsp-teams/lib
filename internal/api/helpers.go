@@ -18,7 +18,7 @@ const (
 	templateBindKey     = "template@odata.bind"
 	graphMessageBindFmt = "https://graph.microsoft.com/v1.0/chats/%s/messages/%s"
 	graphMessageBindKey = "message@odata.bind"
-	roleOwner         = "owner"
+	roleOwner           = "owner"
 )
 
 func ownerRoles() []string {
@@ -48,7 +48,7 @@ func newRolesPatchBody(roles []string) msmodels.ConversationMemberable {
 	return patch
 }
 
-func addToMembers(members *[]msmodels.ConversationMemberable, userRefs []string, roles []string) {
+func addToMembers(members *[]msmodels.ConversationMemberable, userRefs, roles []string) {
 	for _, userRef := range userRefs {
 		*members = append(*members, newAadUserMemberBody(userRef, roles))
 	}
