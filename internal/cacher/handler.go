@@ -46,7 +46,6 @@ func shouldClearCache(err *snd.RequestError) bool {
 	}
 }
 
-
 func NewCacheHandler(cfg *config.CacheConfig) *CacheHandler {
 	if cfg.Mode == config.CacheDisabled {
 		return nil

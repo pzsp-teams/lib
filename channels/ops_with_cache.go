@@ -194,7 +194,7 @@ func (o *opsWithCache) addChannelsToCache(teamID string, chans ...models.Channel
 }
 
 func (o *opsWithCache) removeChannelFromCache(teamID, channelRef string) {
-	if util.AnyBlank(teamID, channelRef) { 
+	if util.AnyBlank(teamID, channelRef) {
 		return
 	}
 	key := cacher.NewChannelKey(teamID, channelRef)
@@ -221,7 +221,3 @@ func (o *opsWithCache) removeMemberFromCache(teamID, channelID, userRef string) 
 	key := cacher.NewChannelMemberKey(teamID, channelID, userRef, nil)
 	_ = o.cacheHandler.Cacher.Invalidate(key)
 }
-
-
-
-

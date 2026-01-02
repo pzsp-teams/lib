@@ -84,7 +84,7 @@ func (o *opsWithCache) CreateViaGroup(ctx context.Context, displayName, mailNick
 }
 
 func (o *opsWithCache) Archive(ctx context.Context, teamID, teamRef string, spoReadOnlyForMembers *bool) *snd.RequestError {
-	requestErr := o.teamOps.Archive(ctx, teamID, teamRef,spoReadOnlyForMembers)
+	requestErr := o.teamOps.Archive(ctx, teamID, teamRef, spoReadOnlyForMembers)
 	if requestErr != nil {
 		o.cacheHandler.OnError(requestErr)
 		return requestErr
@@ -221,4 +221,3 @@ func (o *opsWithCache) removeMemberFromCache(teamID, userRef string) {
 	key := cacher.NewTeamMemberKey(teamID, userRef, nil)
 	_ = o.cacheHandler.Cacher.Invalidate(key)
 }
-

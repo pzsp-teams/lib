@@ -11,7 +11,7 @@ import (
 )
 
 type service struct {
-	teamOps    teamsOps
+	teamOps      teamsOps
 	teamResolver resolver.TeamResolver
 }
 
