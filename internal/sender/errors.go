@@ -12,6 +12,7 @@ var errTemplate string = "[CODE: %d]: %s"
 type RequestError struct {
 	Code    int
 	Message string
+	ErrData
 }
 
 func (e RequestError) Error() string {
@@ -19,16 +20,17 @@ func (e RequestError) Error() string {
 }
 
 type ErrData struct {
-	ResourceRefs map[resources.Resource]string
+	ResourceRefs map[resources.Resource][]string
 }
 
 func (ed *ErrData) String() string {
-	formattedRefs := make([]string, 0, len(ed.ResourceRefs))
-	for t, ref := range ed.ResourceRefs {
-		formattedRefs = append(formattedRefs, fmt.Sprintf("%s(%s)", t, ref))
+	formatted := make([]string, 0, len(ed.ResourceRefs))
+	for t, refs := range ed.ResourceRefs {
+		formatted = append(formatted, fmt.Sprintf("%s(%s)", t, strings.Join(refs, ",")))
 	}
-	return strings.Join(formattedRefs, ", ")
+	return strings.Join(formatted, ", ")
 }
+
 
 type ErrAccessForbidden struct {
 	Code            int
