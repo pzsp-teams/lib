@@ -1,10 +1,12 @@
 package cacher
 
 import (
+	"net/http"
 	"os"
 	"path/filepath"
 
 	"github.com/pzsp-teams/lib/config"
+	"github.com/pzsp-teams/lib/internal/sender"
 	"github.com/pzsp-teams/lib/internal/util"
 )
 
@@ -34,10 +36,10 @@ func WithErrorClear[T any](
 }
 
 func shouldClearCache(err error) bool {
-	if err == nil {
-		return false
+	if sc, ok := sender.StatusCode(err); ok {
+		return sc == http.StatusBadRequest || sc == http.StatusNotFound || sc == http.StatusForbidden
 	}
-	return true
+	return false
 }
 
 func NewCacheHandler(cfg *config.CacheConfig) *CacheHandler {

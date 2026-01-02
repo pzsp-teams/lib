@@ -1,6 +1,7 @@
 package sender
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/pzsp-teams/lib/internal/resources"
@@ -11,36 +12,68 @@ type Option func(*ErrData)
 func WithResource(resType resources.Resource, resRef string) Option {
 	return func(data *ErrData) {
 		if data.ResourceRefs == nil {
-			data.ResourceRefs = make(map[resources.Resource]string)
+			data.ResourceRefs = make(map[resources.Resource][]string)
 		}
-		data.ResourceRefs[resType] = resRef
+		data.ResourceRefs[resType] = append(data.ResourceRefs[resType], resRef)
 	}
 }
 
 func WithResources(resType resources.Resource, resRefs []string) Option {
 	return func(data *ErrData) {
 		if data.ResourceRefs == nil {
-			data.ResourceRefs = make(map[resources.Resource]string)
+			data.ResourceRefs = make(map[resources.Resource][]string)
 		}
 		for _, ref := range resRefs {
-			data.ResourceRefs[resType] = ref
+			data.ResourceRefs[resType] = append(data.ResourceRefs[resType], ref)
 		}
 	}
 }
 
 func MapError(e *RequestError, opts ...Option) error {
-	data := &ErrData{}
+	data := ErrData{}
 	for _, opt := range opts {
-		opt(data)
+		opt(&data)
 	}
 	switch e.Code {
 	case http.StatusForbidden:
-		return ErrAccessForbidden{e.Code, e.Message, *data}
+		return &ErrAccessForbidden{e.Code, e.Message, data}
 
 	case http.StatusNotFound:
-		return ErrResourceNotFound{e.Code, e.Message, *data}
+		return &ErrResourceNotFound{e.Code, e.Message, data}
 
 	default:
-		return *e
+		c := *e
+		c.ErrData = data
+		return &c
 	}
+}
+
+type dataCarrier interface {
+	error
+	errData() *ErrData
+}
+
+func (e *ErrAccessForbidden) errData() *ErrData {
+	return &e.ErrData
+}
+
+func (e *ErrResourceNotFound) errData() *ErrData {
+	return &e.ErrData
+}
+
+func (e *RequestError) errData() *ErrData {
+	return &e.ErrData
+}
+
+func EnrichError(err error, opts ...Option) error {
+	if err == nil {
+		return nil
+	}
+	var carrier dataCarrier
+	if errors.As(err, &carrier) {
+		for _, opt := range opts {
+			opt(carrier.errData())
+		}
+	}
+	return err
 }
