@@ -252,7 +252,7 @@ func TestMapGraphMember(t *testing.T) {
 				ID:          util.Ptr("member-id"),
 				UserID:      util.Ptr("user-id"),
 				DisplayName: util.Ptr("Jane Smith"),
-				Role:        util.Ptr("owner"),
+				Roles:       util.Ptr([]string{"owner"}),
 				Email:       util.Ptr("jane.smith@example.com"),
 			},
 			&models.Member{
