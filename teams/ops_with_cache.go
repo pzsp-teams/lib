@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/pzsp-teams/lib/internal/cacher"
-	snd "github.com/pzsp-teams/lib/internal/sender"
 	"github.com/pzsp-teams/lib/internal/util"
 	"github.com/pzsp-teams/lib/models"
 )
@@ -28,7 +27,7 @@ func (o *opsWithCache) Wait() {
 	o.cacheHandler.Runner.Wait()
 }
 
-func (o *opsWithCache) GetTeamByID(ctx context.Context, teamID string) (*models.Team, *snd.RequestError) {
+func (o *opsWithCache) GetTeamByID(ctx context.Context, teamID string) (*models.Team, error) {
 	team, requestErr := o.teamOps.GetTeamByID(ctx, teamID)
 	if requestErr != nil {
 		o.cacheHandler.OnError(requestErr)
@@ -43,7 +42,7 @@ func (o *opsWithCache) GetTeamByID(ctx context.Context, teamID string) (*models.
 	return team, nil
 }
 
-func (o *opsWithCache) ListMyJoinedTeams(ctx context.Context) ([]*models.Team, *snd.RequestError) {
+func (o *opsWithCache) ListMyJoinedTeams(ctx context.Context) ([]*models.Team, error) {
 	out, requestErr := o.teamOps.ListMyJoinedTeams(ctx)
 	if requestErr != nil {
 		o.cacheHandler.OnError(requestErr)
@@ -56,7 +55,7 @@ func (o *opsWithCache) ListMyJoinedTeams(ctx context.Context) ([]*models.Team, *
 	return out, nil
 }
 
-func (o *opsWithCache) CreateFromTemplate(ctx context.Context, displayName, description string, owners []string) (string, *snd.RequestError) {
+func (o *opsWithCache) CreateFromTemplate(ctx context.Context, displayName, description string, owners []string) (string, error) {
 	id, requestErr := o.teamOps.CreateFromTemplate(ctx, displayName, description, owners)
 	if requestErr != nil {
 		o.cacheHandler.OnError(requestErr)
@@ -68,7 +67,7 @@ func (o *opsWithCache) CreateFromTemplate(ctx context.Context, displayName, desc
 	return id, nil
 }
 
-func (o *opsWithCache) CreateViaGroup(ctx context.Context, displayName, mailNickname, visibility string) (*models.Team, *snd.RequestError) {
+func (o *opsWithCache) CreateViaGroup(ctx context.Context, displayName, mailNickname, visibility string) (*models.Team, error) {
 	team, requestErr := o.teamOps.CreateViaGroup(ctx, displayName, mailNickname, visibility)
 	if requestErr != nil {
 		o.cacheHandler.OnError(requestErr)
@@ -83,7 +82,7 @@ func (o *opsWithCache) CreateViaGroup(ctx context.Context, displayName, mailNick
 	return team, nil
 }
 
-func (o *opsWithCache) Archive(ctx context.Context, teamID, teamRef string, spoReadOnlyForMembers *bool) *snd.RequestError {
+func (o *opsWithCache) Archive(ctx context.Context, teamID, teamRef string, spoReadOnlyForMembers *bool) error {
 	requestErr := o.teamOps.Archive(ctx, teamID, teamRef, spoReadOnlyForMembers)
 	if requestErr != nil {
 		o.cacheHandler.OnError(requestErr)
@@ -95,7 +94,7 @@ func (o *opsWithCache) Archive(ctx context.Context, teamID, teamRef string, spoR
 	return nil
 }
 
-func (o *opsWithCache) Unarchive(ctx context.Context, teamID string) *snd.RequestError {
+func (o *opsWithCache) Unarchive(ctx context.Context, teamID string) error {
 	requestErr := o.teamOps.Unarchive(ctx, teamID)
 	if requestErr != nil {
 		o.cacheHandler.OnError(requestErr)
@@ -104,7 +103,7 @@ func (o *opsWithCache) Unarchive(ctx context.Context, teamID string) *snd.Reques
 	return nil
 }
 
-func (o *opsWithCache) DeleteTeam(ctx context.Context, teamID, teamRef string) *snd.RequestError {
+func (o *opsWithCache) DeleteTeam(ctx context.Context, teamID, teamRef string) error {
 	requestErr := o.teamOps.DeleteTeam(ctx, teamID, teamRef)
 	if requestErr != nil {
 		o.cacheHandler.OnError(requestErr)
@@ -116,13 +115,13 @@ func (o *opsWithCache) DeleteTeam(ctx context.Context, teamID, teamRef string) *
 	return nil
 }
 
-func (o *opsWithCache) RestoreDeletedTeam(ctx context.Context, deletedGroupID string) (string, *snd.RequestError) {
-	return cacher.WithErrorClear(func() (string, *snd.RequestError) {
+func (o *opsWithCache) RestoreDeletedTeam(ctx context.Context, deletedGroupID string) (string, error) {
+	return cacher.WithErrorClear(func() (string, error) {
 		return o.teamOps.RestoreDeletedTeam(ctx, deletedGroupID)
 	}, o.cacheHandler)
 }
 
-func (o *opsWithCache) ListMembers(ctx context.Context, teamID string) ([]*models.Member, *snd.RequestError) {
+func (o *opsWithCache) ListMembers(ctx context.Context, teamID string) ([]*models.Member, error) {
 	members, requestErr := o.teamOps.ListMembers(ctx, teamID)
 	if requestErr != nil {
 		o.cacheHandler.OnError(requestErr)
@@ -135,7 +134,7 @@ func (o *opsWithCache) ListMembers(ctx context.Context, teamID string) ([]*model
 	return members, nil
 }
 
-func (o *opsWithCache) GetMemberByID(ctx context.Context, teamID, memberID string) (*models.Member, *snd.RequestError) {
+func (o *opsWithCache) GetMemberByID(ctx context.Context, teamID, memberID string) (*models.Member, error) {
 	member, requestErr := o.teamOps.GetMemberByID(ctx, teamID, memberID)
 	if requestErr != nil {
 		o.cacheHandler.OnError(requestErr)
@@ -150,7 +149,7 @@ func (o *opsWithCache) GetMemberByID(ctx context.Context, teamID, memberID strin
 	return member, nil
 }
 
-func (o *opsWithCache) AddMember(ctx context.Context, teamID, userID string, isOwner bool) (*models.Member, *snd.RequestError) {
+func (o *opsWithCache) AddMember(ctx context.Context, teamID, userID string, isOwner bool) (*models.Member, error) {
 	member, requestErr := o.teamOps.AddMember(ctx, teamID, userID, isOwner)
 	if requestErr != nil {
 		o.cacheHandler.OnError(requestErr)
@@ -165,13 +164,13 @@ func (o *opsWithCache) AddMember(ctx context.Context, teamID, userID string, isO
 	return member, nil
 }
 
-func (o *opsWithCache) UpdateMemberRoles(ctx context.Context, teamID, memberID string, isOwner bool) (*models.Member, *snd.RequestError) {
-	return cacher.WithErrorClear(func() (*models.Member, *snd.RequestError) {
+func (o *opsWithCache) UpdateMemberRoles(ctx context.Context, teamID, memberID string, isOwner bool) (*models.Member, error) {
+	return cacher.WithErrorClear(func() (*models.Member, error) {
 		return o.teamOps.UpdateMemberRoles(ctx, teamID, memberID, isOwner)
 	}, o.cacheHandler)
 }
 
-func (o *opsWithCache) RemoveMember(ctx context.Context, teamID, memberID, userRef string) *snd.RequestError {
+func (o *opsWithCache) RemoveMember(ctx context.Context, teamID, memberID, userRef string) error {
 	requestErr := o.teamOps.RemoveMember(ctx, teamID, memberID, userRef)
 	if requestErr != nil {
 		o.cacheHandler.OnError(requestErr)

@@ -38,18 +38,18 @@ func NewClient(ctx context.Context, authCfg *config.AuthConfig, senderCfg *confi
 
 func NewClientFromGraphClient(graphClient *graph.GraphServiceClient, senderCfg *config.SenderConfig, cacheCfg *config.CacheConfig) (*Client, error) {
 	teamsAPI := api.NewTeams(graphClient, senderCfg)
-	channelsAPI := api.NewChannels(graphClient, senderCfg)
+	channelAPI := api.NewChannels(graphClient, senderCfg)
 	chatAPI := api.NewChat(graphClient, senderCfg)
-	userAPI := api.NewUsers(graphClient, senderCfg)
+	userAPI := api.NewUser(graphClient, senderCfg)
 
 	cacheHandler := cacher.NewCacheHandler(cacheCfg)
 
 	// TODO: make resolvers with cache decorators, the same as services
 	teamResolver := resolver.NewTeamResolverCacheable(teamsAPI, cacheHandler)
-	channelResolver := resolver.NewChannelResolverCacheable(channelsAPI, cacheHandler)
+	channelResolver := resolver.NewChannelResolverCacheable(channelAPI, cacheHandler)
 	chatResolver := resolver.NewChatResolverCacheable(chatAPI, cacheHandler)
 
-	channelOps := channels.NewOps(channelsAPI)
+	channelOps := channels.NewOps(channelAPI, userAPI)
 	teamOps := teams.NewOps(teamsAPI)
 
 	chatSvc := chats.NewService(chatAPI, chatResolver, userAPI)
@@ -58,7 +58,7 @@ func NewClientFromGraphClient(graphClient *graph.GraphServiceClient, senderCfg *
 		channelOps = channels.NewOpsWithCache(channelOps, cacheHandler)
 		teamOps = teams.NewOpsWithCache(teamOps, cacheHandler)
 	}
-	channelSvc := channels.NewService(channelOps, teamResolver, channelResolver, userAPI)
+	channelSvc := channels.NewService(channelOps, teamResolver, channelResolver)
 	teamSvc := teams.NewService(teamOps, teamResolver)
 
 	return &Client{
