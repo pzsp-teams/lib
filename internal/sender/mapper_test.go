@@ -45,13 +45,12 @@ func TestWithResource_And_WithResources(t *testing.T) {
 			},
 		},
 		{
-		name: "WithResources with nil slice creates key with empty value",
-		opts: []Option{WithResources(resources.Team, nil)},
-		want: map[resources.Resource][]string{
-			resources.Team: nil, // albo []string{}
+			name: "WithResources with nil slice creates key with empty value",
+			opts: []Option{WithResources(resources.Team, nil)},
+			want: map[resources.Resource][]string{
+				resources.Team: nil, // albo []string{}
+			},
 		},
-		},
-
 	}
 
 	for _, tt := range tests {
@@ -131,7 +130,7 @@ func TestMapError(t *testing.T) {
 		t.Parallel()
 
 		in := &RequestError{Code: http.StatusBadRequest, Message: "bad"}
-		err := MapError(in, WithResource(resources.Team, "t1")) 
+		err := MapError(in, WithResource(resources.Team, "t1"))
 
 		var out *RequestError
 		require.ErrorAs(t, err, &out)

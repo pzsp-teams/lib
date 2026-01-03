@@ -50,8 +50,8 @@ func TestErrData_String(t *testing.T) {
 	tests := []struct {
 		name  string
 		in    *ErrData
-		want  string   
-		parts []string 
+		want  string
+		parts []string
 	}{
 		{
 			name: "nil map -> empty string",
