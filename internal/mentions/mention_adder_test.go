@@ -6,180 +6,296 @@ import (
 	"testing"
 
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
-	"github.com/pzsp-teams/lib/internal/api"
 	"github.com/pzsp-teams/lib/internal/sender"
+	"github.com/pzsp-teams/lib/internal/testutil"
+	"github.com/pzsp-teams/lib/internal/util"
 	"github.com/pzsp-teams/lib/models"
+	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
-type fakeUsersAPI struct {
-	userByKey map[string]msmodels.Userable
-	errByKey  map[string]*sender.RequestError
+func TestMentionAdder_Add(t *testing.T) {
+	t.Parallel()
 
-	lastKey string
-}
-
-func (f *fakeUsersAPI) GetUserByEmailOrUPN(ctx context.Context, emailOrUPN string) (msmodels.Userable, *sender.RequestError) {
-	f.lastKey = emailOrUPN
-	if f.errByKey != nil {
-		if err := f.errByKey[emailOrUPN]; err != nil {
-			return nil, err
+	tests := []struct {
+		name  string
+		calls []struct {
+			kind     models.MentionKind
+			targetID string
+			text     string
 		}
-	}
-	if f.userByKey != nil {
-		if u, ok := f.userByKey[emailOrUPN]; ok {
-			return u, nil
-		}
-	}
-	return nil, &sender.RequestError{Message: "not found"}
-}
-
-var _ api.UserAPI = (*fakeUsersAPI)(nil)
-
-func newGraphUser(id, displayName string) msmodels.Userable {
-	u := msmodels.NewUser()
-	if id != "" {
-		u.SetId(&id)
-	}
-	if displayName != "" {
-		u.SetDisplayName(&displayName)
-	}
-	return u
-}
-
-func TestMentionAdder_Add_AppendsAndIncrementsAtID(t *testing.T) {
-	out := []models.Mention{}
-	a := NewMentionAdder(&out)
-
-	a.Add(models.MentionUser, "u-1", "Alice")
-	a.Add(models.MentionTeam, "t-1", "Team")
-
-	if len(out) != 2 {
-		t.Fatalf("expected 2 mentions, got %d", len(out))
-	}
-
-	if out[0].Kind != models.MentionUser || out[0].TargetID != "u-1" || out[0].Text != "Alice" || out[0].AtID != 0 {
-		t.Fatalf("unexpected first mention: %+v", out[0])
-	}
-	if out[1].Kind != models.MentionTeam || out[1].TargetID != "t-1" || out[1].Text != "Team" || out[1].AtID != 1 {
-		t.Fatalf("unexpected second mention: %+v", out[1])
-	}
-}
-
-func TestExtractUserIDAndDisplayName_OK(t *testing.T) {
-	u := newGraphUser("id-1", "Alice")
-	id, dn, err := ExtractUserIDAndDisplayName(u, "alice@example.com")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if id != "id-1" || dn != "Alice" {
-		t.Fatalf("unexpected values: id=%q dn=%q", id, dn)
-	}
-}
-
-func TestExtractUserIDAndDisplayName_UserNil(t *testing.T) {
-	_, _, err := ExtractUserIDAndDisplayName(nil, "alice@example.com")
-	if err == nil {
-		t.Fatalf("expected error, got nil")
-	}
-}
-
-func TestExtractUserIDAndDisplayName_EmptyID(t *testing.T) {
-	u := newGraphUser("", "Alice")
-	_, _, err := ExtractUserIDAndDisplayName(u, "alice@example.com")
-	if err == nil {
-		t.Fatalf("expected error, got nil")
-	}
-}
-
-func TestExtractUserIDAndDisplayName_EmptyDisplayName(t *testing.T) {
-	u := newGraphUser("id-1", "")
-	_, _, err := ExtractUserIDAndDisplayName(u, "alice@example.com")
-	if err == nil {
-		t.Fatalf("expected error, got nil")
-	}
-}
-
-func TestMentionAdder_AddUserMention_Success_AddsMention(t *testing.T) {
-	ctx := context.Background()
-	out := []models.Mention{}
-	a := NewMentionAdder(&out)
-
-	fu := &fakeUsersAPI{
-		userByKey: map[string]msmodels.Userable{
-			"alice@example.com": newGraphUser("id-1", "Alice"),
+		want []models.Mention
+	}{
+		{
+			name: "appends mentions and increments AtID",
+			calls: []struct {
+				kind     models.MentionKind
+				targetID string
+				text     string
+			}{
+				{kind: models.MentionUser, targetID: "u-1", text: "Alice"},
+				{kind: models.MentionTeam, targetID: "t-1", text: "Team"},
+			},
+			want: []models.Mention{
+				{Kind: models.MentionUser, TargetID: "u-1", Text: "Alice", AtID: 0},
+				{Kind: models.MentionTeam, TargetID: "t-1", Text: "Team", AtID: 1},
+			},
+		},
+		{
+			name:  "no calls -> no output",
+			calls: nil,
+			want:  nil,
+		},
+		{
+			name: "only one call -> AtID=0",
+			calls: []struct {
+				kind     models.MentionKind
+				targetID string
+				text     string
+			}{
+				{kind: models.MentionEveryone, targetID: "chat-1", text: "Everyone"},
+			},
+			want: []models.Mention{
+				{Kind: models.MentionEveryone, TargetID: "chat-1", Text: "Everyone", AtID: 0},
+			},
 		},
 	}
 
-	if err := a.AddUserMention(ctx, "alice@example.com", fu); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-	if len(out) != 1 {
-		t.Fatalf("expected 1 mention, got %d", len(out))
-	}
+			var out []models.Mention
+			a := NewMentionAdder(&out)
 
-	got := out[0]
-	if got.Kind != models.MentionUser {
-		t.Fatalf("expected MentionUser kind, got %q", got.Kind)
-	}
-	if got.TargetID != "id-1" {
-		t.Fatalf("expected TargetID=id-1, got %q", got.TargetID)
-	}
-	if got.Text != "Alice" {
-		t.Fatalf("expected Text=Alice, got %q", got.Text)
-	}
-	if got.AtID != 0 {
-		t.Fatalf("expected AtID=0, got %d", got.AtID)
-	}
+			for _, c := range tt.calls {
+				a.Add(c.kind, c.targetID, c.text)
+			}
 
-	if err := a.AddUserMention(ctx, "alice@example.com", fu); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if len(out) != 2 {
-		t.Fatalf("expected 2 mention after second add, got %d", len(out))
+			require.Equal(t, tt.want, out)
+		})
 	}
 }
 
-func TestMentionAdder_AddUserMention_PropagatesUsersAPIError(t *testing.T) {
-	ctx := context.Background()
-	out := []models.Mention{}
-	a := NewMentionAdder(&out)
+func TestExtractUserIDAndDisplayName(t *testing.T) {
+	t.Parallel()
 
-	reqErr := &sender.RequestError{Message: "boom"}
-	fu := &fakeUsersAPI{
-		errByKey: map[string]*sender.RequestError{
-			"alice@example.com": reqErr,
+	tests := []struct {
+		name            string
+		user            msmodels.Userable
+		raw             string
+		wantID          string
+		wantDisplayName string
+		wantErrContains string
+	}{
+		{
+			name: "ok",
+			user: testutil.NewGraphUser(&testutil.NewUserParams{
+				ID:          util.Ptr("id-1"),
+				DisplayName: util.Ptr("Alice"),
+			}),
+			raw:             "alice@example.com",
+			wantID:          "id-1",
+			wantDisplayName: "Alice",
+		},
+		{
+			name:            "user nil",
+			user:            nil,
+			raw:             "alice@example.com",
+			wantErrContains: "resolved user is nil",
+		},
+		{
+			name: "empty id",
+			user: testutil.NewGraphUser(&testutil.NewUserParams{
+				ID:          util.Ptr(""),
+				DisplayName: util.Ptr("Alice"),
+			}),
+			raw:             "alice@example.com",
+			wantErrContains: "resolved user has empty id",
+		},
+		{
+			name: "id is whitespace",
+			user: testutil.NewGraphUser(&testutil.NewUserParams{
+				ID:          util.Ptr("   "),
+				DisplayName: util.Ptr("Alice"),
+			}),
+			raw:             "alice@example.com",
+			wantErrContains: "resolved user has empty id",
+		},
+		{
+			name: "empty display name",
+			user: testutil.NewGraphUser(&testutil.NewUserParams{
+				ID:          util.Ptr("id-1"),
+				DisplayName: util.Ptr(""),
+			}),
+			raw:             "alice@example.com",
+			wantErrContains: "resolved user has empty display name",
+		},
+		{
+			name: "display name is whitespace",
+			user: testutil.NewGraphUser(&testutil.NewUserParams{
+				ID:          util.Ptr("id-1"),
+				DisplayName: util.Ptr("   "),
+			}),
+			raw:             "alice@example.com",
+			wantErrContains: "resolved user has empty display name",
 		},
 	}
 
-	err := a.AddUserMention(ctx, "alice@example.com", fu)
-	if err == nil {
-		t.Fatalf("expected error, got nil")
-	}
-	if !errors.Is(err, reqErr) && err.Error() != reqErr.Error() {
-		t.Fatalf("expected request error, got %v", err)
-	}
-	if len(out) != 0 {
-		t.Fatalf("expected no mentions appended on error, got %d", len(out))
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			id, dn, err := ExtractUserIDAndDisplayName(tt.user, tt.raw)
+
+			if tt.wantErrContains != "" {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tt.wantErrContains)
+				require.Empty(t, id)
+				require.Empty(t, dn)
+				return
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, tt.wantID, id)
+			require.Equal(t, tt.wantDisplayName, dn)
+		})
 	}
 }
 
-func TestMentionAdder_AddUserMention_UserMissingFields_ReturnsError(t *testing.T) {
-	ctx := context.Background()
-	out := []models.Mention{}
-	a := NewMentionAdder(&out)
+func TestMentionAdder_AddUserMention(t *testing.T) {
+	t.Parallel()
 
-	fu := &fakeUsersAPI{
-		userByKey: map[string]msmodels.Userable{
-			"alice@example.com": newGraphUser("id-1", ""),
+	type step struct {
+		userRef         string
+		retUser         msmodels.Userable
+		retErr          *sender.RequestError
+		wantErrContains string
+		wantErrIs       *sender.RequestError
+		wantAppend      bool
+		wantTargetID    string
+		wantText        string
+	}
+
+	tests := []struct {
+		name  string
+		steps []step
+		want  []models.Mention
+	}{
+		{
+			name: "success -> appends MentionUser, increments AtID",
+			steps: []step{
+				{
+					userRef: "alice@example.com",
+					retUser: testutil.NewGraphUser(&testutil.NewUserParams{
+						ID:          util.Ptr("id-1"),
+						DisplayName: util.Ptr("Alice"),
+					}),
+					wantAppend:   true,
+					wantTargetID: "id-1",
+					wantText:     "Alice",
+				},
+				{
+					userRef: "alice@example.com",
+					retUser: testutil.NewGraphUser(&testutil.NewUserParams{
+						ID:          util.Ptr("id-1"),
+						DisplayName: util.Ptr("Alice"),
+					}),
+					wantAppend:   true,
+					wantTargetID: "id-1",
+					wantText:     "Alice",
+				},
+			},
+			want: []models.Mention{
+				{Kind: models.MentionUser, TargetID: "id-1", Text: "Alice", AtID: 0},
+				{Kind: models.MentionUser, TargetID: "id-1", Text: "Alice", AtID: 1},
+			},
+		},
+		{
+			name: "propagates UserAPI error, appends nothing",
+			steps: []step{
+				{
+					userRef:   "alice@example.com",
+					retErr:    &sender.RequestError{Message: "boom"},
+					wantErrIs: &sender.RequestError{Message: "boom"},
+				},
+			},
+			want: nil,
+		},
+		{
+			name: "user missing displayName -> returns error, appends nothing",
+			steps: []step{
+				{
+					userRef: "alice@example.com",
+					retUser: testutil.NewGraphUser(&testutil.NewUserParams{
+						ID:          util.Ptr("id-1"),
+						DisplayName: util.Ptr(""),
+					}),
+					wantErrContains: "resolved user has empty display name",
+				},
+			},
+			want: nil,
+		},
+		{
+			name: "user is nil -> returns error, appends nothing",
+			steps: []step{
+				{
+					userRef:         "alice@example.com",
+					retUser:         nil,
+					wantErrContains: "resolved user is nil",
+				},
+			},
+			want: nil,
 		},
 	}
 
-	err := a.AddUserMention(ctx, "alice@example.com", fu)
-	if err == nil {
-		t.Fatalf("expected error, got nil")
-	}
-	if len(out) != 0 {
-		t.Fatalf("expected no mentions appended on invalid user, got %d", len(out))
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			ctx := context.Background()
+			userAPI := testutil.NewMockUserAPI(ctrl)
+
+			var out []models.Mention
+			a := NewMentionAdder(&out)
+
+			for i, st := range tt.steps {
+				var reqErrPtr *sender.RequestError
+				if st.retErr != nil {
+					reqErrPtr = st.retErr
+				}
+
+				userAPI.
+					EXPECT().
+					GetUserByEmailOrUPN(gomock.Any(), st.userRef).
+					Return(st.retUser, reqErrPtr).
+					Times(1)
+
+				err := a.AddUserMention(ctx, st.userRef, userAPI)
+
+				switch {
+				case st.retErr != nil:
+					require.Error(t, err, "step %d", i)
+					require.True(t, errors.Is(err, reqErrPtr), "step %d: expected ErrorIs(requestErr)", i)
+				case st.wantErrContains != "":
+					require.Error(t, err, "step %d", i)
+					require.Contains(t, err.Error(), st.wantErrContains, "step %d", i)
+				default:
+					require.NoError(t, err, "step %d", i)
+				}
+
+				if st.wantAppend {
+					require.GreaterOrEqual(t, len(out), 1, "step %d: expected append", i)
+					last := out[len(out)-1]
+					require.Equal(t, models.MentionUser, last.Kind, "step %d", i)
+					require.Equal(t, st.wantTargetID, last.TargetID, "step %d", i)
+					require.Equal(t, st.wantText, last.Text, "step %d", i)
+				}
+			}
+			require.Equal(t, tt.want, out)
+		})
 	}
 }
