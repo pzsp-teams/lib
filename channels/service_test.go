@@ -699,3 +699,603 @@ func TestService_GetMentions(t *testing.T) {
 		})
 	}
 }
+
+func TestService_SendMessage_Errors(t *testing.T) {
+	type testCase struct {
+		name       string
+		setupMocks func(d sutDeps)
+		call       func(svc Service, ctx context.Context) error
+		assertErr  func(t *testing.T, err error)
+	}
+
+	body := models.MessageBody{Content: "hi", ContentType: models.MessageContentTypeText}
+
+	testCases := []testCase{
+		{
+			name: "team resolver error",
+			setupMocks: func(d sutDeps) {
+				d.teamResolver.EXPECT().
+					ResolveTeamRefToID(gomock.Any(), defaultTeamRef).
+					Return("", errors.New("boom")).
+					Times(1)
+			},
+			call: func(svc Service, ctx context.Context) error {
+				_, err := svc.SendMessage(ctx, defaultTeamRef, defaultChannelRef, body)
+				return err
+			},
+			assertErr: func(t *testing.T, err error) { require.Error(t, err) },
+		},
+		{
+			name: "channel resolver error",
+			setupMocks: func(d sutDeps) {
+				expectResolveTeam(t, d)
+				d.channelResolver.EXPECT().
+					ResolveChannelRefToID(gomock.Any(), defaultTeamID, defaultChannelRef).
+					Return("", errors.New("boom")).
+					Times(1)
+			},
+			call: func(svc Service, ctx context.Context) error {
+				_, err := svc.SendMessage(ctx, defaultTeamRef, defaultChannelRef, body)
+				return err
+			},
+			assertErr: func(t *testing.T, err error) { require.Error(t, err) },
+		},
+		{
+			name: "ops error is wrapped",
+			setupMocks: func(d sutDeps) {
+				expectResolveTeamAndChannel(t, d)
+				d.ops.EXPECT().
+					SendMessage(gomock.Any(), defaultTeamID, defaultChannelID, body).
+					Return(nil, &snd.ErrAccessForbidden{Code: 403, OriginalMessage: "nope"}).
+					Times(1)
+			},
+			call: func(svc Service, ctx context.Context) error {
+				_, err := svc.SendMessage(ctx, defaultTeamRef, defaultChannelRef, body)
+				return err
+			},
+			assertErr: func(t *testing.T, err error) { testutil.RequireReqErrCode(t, err, 403) },
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			svc, ctx := newSUT(t, tc.setupMocks)
+			err := tc.call(svc, ctx)
+			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestService_SendReply_Errors(t *testing.T) {
+	type testCase struct {
+		name       string
+		setupMocks func(d sutDeps)
+		call       func(svc Service, ctx context.Context) error
+		assertErr  func(t *testing.T, err error)
+	}
+
+	body := models.MessageBody{Content: "reply", ContentType: models.MessageContentTypeText}
+
+	testCases := []testCase{
+		{
+			name: "team resolver error",
+			setupMocks: func(d sutDeps) {
+				d.teamResolver.EXPECT().
+					ResolveTeamRefToID(gomock.Any(), defaultTeamRef).
+					Return("", errors.New("boom")).
+					Times(1)
+			},
+			call: func(svc Service, ctx context.Context) error {
+				_, err := svc.SendReply(ctx, defaultTeamRef, defaultChannelRef, "msg-1", body)
+				return err
+			},
+			assertErr: func(t *testing.T, err error) { require.Error(t, err) },
+		},
+		{
+			name: "channel resolver error",
+			setupMocks: func(d sutDeps) {
+				expectResolveTeam(t, d)
+				d.channelResolver.EXPECT().
+					ResolveChannelRefToID(gomock.Any(), defaultTeamID, defaultChannelRef).
+					Return("", errors.New("boom")).
+					Times(1)
+			},
+			call: func(svc Service, ctx context.Context) error {
+				_, err := svc.SendReply(ctx, defaultTeamRef, defaultChannelRef, "msg-1", body)
+				return err
+			},
+			assertErr: func(t *testing.T, err error) { require.Error(t, err) },
+		},
+		{
+			name: "ops error is wrapped",
+			setupMocks: func(d sutDeps) {
+				expectResolveTeamAndChannel(t, d)
+				d.ops.EXPECT().
+					SendReply(gomock.Any(), defaultTeamID, defaultChannelID, "msg-1", body).
+					Return(nil, &snd.ErrResourceNotFound{Code: 404, OriginalMessage: "missing"}).
+					Times(1)
+			},
+			call: func(svc Service, ctx context.Context) error {
+				_, err := svc.SendReply(ctx, defaultTeamRef, defaultChannelRef, "msg-1", body)
+				return err
+			},
+			assertErr: func(t *testing.T, err error) { testutil.RequireReqErrCode(t, err, 404) },
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			svc, ctx := newSUT(t, tc.setupMocks)
+			err := tc.call(svc, ctx)
+			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestService_ListMessages_Errors(t *testing.T) {
+	type testCase struct {
+		name       string
+		setupMocks func(d sutDeps)
+		assertErr  func(t *testing.T, err error)
+	}
+
+	opts := &models.ListMessagesOptions{}
+
+	testCases := []testCase{
+		{
+			name: "team resolver error",
+			setupMocks: func(d sutDeps) {
+				d.teamResolver.EXPECT().
+					ResolveTeamRefToID(gomock.Any(), defaultTeamRef).
+					Return("", errors.New("boom")).
+					Times(1)
+			},
+			assertErr: func(t *testing.T, err error) { require.Error(t, err) },
+		},
+		{
+			name: "channel resolver error",
+			setupMocks: func(d sutDeps) {
+				expectResolveTeam(t, d)
+				d.channelResolver.EXPECT().
+					ResolveChannelRefToID(gomock.Any(), defaultTeamID, defaultChannelRef).
+					Return("", errors.New("boom")).
+					Times(1)
+			},
+			assertErr: func(t *testing.T, err error) { require.Error(t, err) },
+		},
+		{
+			name: "ops error is wrapped",
+			setupMocks: func(d sutDeps) {
+				expectResolveTeamAndChannel(t, d)
+				d.ops.EXPECT().
+					ListMessages(gomock.Any(), defaultTeamID, defaultChannelID, opts).
+					Return(nil, &snd.ErrAccessForbidden{Code: 403, OriginalMessage: "nope"}).
+					Times(1)
+			},
+			assertErr: func(t *testing.T, err error) { testutil.RequireReqErrCode(t, err, 403) },
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			svc, ctx := newSUT(t, tc.setupMocks)
+			_, err := svc.ListMessages(ctx, defaultTeamRef, defaultChannelRef, opts)
+			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestService_ListReplies_Errors_AndNilTop(t *testing.T) {
+	t.Run("ListReplies passes nil Top when input top is nil", func(t *testing.T) {
+		svc, ctx := newSUT(t, func(d sutDeps) {
+			expectResolveTeamAndChannel(t, d)
+
+			d.ops.EXPECT().
+				ListReplies(gomock.Any(), defaultTeamID, defaultChannelID, "msg-1", gomock.Any()).
+				DoAndReturn(func(_ context.Context, teamID, channelID, messageID string, opts *models.ListMessagesOptions) ([]*models.Message, error) {
+					require.NotNil(t, opts)
+					require.Nil(t, opts.Top)
+					return []*models.Message{{ID: "r1"}}, nil
+				}).
+				Times(1)
+		})
+
+		_, err := svc.ListReplies(ctx, defaultTeamRef, defaultChannelRef, "msg-1", nil)
+		require.NoError(t, err)
+	})
+
+	type testCase struct {
+		name       string
+		setupMocks func(d sutDeps)
+		assertErr  func(t *testing.T, err error)
+	}
+
+	top := int32(1)
+
+	testCases := []testCase{
+		{
+			name: "team resolver error",
+			setupMocks: func(d sutDeps) {
+				d.teamResolver.EXPECT().
+					ResolveTeamRefToID(gomock.Any(), defaultTeamRef).
+					Return("", errors.New("boom")).
+					Times(1)
+			},
+			assertErr: func(t *testing.T, err error) { require.Error(t, err) },
+		},
+		{
+			name: "channel resolver error",
+			setupMocks: func(d sutDeps) {
+				expectResolveTeam(t, d)
+				d.channelResolver.EXPECT().
+					ResolveChannelRefToID(gomock.Any(), defaultTeamID, defaultChannelRef).
+					Return("", errors.New("boom")).
+					Times(1)
+			},
+			assertErr: func(t *testing.T, err error) { require.Error(t, err) },
+		},
+		{
+			name: "ops error is wrapped",
+			setupMocks: func(d sutDeps) {
+				expectResolveTeamAndChannel(t, d)
+				d.ops.EXPECT().
+					ListReplies(gomock.Any(), defaultTeamID, defaultChannelID, "msg-1", gomock.Any()).
+					Return(nil, &snd.ErrAccessForbidden{Code: 403, OriginalMessage: "nope"}).
+					Times(1)
+			},
+			assertErr: func(t *testing.T, err error) { testutil.RequireReqErrCode(t, err, 403) },
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			svc, ctx := newSUT(t, tc.setupMocks)
+			_, err := svc.ListReplies(ctx, defaultTeamRef, defaultChannelRef, "msg-1", &top)
+			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestService_GetMessage_Errors(t *testing.T) {
+	type testCase struct {
+		name       string
+		setupMocks func(d sutDeps)
+		assertErr  func(t *testing.T, err error)
+	}
+
+	testCases := []testCase{
+		{
+			name: "team resolver error",
+			setupMocks: func(d sutDeps) {
+				d.teamResolver.EXPECT().
+					ResolveTeamRefToID(gomock.Any(), defaultTeamRef).
+					Return("", errors.New("boom")).
+					Times(1)
+			},
+			assertErr: func(t *testing.T, err error) { require.Error(t, err) },
+		},
+		{
+			name: "channel resolver error",
+			setupMocks: func(d sutDeps) {
+				expectResolveTeam(t, d)
+				d.channelResolver.EXPECT().
+					ResolveChannelRefToID(gomock.Any(), defaultTeamID, defaultChannelRef).
+					Return("", errors.New("boom")).
+					Times(1)
+			},
+			assertErr: func(t *testing.T, err error) { require.Error(t, err) },
+		},
+		{
+			name: "ops error wrapped",
+			setupMocks: func(d sutDeps) {
+				expectResolveTeamAndChannel(t, d)
+				d.ops.EXPECT().
+					GetMessage(gomock.Any(), defaultTeamID, defaultChannelID, "m1").
+					Return(nil, &snd.ErrResourceNotFound{Code: 404, OriginalMessage: "missing"}).
+					Times(1)
+			},
+			assertErr: func(t *testing.T, err error) { testutil.RequireReqErrCode(t, err, 404) },
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			svc, ctx := newSUT(t, tc.setupMocks)
+			_, err := svc.GetMessage(ctx, defaultTeamRef, defaultChannelRef, "m1")
+			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestService_GetReply_Errors(t *testing.T) {
+	type testCase struct {
+		name       string
+		setupMocks func(d sutDeps)
+		assertErr  func(t *testing.T, err error)
+	}
+
+	testCases := []testCase{
+		{
+			name: "team resolver error",
+			setupMocks: func(d sutDeps) {
+				d.teamResolver.EXPECT().
+					ResolveTeamRefToID(gomock.Any(), defaultTeamRef).
+					Return("", errors.New("boom")).
+					Times(1)
+			},
+			assertErr: func(t *testing.T, err error) { require.Error(t, err) },
+		},
+		{
+			name: "channel resolver error",
+			setupMocks: func(d sutDeps) {
+				expectResolveTeam(t, d)
+				d.channelResolver.EXPECT().
+					ResolveChannelRefToID(gomock.Any(), defaultTeamID, defaultChannelRef).
+					Return("", errors.New("boom")).
+					Times(1)
+			},
+			assertErr: func(t *testing.T, err error) { require.Error(t, err) },
+		},
+		{
+			name: "ops error wrapped",
+			setupMocks: func(d sutDeps) {
+				expectResolveTeamAndChannel(t, d)
+				d.ops.EXPECT().
+					GetReply(gomock.Any(), defaultTeamID, defaultChannelID, "m1", "r1").
+					Return(nil, &snd.ErrAccessForbidden{Code: 403, OriginalMessage: "nope"}).
+					Times(1)
+			},
+			assertErr: func(t *testing.T, err error) { testutil.RequireReqErrCode(t, err, 403) },
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			svc, ctx := newSUT(t, tc.setupMocks)
+			_, err := svc.GetReply(ctx, defaultTeamRef, defaultChannelRef, "m1", "r1")
+			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestService_ListMembers_Errors(t *testing.T) {
+	type testCase struct {
+		name       string
+		setupMocks func(d sutDeps)
+		assertErr  func(t *testing.T, err error)
+	}
+
+	testCases := []testCase{
+		{
+			name: "team resolver error",
+			setupMocks: func(d sutDeps) {
+				d.teamResolver.EXPECT().
+					ResolveTeamRefToID(gomock.Any(), defaultTeamRef).
+					Return("", errors.New("boom")).
+					Times(1)
+			},
+			assertErr: func(t *testing.T, err error) { require.Error(t, err) },
+		},
+		{
+			name: "channel resolver error",
+			setupMocks: func(d sutDeps) {
+				expectResolveTeam(t, d)
+				d.channelResolver.EXPECT().
+					ResolveChannelRefToID(gomock.Any(), defaultTeamID, defaultChannelRef).
+					Return("", errors.New("boom")).
+					Times(1)
+			},
+			assertErr: func(t *testing.T, err error) { require.Error(t, err) },
+		},
+		{
+			name: "ops error wrapped",
+			setupMocks: func(d sutDeps) {
+				expectResolveTeamAndChannel(t, d)
+				d.ops.EXPECT().
+					ListMembers(gomock.Any(), defaultTeamID, defaultChannelID).
+					Return(nil, &snd.ErrAccessForbidden{Code: 403, OriginalMessage: "nope"}).
+					Times(1)
+			},
+			assertErr: func(t *testing.T, err error) { testutil.RequireReqErrCode(t, err, 403) },
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			svc, ctx := newSUT(t, tc.setupMocks)
+			_, err := svc.ListMembers(ctx, defaultTeamRef, defaultChannelRef)
+			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestService_AddMember_Errors(t *testing.T) {
+	type testCase struct {
+		name       string
+		setupMocks func(d sutDeps)
+		assertErr  func(t *testing.T, err error)
+	}
+
+	userRef := "user@x.com"
+
+	testCases := []testCase{
+		{
+			name: "team resolver error",
+			setupMocks: func(d sutDeps) {
+				d.teamResolver.EXPECT().
+					ResolveTeamRefToID(gomock.Any(), defaultTeamRef).
+					Return("", errors.New("boom")).
+					Times(1)
+			},
+			assertErr: func(t *testing.T, err error) { require.Error(t, err) },
+		},
+		{
+			name: "channel resolver error",
+			setupMocks: func(d sutDeps) {
+				expectResolveTeam(t, d)
+				d.channelResolver.EXPECT().
+					ResolveChannelRefToID(gomock.Any(), defaultTeamID, defaultChannelRef).
+					Return("", errors.New("boom")).
+					Times(1)
+			},
+			assertErr: func(t *testing.T, err error) { require.Error(t, err) },
+		},
+		{
+			name: "ops error wrapped",
+			setupMocks: func(d sutDeps) {
+				expectResolveTeamAndChannel(t, d)
+				d.ops.EXPECT().
+					AddMember(gomock.Any(), defaultTeamID, defaultChannelID, userRef, false).
+					Return(nil, &snd.ErrAccessForbidden{Code: 403, OriginalMessage: "nope"}).
+					Times(1)
+			},
+			assertErr: func(t *testing.T, err error) { testutil.RequireReqErrCode(t, err, 403) },
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			svc, ctx := newSUT(t, tc.setupMocks)
+			_, err := svc.AddMember(ctx, defaultTeamRef, defaultChannelRef, userRef, false)
+			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestService_UpdateMemberRoles_Errors(t *testing.T) {
+	type testCase struct {
+		name       string
+		setupMocks func(d sutDeps)
+		assertErr  func(t *testing.T, err error)
+	}
+
+	userRef := "user@x.com"
+
+	testCases := []testCase{
+		{
+			name: "resolve team+channel fails at team resolver",
+			setupMocks: func(d sutDeps) {
+				d.teamResolver.EXPECT().
+					ResolveTeamRefToID(gomock.Any(), defaultTeamRef).
+					Return("", errors.New("boom")).
+					Times(1)
+			},
+			assertErr: func(t *testing.T, err error) { require.Error(t, err) },
+		},
+		{
+			name: "resolve team+channel fails at channel resolver",
+			setupMocks: func(d sutDeps) {
+				expectResolveTeam(t, d)
+				d.channelResolver.EXPECT().
+					ResolveChannelRefToID(gomock.Any(), defaultTeamID, defaultChannelRef).
+					Return("", errors.New("boom")).
+					Times(1)
+			},
+			assertErr: func(t *testing.T, err error) { require.Error(t, err) },
+		},
+		{
+			name: "member resolver error is wrapped",
+			setupMocks: func(d sutDeps) {
+				expectResolveTeamAndChannel(t, d)
+				d.channelResolver.EXPECT().
+					ResolveChannelMemberRefToID(gomock.Any(), defaultTeamID, defaultChannelID, userRef).
+					Return("", errors.New("boom")).
+					Times(1)
+			},
+			assertErr: func(t *testing.T, err error) { require.Error(t, err) },
+		},
+		{
+			name: "ops error wrapped",
+			setupMocks: func(d sutDeps) {
+				expectResolveTeamAndChannel(t, d)
+				d.channelResolver.EXPECT().
+					ResolveChannelMemberRefToID(gomock.Any(), defaultTeamID, defaultChannelID, userRef).
+					Return("member-id", nil).
+					Times(1)
+
+				d.ops.EXPECT().
+					UpdateMemberRoles(gomock.Any(), defaultTeamID, defaultChannelID, "member-id", true).
+					Return(nil, &snd.ErrAccessForbidden{Code: 403, OriginalMessage: "nope"}).
+					Times(1)
+			},
+			assertErr: func(t *testing.T, err error) { testutil.RequireReqErrCode(t, err, 403) },
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			svc, ctx := newSUT(t, tc.setupMocks)
+			_, err := svc.UpdateMemberRoles(ctx, defaultTeamRef, defaultChannelRef, userRef, true)
+			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestService_RemoveMember_Errors(t *testing.T) {
+	type testCase struct {
+		name       string
+		setupMocks func(d sutDeps)
+		assertErr  func(t *testing.T, err error)
+	}
+
+	userRef := "user@x.com"
+
+	testCases := []testCase{
+		{
+			name: "resolve team+channel fails at team resolver",
+			setupMocks: func(d sutDeps) {
+				d.teamResolver.EXPECT().
+					ResolveTeamRefToID(gomock.Any(), defaultTeamRef).
+					Return("", errors.New("boom")).
+					Times(1)
+			},
+			assertErr: func(t *testing.T, err error) { require.Error(t, err) },
+		},
+		{
+			name: "resolve team+channel fails at channel resolver",
+			setupMocks: func(d sutDeps) {
+				expectResolveTeam(t, d)
+				d.channelResolver.EXPECT().
+					ResolveChannelRefToID(gomock.Any(), defaultTeamID, defaultChannelRef).
+					Return("", errors.New("boom")).
+					Times(1)
+			},
+			assertErr: func(t *testing.T, err error) { require.Error(t, err) },
+		},
+		{
+			name: "member resolver error is wrapped",
+			setupMocks: func(d sutDeps) {
+				expectResolveTeamAndChannel(t, d)
+				d.channelResolver.EXPECT().
+					ResolveChannelMemberRefToID(gomock.Any(), defaultTeamID, defaultChannelID, userRef).
+					Return("", errors.New("boom")).
+					Times(1)
+			},
+			assertErr: func(t *testing.T, err error) { require.Error(t, err) },
+		},
+		{
+			name: "ops error wrapped",
+			setupMocks: func(d sutDeps) {
+				expectResolveTeamAndChannel(t, d)
+				d.channelResolver.EXPECT().
+					ResolveChannelMemberRefToID(gomock.Any(), defaultTeamID, defaultChannelID, userRef).
+					Return("member-id", nil).
+					Times(1)
+
+				d.ops.EXPECT().
+					RemoveMember(gomock.Any(), defaultTeamID, defaultChannelID, "member-id", userRef).
+					Return(&snd.ErrAccessForbidden{Code: 403, OriginalMessage: "nope"}).
+					Times(1)
+			},
+			assertErr: func(t *testing.T, err error) { testutil.RequireReqErrCode(t, err, 403) },
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			svc, ctx := newSUT(t, tc.setupMocks)
+			err := svc.RemoveMember(ctx, defaultTeamRef, defaultChannelRef, userRef)
+			tc.assertErr(t, err)
+		})
+	}
+}
