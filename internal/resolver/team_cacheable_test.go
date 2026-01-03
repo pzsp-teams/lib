@@ -357,10 +357,9 @@ func TestTeamResolverCacheable_ResolveTeamMemberRefToID(t *testing.T) {
 
 				tr.EXPECT().Run(gomock.Any()).Times(1)
 			},
-			expectedID:  "member-id-1", 
+			expectedID:  "member-id-1",
 			expectError: false,
 		},
-
 	}
 
 	for _, tc := range testCases {
