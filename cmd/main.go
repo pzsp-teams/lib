@@ -7,9 +7,8 @@ import (
 	"strconv"
 	"strings"
 
-	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
-
 	lib "github.com/pzsp-teams/lib"
+	"github.com/pzsp-teams/lib/config"
 	"github.com/pzsp-teams/lib/models"
 )
 
@@ -44,7 +43,6 @@ func printUsage() {
 	fmt.Println("  restore-team <deleted-group-id>")
 }
 
-
 func main() {
 	if len(os.Args) < 2 {
 		printUsage()
@@ -53,8 +51,11 @@ func main() {
 	cmd := os.Args[1]
 	authConfig := loadAuthConfig()
 	senderConfig := newSenderConfig()
-
-	client, err := lib.NewClient(context.TODO(), authConfig, senderConfig, true, nil)
+	cacheConfig := config.CacheConfig{
+		Mode:     config.CacheAsync,
+		Provider: config.CacheProviderJSONFile,
+	}
+	client, err := lib.NewClient(context.TODO(), authConfig, senderConfig, &cacheConfig)
 	if err != nil {
 		fmt.Printf("Error creating Teams client: %v\n", err)
 		os.Exit(1)
@@ -142,13 +143,6 @@ func main() {
 		}
 		handleCreateTeamFromTemplate(client, os.Args[2:])
 
-	case "update-team":
-		if len(os.Args) < 4 {
-			fmt.Println("Usage: teams update-team <team-name> <new-display-name> [new-description...]")
-			os.Exit(1)
-		}
-		handleUpdateTeam(client, os.Args[2:])
-
 	case "archive-team":
 		if len(os.Args) < 3 {
 			fmt.Println("Usage: teams archive-team <team-name> [spo-readonly=true|false]")
@@ -176,7 +170,7 @@ func main() {
 			os.Exit(1)
 		}
 		handleRestoreTeam(client, os.Args[2:])
-	
+
 	case "list-members":
 		if len(os.Args) < 4 {
 			fmt.Println("Usage: teams list-members <team-name> <channel-name>")
@@ -471,31 +465,6 @@ func handleCreateTeamFromTemplate(client *lib.Client, args []string) {
 	}
 }
 
-func handleUpdateTeam(client *lib.Client, args []string) {
-	teamName := args[0]
-	newName := args[1]
-
-	var newDesc *string
-	if len(args) > 2 {
-		desc := strings.Join(args[2:], " ")
-		newDesc = &desc
-	}
-
-	patch := msmodels.NewTeam()
-	patch.SetDisplayName(&newName)
-	if newDesc != nil {
-		patch.SetDescription(newDesc)
-	}
-
-	ctx := context.TODO()
-	t, err := client.Teams.Update(ctx, teamName, patch)
-	if err != nil {
-		fmt.Printf("Error updating team: %v\n", err)
-		os.Exit(1)
-	}
-	fmt.Printf("Team updated: %s (ID: %s)\n", t.DisplayName, t.ID)
-}
-
 func handleArchiveTeam(client *lib.Client, args []string) {
 	teamName := args[0]
 	var spo *bool
@@ -616,7 +585,7 @@ func handleUpdateMemberRole(client *lib.Client, args []string) {
 	}
 	isOwner := val
 
-	member, err := client.Channels.UpdateMemberRole(context.TODO(), teamName, channelName, userRef, isOwner)
+	member, err := client.Channels.UpdateMemberRoles(context.TODO(), teamName, channelName, userRef, isOwner)
 	if err != nil {
 		fmt.Printf("Error updating member role: %v\n", err)
 		os.Exit(1)
