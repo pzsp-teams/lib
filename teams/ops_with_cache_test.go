@@ -92,7 +92,7 @@ func TestOpsWithCache_GetTeamByID(t *testing.T) {
 				expectRunNow(d.runner)
 				d.cacher.EXPECT().Clear().Return(nil)
 			},
-			wantErr: reqErr(), 
+			wantErr: reqErr(),
 		},
 	}
 

@@ -48,7 +48,7 @@ func TestWithResource_And_WithResources(t *testing.T) {
 			name: "WithResources with nil slice creates key with empty value",
 			opts: []Option{WithResources(resources.Team, nil)},
 			want: map[resources.Resource][]string{
-				resources.Team: nil, // albo []string{}
+				resources.Team: nil,
 			},
 		},
 	}
