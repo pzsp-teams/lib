@@ -16,6 +16,7 @@ func IsLikelyChatID(s string) bool {
 }
 
 func IsLikelyGUID(s string) bool {
+	s = strings.TrimSpace(s)
 	var guidRegex = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
 	return guidRegex.MatchString(s)
 }
