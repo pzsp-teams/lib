@@ -129,7 +129,6 @@ func TestOps_GetTeamByID(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			sut, ctx := newOpsSUT(t, tc.setup)
 
@@ -180,7 +179,6 @@ func TestOps_ListMyJoinedTeams(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			sut, ctx := newOpsSUT(t, tc.setup)
 
@@ -271,7 +269,6 @@ func TestOps_CreateViaGroup(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			sut, ctx := newOpsSUT(t, tc.setup)
 
@@ -316,7 +313,6 @@ func TestOps_CreateFromTemplate(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			sut, ctx := newOpsSUT(t, tc.setup)
 
@@ -412,7 +408,6 @@ func TestOps_RestoreDeletedTeam(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			sut, ctx := newOpsSUT(t, tc.setup)
 
@@ -484,7 +479,6 @@ func TestOps_ListMembers(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			sut, ctx := newOpsSUT(t, tc.setup)
 
@@ -549,7 +543,6 @@ func TestOps_GetMemberByID(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			sut, ctx := newOpsSUT(t, tc.setup)
 
@@ -615,7 +608,6 @@ func TestOps_AddMember(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			sut, ctx := newOpsSUT(t, tc.setup)
 

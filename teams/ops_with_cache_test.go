@@ -81,7 +81,6 @@ func TestOpsWithCache_GetTeamByID(t *testing.T) {
 			name: "Success - Nil team - Does not cache",
 			setup: func(d sutDepsWithCache) {
 				d.teamOps.EXPECT().GetTeamByID(gomock.Any(), "id").Return(nil, nil)
-				// brak runner/cache expectations, bo nie powinno się wykonać
 			},
 			want: nil,
 		},
@@ -93,12 +92,11 @@ func TestOpsWithCache_GetTeamByID(t *testing.T) {
 				expectRunNow(d.runner)
 				d.cacher.EXPECT().Clear().Return(nil)
 			},
-			wantErr: reqErr(), // uwaga: w asercji użyjemy ErrorAs + Code, a nie Equal pointerów
+			wantErr: reqErr(), 
 		},
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			sut, d := newSUTWithCache(t)
 			tc.setup(d)
@@ -427,7 +425,6 @@ func TestOpsWithCache_RestoreDeletedTeam(t *testing.T) {
 			setup: func(d sutDepsWithCache) {
 				e := reqErr()
 				d.teamOps.EXPECT().RestoreDeletedTeam(gomock.Any(), "did").Return("", e)
-				// WithErrorClear powinno wyczyścić cache przy błędzie
 				expectRunNow(d.runner)
 				d.cacher.EXPECT().Clear().Return(nil)
 			},
