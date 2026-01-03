@@ -79,4 +79,3 @@ func TestAsyncRunner_RunIsNonBlocking(t *testing.T) {
 		}
 	}, 2*time.Second, 10*time.Millisecond, "expected function to finish after Wait()")
 }
-
