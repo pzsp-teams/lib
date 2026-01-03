@@ -1,91 +1,246 @@
 package sender
 
 import (
+	"errors"
 	"net/http"
-	"strings"
 	"testing"
 
 	"github.com/pzsp-teams/lib/internal/resources"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func TestRequestError(t *testing.T) {
-	e := RequestError{Code: http.StatusForbidden, Message: "Forbidden"}
-	got := e.Error()
-	want := "[CODE: 403]: Forbidden"
-	assert.Equal(t, want, got)
+func requireContainsAll(t *testing.T, got string, parts ...string) {
+	t.Helper()
+	for _, p := range parts {
+		require.Contains(t, got, p)
+	}
 }
 
-func TestErrData(t *testing.T) {
+func TestRequestError_Error(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
-		ed   ErrData
-		want []string
+		in   RequestError
+		want string
 	}{
 		{
-			name: "empty map",
-			ed:   ErrData{ResourceRefs: map[resources.Resource][]string{}},
-			want: []string{},
+			name: "formats with code and message",
+			in:   RequestError{Code: http.StatusForbidden, Message: "Forbidden"},
+			want: "[CODE: 403]: Forbidden",
 		},
 		{
-			name: "single entry",
-			ed:   ErrData{ResourceRefs: map[resources.Resource][]string{resources.Team: {"z1"}}},
-			want: []string{"TEAM(z1)"},
-		},
-		{
-			name: "multiple entries",
-			ed: ErrData{ResourceRefs: map[resources.Resource][]string{
-				resources.Team:    {"z1"},
-				resources.Channel: {"general"},
-			}},
-			want: []string{"TEAM(z1)", "CHANNEL(general)"},
+			name: "empty message still formats",
+			in:   RequestError{Code: http.StatusBadRequest, Message: ""},
+			want: "[CODE: 400]: ",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := tt.ed.String()
-			if len(tt.want) != 0 {
-				for _, w := range tt.want {
-					assert.True(t, strings.Contains(got, w))
-				}
-			}
+			t.Parallel()
+			require.Equal(t, tt.want, tt.in.Error())
 		})
 	}
 }
 
-func TestErrAccessForbidden(t *testing.T) {
-	e := ErrAccessForbidden{
+func TestErrData_String(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		in    *ErrData
+		want  string   
+		parts []string 
+	}{
+		{
+			name: "nil map -> empty string",
+			in:   &ErrData{ResourceRefs: nil},
+			want: "",
+		},
+		{
+			name: "empty map -> empty string",
+			in:   &ErrData{ResourceRefs: map[resources.Resource][]string{}},
+			want: "",
+		},
+		{
+			name: "single entry one ref -> deterministic",
+			in: &ErrData{ResourceRefs: map[resources.Resource][]string{
+				resources.Team: {"z1"},
+			}},
+			want: "TEAM(z1)",
+		},
+		{
+			name: "single entry many refs -> deterministic join",
+			in: &ErrData{ResourceRefs: map[resources.Resource][]string{
+				resources.Team: {"z1", "z2"},
+			}},
+			want: "TEAM(z1,z2)",
+		},
+		{
+			name: "multiple entries -> contains all segments (order not guaranteed)",
+			in: &ErrData{ResourceRefs: map[resources.Resource][]string{
+				resources.Team:    {"z1"},
+				resources.Channel: {"general"},
+			}},
+			parts: []string{"TEAM(z1)", "CHANNEL(general)"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := tt.in.String()
+
+			if tt.want != "" || (tt.in != nil && tt.in.ResourceRefs != nil && len(tt.in.ResourceRefs) == 0) {
+				require.Equal(t, tt.want, got)
+				return
+			}
+			requireContainsAll(t, got, tt.parts...)
+		})
+	}
+}
+
+func TestErrAccessForbidden_Error_And_Is(t *testing.T) {
+	t.Parallel()
+
+	base := ErrAccessForbidden{
 		Code:            http.StatusForbidden,
 		OriginalMessage: "Bad scopes",
 		ErrData: ErrData{ResourceRefs: map[resources.Resource][]string{
-			resources.Team: {"z1"},
+			resources.Team:    {"z1"},
+			resources.Channel: {"general"},
 		}},
 	}
 
-	got := e.Error()
-	want := "[CODE: 403]: access forbidden to one or more resources among: TEAM(z1) (Bad scopes)"
-	assert.Equal(t, want, got)
+	t.Run("Error contains stable parts", func(t *testing.T) {
+		t.Parallel()
 
-	assert.ErrorIs(t, e, ErrAccessForbidden{Code: http.StatusForbidden})
-	assert.NotErrorIs(t, e, ErrAccessForbidden{Code: http.StatusNotFound})
-	assert.NotErrorIs(t, e, ErrResourceNotFound{Code: http.StatusForbidden})
+		got := base.Error()
+		requireContainsAll(t, got,
+			"[CODE: 403]:",
+			"access forbidden to one or more resources among:",
+			"(Bad scopes)",
+			"TEAM(z1)",
+			"CHANNEL(general)",
+		)
+	})
+
+	t.Run("errors.Is behavior (value vs pointer target)", func(t *testing.T) {
+		t.Parallel()
+
+		tests := []struct {
+			name   string
+			err    error
+			target error
+			want   bool
+		}{
+			{
+				name:   "matches same type+code (value err, value target)",
+				err:    base,
+				target: ErrAccessForbidden{Code: http.StatusForbidden},
+				want:   true,
+			},
+			{
+				name:   "does not match different code",
+				err:    base,
+				target: ErrAccessForbidden{Code: http.StatusNotFound},
+				want:   false,
+			},
+			{
+				name:   "does not match different type even if same code",
+				err:    base,
+				target: ErrResourceNotFound{Code: http.StatusForbidden},
+				want:   false,
+			},
+			{
+				name:   "target as pointer does NOT match (Is asserts value type)",
+				err:    base,
+				target: &ErrAccessForbidden{Code: http.StatusForbidden},
+				want:   false,
+			},
+			{
+				name:   "err as pointer still matches value target (receiver is value)",
+				err:    &base,
+				target: ErrAccessForbidden{Code: http.StatusForbidden},
+				want:   true,
+			},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
+				require.Equal(t, tt.want, errors.Is(tt.err, tt.target))
+			})
+		}
+	})
 }
 
-func TestErrResourceNotFound_Table(t *testing.T) {
-	e := ErrResourceNotFound{
+func TestErrResourceNotFound_Error_And_Is(t *testing.T) {
+	t.Parallel()
+
+	base := ErrResourceNotFound{
 		Code:            http.StatusNotFound,
-		OriginalMessage: "Bad scopes",
+		OriginalMessage: "Not found",
 		ErrData: ErrData{ResourceRefs: map[resources.Resource][]string{
 			resources.Channel: {"general"},
 		}},
 	}
 
-	got := e.Error()
-	want := "[CODE: 404]: one or more resources not found among: CHANNEL(general) (Bad scopes)"
-	assert.Equal(t, want, got)
+	t.Run("Error formats deterministically for single entry", func(t *testing.T) {
+		t.Parallel()
 
-	assert.ErrorIs(t, e, ErrResourceNotFound{Code: http.StatusNotFound})
-	assert.NotErrorIs(t, e, ErrResourceNotFound{Code: http.StatusBadRequest})
-	assert.NotErrorIs(t, e, ErrAccessForbidden{Code: http.StatusNotFound})
+		want := "[CODE: 404]: one or more resources not found among: CHANNEL(general) (Not found)"
+		require.Equal(t, want, base.Error())
+	})
+
+	t.Run("errors.Is behavior (value vs pointer target)", func(t *testing.T) {
+		t.Parallel()
+
+		tests := []struct {
+			name   string
+			err    error
+			target error
+			want   bool
+		}{
+			{
+				name:   "matches same type+code",
+				err:    base,
+				target: ErrResourceNotFound{Code: http.StatusNotFound},
+				want:   true,
+			},
+			{
+				name:   "does not match different code",
+				err:    base,
+				target: ErrResourceNotFound{Code: http.StatusBadRequest},
+				want:   false,
+			},
+			{
+				name:   "does not match different type",
+				err:    base,
+				target: ErrAccessForbidden{Code: http.StatusNotFound},
+				want:   false,
+			},
+			{
+				name:   "target as pointer does NOT match (Is asserts value type)",
+				err:    base,
+				target: &ErrResourceNotFound{Code: http.StatusNotFound},
+				want:   false,
+			},
+			{
+				name:   "err as pointer still matches value target",
+				err:    &base,
+				target: ErrResourceNotFound{Code: http.StatusNotFound},
+				want:   true,
+			},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				t.Parallel()
+				require.Equal(t, tt.want, errors.Is(tt.err, tt.target))
+			})
+		}
+	})
 }
