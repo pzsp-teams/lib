@@ -1,36 +1,82 @@
-package util_test
+package util
 
 import (
+	"encoding/hex"
 	"testing"
 
-	"github.com/pzsp-teams/lib/internal/util"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func TestHashWithPepper_KnownVector(t *testing.T) {
-	pepper := "pepper123"
-	value := "user@example.com"
+func TestHashWithPepper(t *testing.T) {
+	t.Parallel()
 
-	const expected = "3cadad0f8d29a1acd80eb42d09b809c554fb7e4bb70051e67193369d56abc021"
+	tests := []struct {
+		name   string
+		pepper string
+		value  string
+		want   string
+	}{
+		{
+			name:   "known vector",
+			pepper: "pepper123",
+			value:  "user@example.com",
+			want:   "3cadad0f8d29a1acd80eb42d09b809c554fb7e4bb70051e67193369d56abc021",
+		},
+		{
+			name:   "empty pepper and value still produces valid sha256 hex",
+			pepper: "",
+			value:  "",
+			want:   "",
+		},
+		{
+			name:   "unicode input still produces valid sha256 hex",
+			pepper: "pieprz🔒",
+			value:  "użytkownik@example.com",
+			want:   "",
+		},
+	}
 
-	got := util.HashWithPepper(pepper, value)
-	assert.Equal(t, expected, got)
-}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-func TestHashWithPepper_ChangesWhenPepperChanges(t *testing.T) {
-	v := "user@example.com"
+			got := HashWithPepper(tt.pepper, tt.value)
 
-	h1 := util.HashWithPepper("pepper1", v)
-	h2 := util.HashWithPepper("pepper2", v)
+			require.Len(t, got, 64, "sha256 hex length should be 64")
+			_, err := hex.DecodeString(got)
+			require.NoError(t, err, "hash should be valid hex")
 
-	assert.NotEqual(t, h1, h2, "hash should differ when pepper differs")
-}
+			if tt.want != "" {
+				require.Equal(t, tt.want, got)
+			}
+		})
+	}
 
-func TestHashWithPepper_ChangesWhenValueChanges(t *testing.T) {
-	p := "pepper123"
+	t.Run("changes when pepper changes (same value)", func(t *testing.T) {
+		t.Parallel()
 
-	h1 := util.HashWithPepper(p, "value1")
-	h2 := util.HashWithPepper(p, "value2")
+		v := "user@example.com"
+		h1 := HashWithPepper("pepper1", v)
+		h2 := HashWithPepper("pepper2", v)
+		require.NotEqual(t, h1, h2)
+	})
 
-	assert.NotEqual(t, h1, h2, "hash should differ when value differs")
+	t.Run("changes when value changes (same pepper)", func(t *testing.T) {
+		t.Parallel()
+
+		p := "pepper123"
+		h1 := HashWithPepper(p, "value1")
+		h2 := HashWithPepper(p, "value2")
+		require.NotEqual(t, h1, h2)
+	})
+
+	t.Run("deterministic (same inputs -> same output)", func(t *testing.T) {
+		t.Parallel()
+
+		p := "pepper123"
+		v := "user@example.com"
+		h1 := HashWithPepper(p, v)
+		h2 := HashWithPepper(p, v)
+		require.Equal(t, h1, h2)
+	})
 }
