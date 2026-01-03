@@ -182,6 +182,26 @@ func NewGraphMessage(params *NewMessageParams) msmodels.ChatMessageable {
 	return graphMessage
 }
 
+// USER
+type NewUserParams struct {
+	ID          *string
+	DisplayName *string
+}
+
+func NewGraphUser(params *NewUserParams) msmodels.Userable {
+	if params == nil {
+		return nil
+	}
+	u := msmodels.NewUser()
+	if params.ID != nil && *params.ID != "" {
+		u.SetId(params.ID)
+	}
+	if params.DisplayName != nil && *params.DisplayName != "" {
+		u.SetDisplayName(params.DisplayName)
+	}
+	return u
+}
+
 func RequireWrapped(t *testing.T, err error) *sender.OpError {
 	t.Helper()
 	require.Error(t, err)
