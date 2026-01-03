@@ -2,10 +2,10 @@ package channels
 
 import (
 	"context"
+	"net/http"
 	"testing"
 
 	"github.com/pzsp-teams/lib/internal/cacher"
-	snd "github.com/pzsp-teams/lib/internal/sender"
 	"github.com/pzsp-teams/lib/internal/testutil"
 	"github.com/pzsp-teams/lib/models"
 	"github.com/stretchr/testify/assert"
@@ -44,17 +44,9 @@ func newOpsWithCacheSUT(
 	return sut, ctx
 }
 
-func expectRunNow(r *testutil.MockTaskRunner) {
-	r.EXPECT().Run(gomock.Any()).Do(func(fn func()) { fn() }).Times(1)
-}
-
 func expectClearNow(d opsWithCacheSUTDeps) {
-	expectRunNow(d.runner)
+	testutil.ExpectRunNow(d.runner)
 	d.cacher.EXPECT().Clear().Return(nil).Times(1)
-}
-
-func reqErr(code int) *snd.RequestError {
-	return &snd.RequestError{Code: code, Message: "boom"}
 }
 
 func TestNewOpsWithCache(t *testing.T) {
@@ -97,7 +89,7 @@ func TestOpsWithCache_ListChannelsByTeamID(t *testing.T) {
 		sut, ctx := newOpsWithCacheSUT(t, func(_ context.Context, d opsWithCacheSUTDeps) {
 			d.chanOps.EXPECT().ListChannelsByTeamID(gomock.Any(), teamID).Return(out, nil).Times(1)
 
-			expectRunNow(d.runner)
+			testutil.ExpectRunNow(d.runner)
 			d.cacher.EXPECT().Set(cacher.NewChannelKey(teamID, "General"), "c1").Return(nil).Times(1)
 			d.cacher.EXPECT().Set(cacher.NewChannelKey(teamID, "Dev"), "c3").Return(nil).Times(1)
 		})
@@ -108,7 +100,7 @@ func TestOpsWithCache_ListChannelsByTeamID(t *testing.T) {
 	})
 
 	t.Run("error triggers cache clear for 400", func(t *testing.T) {
-		err400 := reqErr(400)
+		err400 := testutil.ReqErr(http.StatusBadRequest)
 
 		sut, ctx := newOpsWithCacheSUT(t, func(_ context.Context, d opsWithCacheSUTDeps) {
 			d.chanOps.EXPECT().ListChannelsByTeamID(gomock.Any(), teamID).Return(nil, err400).Times(1)
@@ -142,7 +134,7 @@ func TestOpsWithCache_GetChannelByID(t *testing.T) {
 		sut, ctx := newOpsWithCacheSUT(t, func(_ context.Context, d opsWithCacheSUTDeps) {
 			d.chanOps.EXPECT().GetChannelByID(gomock.Any(), teamID, channelID).Return(out, nil).Times(1)
 
-			expectRunNow(d.runner)
+			testutil.ExpectRunNow(d.runner)
 			d.cacher.EXPECT().Set(cacher.NewChannelKey(teamID, "General"), "c1").Return(nil).Times(1)
 		})
 
@@ -152,7 +144,7 @@ func TestOpsWithCache_GetChannelByID(t *testing.T) {
 	})
 
 	t.Run("error triggers cache clear", func(t *testing.T) {
-		err403 := reqErr(403)
+		err403 := testutil.ReqErr(http.StatusForbidden)
 
 		sut, ctx := newOpsWithCacheSUT(t, func(_ context.Context, d opsWithCacheSUTDeps) {
 			d.chanOps.EXPECT().GetChannelByID(gomock.Any(), teamID, channelID).Return(nil, err403).Times(1)
@@ -184,7 +176,7 @@ func TestOpsWithCache_CreateStandardChannel(t *testing.T) {
 		sut, ctx := newOpsWithCacheSUT(t, func(_ context.Context, d opsWithCacheSUTDeps) {
 			d.chanOps.EXPECT().CreateStandardChannel(gomock.Any(), teamID, "General").Return(out, nil).Times(1)
 
-			expectRunNow(d.runner)
+			testutil.ExpectRunNow(d.runner)
 			d.cacher.EXPECT().Set(cacher.NewChannelKey(teamID, "General"), "c1").Return(nil).Times(1)
 		})
 
@@ -194,7 +186,7 @@ func TestOpsWithCache_CreateStandardChannel(t *testing.T) {
 	})
 
 	t.Run("error triggers cache clear", func(t *testing.T) {
-		err404 := reqErr(404)
+		err404 := testutil.ReqErr(http.StatusNotFound)
 
 		sut, ctx := newOpsWithCacheSUT(t, func(_ context.Context, d opsWithCacheSUTDeps) {
 			d.chanOps.EXPECT().CreateStandardChannel(gomock.Any(), teamID, "X").Return(nil, err404).Times(1)
@@ -232,7 +224,7 @@ func TestOpsWithCache_CreatePrivateChannel(t *testing.T) {
 				CreatePrivateChannel(gomock.Any(), teamID, "Secret", members, owners).
 				Return(out, nil).Times(1)
 
-			expectRunNow(d.runner)
+			testutil.ExpectRunNow(d.runner)
 			d.cacher.EXPECT().Set(cacher.NewChannelKey(teamID, "Secret"), "c9").Return(nil).Times(1)
 		})
 
@@ -242,7 +234,7 @@ func TestOpsWithCache_CreatePrivateChannel(t *testing.T) {
 	})
 
 	t.Run("error triggers cache clear", func(t *testing.T) {
-		err400 := reqErr(400)
+		err400 := testutil.ReqErr(http.StatusBadRequest)
 
 		sut, ctx := newOpsWithCacheSUT(t, func(_ context.Context, d opsWithCacheSUTDeps) {
 			d.chanOps.EXPECT().
@@ -266,7 +258,7 @@ func TestOpsWithCache_DeleteChannel(t *testing.T) {
 		sut, ctx := newOpsWithCacheSUT(t, func(_ context.Context, d opsWithCacheSUTDeps) {
 			d.chanOps.EXPECT().DeleteChannel(gomock.Any(), teamID, channelID, channelRef).Return(nil).Times(1)
 
-			expectRunNow(d.runner)
+			testutil.ExpectRunNow(d.runner)
 			d.cacher.EXPECT().Invalidate(cacher.NewChannelKey(teamID, channelRef)).Return(nil).Times(1)
 		})
 
@@ -275,7 +267,7 @@ func TestOpsWithCache_DeleteChannel(t *testing.T) {
 	})
 
 	t.Run("error triggers cache clear and does not invalidate", func(t *testing.T) {
-		err403 := reqErr(403)
+		err403 := testutil.ReqErr(http.StatusForbidden)
 
 		sut, ctx := newOpsWithCacheSUT(t, func(_ context.Context, d opsWithCacheSUTDeps) {
 			d.chanOps.EXPECT().DeleteChannel(gomock.Any(), teamID, channelID, channelRef).Return(err403).Times(1)
@@ -304,7 +296,7 @@ func TestOpsWithCache_ListMembers(t *testing.T) {
 		sut, ctx := newOpsWithCacheSUT(t, func(_ context.Context, d opsWithCacheSUTDeps) {
 			d.chanOps.EXPECT().ListMembers(gomock.Any(), teamID, channelID).Return(out, nil).Times(1)
 
-			expectRunNow(d.runner)
+			testutil.ExpectRunNow(d.runner)
 			d.cacher.EXPECT().Set(cacher.NewChannelMemberKey(teamID, channelID, "a@b.com", nil), "m1").Return(nil).Times(1)
 			d.cacher.EXPECT().Set(cacher.NewChannelMemberKey(teamID, channelID, "c@d.com", nil), "m3").Return(nil).Times(1)
 		})
@@ -315,7 +307,7 @@ func TestOpsWithCache_ListMembers(t *testing.T) {
 	})
 
 	t.Run("error triggers cache clear", func(t *testing.T) {
-		err404 := reqErr(404)
+		err404 := testutil.ReqErr(http.StatusNotFound)
 
 		sut, ctx := newOpsWithCacheSUT(t, func(_ context.Context, d opsWithCacheSUTDeps) {
 			d.chanOps.EXPECT().ListMembers(gomock.Any(), teamID, channelID).Return(nil, err404).Times(1)
@@ -348,7 +340,7 @@ func TestOpsWithCache_AddMember(t *testing.T) {
 		sut, ctx := newOpsWithCacheSUT(t, func(_ context.Context, d opsWithCacheSUTDeps) {
 			d.chanOps.EXPECT().AddMember(gomock.Any(), teamID, channelID, "u1", true).Return(out, nil).Times(1)
 
-			expectRunNow(d.runner)
+			testutil.ExpectRunNow(d.runner)
 			d.cacher.EXPECT().Set(cacher.NewChannelMemberKey(teamID, channelID, "a@b.com", nil), "m1").Return(nil).Times(1)
 		})
 
@@ -358,7 +350,7 @@ func TestOpsWithCache_AddMember(t *testing.T) {
 	})
 
 	t.Run("error triggers cache clear", func(t *testing.T) {
-		err400 := reqErr(400)
+		err400 := testutil.ReqErr(http.StatusBadRequest)
 
 		sut, ctx := newOpsWithCacheSUT(t, func(_ context.Context, d opsWithCacheSUTDeps) {
 			d.chanOps.EXPECT().AddMember(gomock.Any(), teamID, channelID, "u1", false).Return(nil, err400).Times(1)
@@ -381,7 +373,7 @@ func TestOpsWithCache_RemoveMember(t *testing.T) {
 		sut, ctx := newOpsWithCacheSUT(t, func(_ context.Context, d opsWithCacheSUTDeps) {
 			d.chanOps.EXPECT().RemoveMember(gomock.Any(), teamID, channelID, memberID, userRef).Return(nil).Times(1)
 
-			expectRunNow(d.runner)
+			testutil.ExpectRunNow(d.runner)
 			d.cacher.EXPECT().Invalidate(cacher.NewChannelMemberKey(teamID, channelID, userRef, nil)).Return(nil).Times(1)
 		})
 
@@ -390,7 +382,7 @@ func TestOpsWithCache_RemoveMember(t *testing.T) {
 	})
 
 	t.Run("error triggers cache clear and does not invalidate", func(t *testing.T) {
-		err404 := reqErr(404)
+		err404 := testutil.ReqErr(http.StatusNotFound)
 
 		sut, ctx := newOpsWithCacheSUT(t, func(_ context.Context, d opsWithCacheSUTDeps) {
 			d.chanOps.EXPECT().RemoveMember(gomock.Any(), teamID, channelID, memberID, userRef).Return(err404).Times(1)
@@ -405,7 +397,7 @@ func TestOpsWithCache_RemoveMember(t *testing.T) {
 }
 
 func TestOpsWithCache_WithErrorClearMethods_ClearCacheOnError(t *testing.T) {
-	err400 := reqErr(400)
+	err400 := testutil.ReqErr(http.StatusBadRequest)
 
 	type testCase struct {
 		name   string
