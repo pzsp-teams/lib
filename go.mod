@@ -6,7 +6,6 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.20.0
 	github.com/AzureAD/microsoft-authentication-extensions-for-go/cache v0.1.1
 	github.com/AzureAD/microsoft-authentication-library-for-go v1.6.0
-	github.com/golang/mock v1.6.0
 	github.com/joho/godotenv v1.5.1
 	github.com/microsoftgraph/msgraph-sdk-go v1.90.0
 	github.com/stretchr/testify v1.11.1
