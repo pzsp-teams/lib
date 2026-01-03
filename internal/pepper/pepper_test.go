@@ -1,7 +1,6 @@
 package pepper
 
 import (
-	"io"
 	"os"
 	"testing"
 
@@ -18,7 +17,7 @@ func withStdin(t *testing.T, input string) func() {
 	r, w, err := os.Pipe()
 	require.NoError(t, err)
 
-	_, err = io.WriteString(w, input)
+	_, err = w.WriteString(input)
 	require.NoError(t, err)
 
 	require.NoError(t, w.Close())
@@ -47,9 +46,9 @@ func TestGetOrAskPepper(t *testing.T) {
 	tests := []struct {
 		name         string
 		preseed      *string
-		stdin        string  
+		stdin        string
 		want         string
-		wantErrSub   string 
+		wantErrSub   string
 		wantStored   string
 		wantStoredOK bool
 	}{
@@ -123,4 +122,3 @@ func TestGetOrAskPepper(t *testing.T) {
 		})
 	}
 }
-
