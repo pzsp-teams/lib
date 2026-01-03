@@ -8,6 +8,7 @@ import (
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
 	sender "github.com/pzsp-teams/lib/internal/sender"
 	"github.com/stretchr/testify/require"
+	gomock "go.uber.org/mock/gomock"
 )
 
 // TEAM UTILS
@@ -200,6 +201,16 @@ func NewGraphUser(params *NewUserParams) msmodels.Userable {
 		u.SetDisplayName(params.DisplayName)
 	}
 	return u
+}
+
+// TASK RUNNER HELPERS
+func ExpectRunNow(r *MockTaskRunner) {
+	r.EXPECT().Run(gomock.Any()).Do(func(fn func()) { fn() }).Times(1)
+}
+
+// ERROR HELPERS
+func ReqErr(code int) *sender.RequestError {
+	return &sender.RequestError{Code: code, Message: "boom"}
 }
 
 func RequireWrapped(t *testing.T, err error) *sender.OpError {

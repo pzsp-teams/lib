@@ -2,6 +2,7 @@ package teams
 
 import (
 	"context"
+	"net/http"
 	"testing"
 
 	"github.com/pzsp-teams/lib/internal/cacher"
@@ -39,16 +40,6 @@ func newSUTWithCache(t *testing.T) (teamsOps, sutDepsWithCache) {
 	return sut, deps
 }
 
-func expectRunNow(r *testutil.MockTaskRunner) {
-	r.EXPECT().Run(gomock.Any()).DoAndReturn(func(fn func()) {
-		fn()
-	})
-}
-
-func reqErr() *snd.RequestError {
-	return &snd.RequestError{Code: 400}
-}
-
 func TestNewOpsWithCache_WhenCacheNil_ReturnsOriginalOps(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	t.Cleanup(ctrl.Finish)
@@ -72,7 +63,7 @@ func TestOpsWithCache_GetTeamByID(t *testing.T) {
 			name: "Success - Caches team",
 			setup: func(d sutDepsWithCache) {
 				d.teamOps.EXPECT().GetTeamByID(gomock.Any(), "id").Return(team, nil)
-				expectRunNow(d.runner)
+				testutil.ExpectRunNow(d.runner)
 				d.cacher.EXPECT().Set(cacher.NewTeamKey(team.DisplayName), team.ID).Return(nil)
 			},
 			want: team,
@@ -87,12 +78,12 @@ func TestOpsWithCache_GetTeamByID(t *testing.T) {
 		{
 			name: "Error - Clears cache",
 			setup: func(d sutDepsWithCache) {
-				e := reqErr()
+				e := testutil.ReqErr(http.StatusBadRequest)
 				d.teamOps.EXPECT().GetTeamByID(gomock.Any(), "id").Return(nil, e)
-				expectRunNow(d.runner)
+				testutil.ExpectRunNow(d.runner)
 				d.cacher.EXPECT().Clear().Return(nil)
 			},
-			wantErr: reqErr(),
+			wantErr: testutil.ReqErr(http.StatusBadRequest),
 		},
 	}
 
@@ -129,7 +120,7 @@ func TestOpsWithCache_ListMyJoinedTeams(t *testing.T) {
 			name: "Success - Caches valid teams",
 			setup: func(d sutDepsWithCache) {
 				d.teamOps.EXPECT().ListMyJoinedTeams(gomock.Any()).Return(out, nil)
-				expectRunNow(d.runner)
+				testutil.ExpectRunNow(d.runner)
 				d.cacher.EXPECT().Set(cacher.NewTeamKey("A"), "t1").Return(nil)
 			},
 			want: out,
@@ -137,12 +128,12 @@ func TestOpsWithCache_ListMyJoinedTeams(t *testing.T) {
 		{
 			name: "Error - Clears cache",
 			setup: func(d sutDepsWithCache) {
-				e := reqErr()
+				e := testutil.ReqErr(http.StatusBadRequest)
 				d.teamOps.EXPECT().ListMyJoinedTeams(gomock.Any()).Return(nil, e)
-				expectRunNow(d.runner)
+				testutil.ExpectRunNow(d.runner)
 				d.cacher.EXPECT().Clear().Return(nil)
 			},
-			wantErr: reqErr(),
+			wantErr: testutil.ReqErr(http.StatusBadRequest),
 		},
 	}
 
@@ -178,7 +169,7 @@ func TestOpsWithCache_CreateFromTemplate(t *testing.T) {
 			name: "Success - Invalidates team key",
 			setup: func(d sutDepsWithCache) {
 				d.teamOps.EXPECT().CreateFromTemplate(gomock.Any(), "Team A", "d", gomock.Any()).Return("id", nil)
-				expectRunNow(d.runner)
+				testutil.ExpectRunNow(d.runner)
 				d.cacher.EXPECT().Invalidate(cacher.NewTeamKey("Team A")).Return(nil)
 			},
 			wantID: "id",
@@ -186,13 +177,13 @@ func TestOpsWithCache_CreateFromTemplate(t *testing.T) {
 		{
 			name: "Error - Clears cache",
 			setup: func(d sutDepsWithCache) {
-				e := reqErr()
+				e := testutil.ReqErr(http.StatusBadRequest)
 				d.teamOps.EXPECT().CreateFromTemplate(gomock.Any(), "Team A", "d", gomock.Any()).Return("id", e)
-				expectRunNow(d.runner)
+				testutil.ExpectRunNow(d.runner)
 				d.cacher.EXPECT().Clear().Return(nil)
 			},
 			wantID:  "id",
-			wantErr: reqErr(),
+			wantErr: testutil.ReqErr(http.StatusBadRequest),
 		},
 	}
 
@@ -229,7 +220,7 @@ func TestOpsWithCache_CreateViaGroup(t *testing.T) {
 			name: "Success - Caches team",
 			setup: func(d sutDepsWithCache) {
 				d.teamOps.EXPECT().CreateViaGroup(gomock.Any(), "Team A", "n", "p").Return(team, nil)
-				expectRunNow(d.runner)
+				testutil.ExpectRunNow(d.runner)
 				d.cacher.EXPECT().Set(cacher.NewTeamKey(team.DisplayName), team.ID).Return(nil)
 			},
 			want: team,
@@ -237,12 +228,12 @@ func TestOpsWithCache_CreateViaGroup(t *testing.T) {
 		{
 			name: "Error - Clears cache",
 			setup: func(d sutDepsWithCache) {
-				e := reqErr()
+				e := testutil.ReqErr(http.StatusBadRequest)
 				d.teamOps.EXPECT().CreateViaGroup(gomock.Any(), "Team A", "n", "p").Return(nil, e)
-				expectRunNow(d.runner)
+				testutil.ExpectRunNow(d.runner)
 				d.cacher.EXPECT().Clear().Return(nil)
 			},
-			wantErr: reqErr(),
+			wantErr: testutil.ReqErr(http.StatusBadRequest),
 		},
 	}
 
@@ -277,19 +268,19 @@ func TestOpsWithCache_Archive(t *testing.T) {
 			name: "Success - Invalidates team key",
 			setup: func(d sutDepsWithCache) {
 				d.teamOps.EXPECT().Archive(gomock.Any(), "tid", "Team A", nil).Return(nil)
-				expectRunNow(d.runner)
+				testutil.ExpectRunNow(d.runner)
 				d.cacher.EXPECT().Invalidate(cacher.NewTeamKey("Team A")).Return(nil)
 			},
 		},
 		{
 			name: "Error - Clears cache",
 			setup: func(d sutDepsWithCache) {
-				e := reqErr()
+				e := testutil.ReqErr(http.StatusBadRequest)
 				d.teamOps.EXPECT().Archive(gomock.Any(), "tid", "Team A", nil).Return(e)
-				expectRunNow(d.runner)
+				testutil.ExpectRunNow(d.runner)
 				d.cacher.EXPECT().Clear().Return(nil)
 			},
-			wantErr: reqErr(),
+			wantErr: testutil.ReqErr(http.StatusBadRequest),
 		},
 	}
 
@@ -327,12 +318,12 @@ func TestOpsWithCache_Unarchive(t *testing.T) {
 		{
 			name: "Error - Clears cache",
 			setup: func(d sutDepsWithCache) {
-				e := reqErr()
+				e := testutil.ReqErr(http.StatusBadRequest)
 				d.teamOps.EXPECT().Unarchive(gomock.Any(), "tid").Return(e)
-				expectRunNow(d.runner)
+				testutil.ExpectRunNow(d.runner)
 				d.cacher.EXPECT().Clear().Return(nil)
 			},
-			wantErr: reqErr(),
+			wantErr: testutil.ReqErr(http.StatusBadRequest),
 		},
 	}
 
@@ -365,19 +356,19 @@ func TestOpsWithCache_DeleteTeam(t *testing.T) {
 			name: "Success - Invalidates team key",
 			setup: func(d sutDepsWithCache) {
 				d.teamOps.EXPECT().DeleteTeam(gomock.Any(), "tid", "Team A").Return(nil)
-				expectRunNow(d.runner)
+				testutil.ExpectRunNow(d.runner)
 				d.cacher.EXPECT().Invalidate(cacher.NewTeamKey("Team A")).Return(nil)
 			},
 		},
 		{
 			name: "Error - Clears cache",
 			setup: func(d sutDepsWithCache) {
-				e := reqErr()
+				e := testutil.ReqErr(http.StatusBadRequest)
 				d.teamOps.EXPECT().DeleteTeam(gomock.Any(), "tid", "Team A").Return(e)
-				expectRunNow(d.runner)
+				testutil.ExpectRunNow(d.runner)
 				d.cacher.EXPECT().Clear().Return(nil)
 			},
-			wantErr: reqErr(),
+			wantErr: testutil.ReqErr(http.StatusBadRequest),
 		},
 	}
 
@@ -417,12 +408,12 @@ func TestOpsWithCache_RestoreDeletedTeam(t *testing.T) {
 		{
 			name: "Error - Clears cache",
 			setup: func(d sutDepsWithCache) {
-				e := reqErr()
+				e := testutil.ReqErr(http.StatusBadRequest)
 				d.teamOps.EXPECT().RestoreDeletedTeam(gomock.Any(), "did").Return("", e)
-				expectRunNow(d.runner)
+				testutil.ExpectRunNow(d.runner)
 				d.cacher.EXPECT().Clear().Return(nil)
 			},
-			wantErr: reqErr(),
+			wantErr: testutil.ReqErr(http.StatusBadRequest),
 		},
 	}
 
@@ -459,7 +450,7 @@ func TestOpsWithCache_ListMembers(t *testing.T) {
 			name: "Success - Caches valid members",
 			setup: func(d sutDepsWithCache) {
 				d.teamOps.EXPECT().ListMembers(gomock.Any(), "tid").Return(members, nil)
-				expectRunNow(d.runner)
+				testutil.ExpectRunNow(d.runner)
 				d.cacher.EXPECT().Set(cacher.NewTeamMemberKey("tid", "a@b.com", nil), "m1").Return(nil)
 			},
 			want: members,
@@ -467,12 +458,12 @@ func TestOpsWithCache_ListMembers(t *testing.T) {
 		{
 			name: "Error - Clears cache",
 			setup: func(d sutDepsWithCache) {
-				e := reqErr()
+				e := testutil.ReqErr(http.StatusBadRequest)
 				d.teamOps.EXPECT().ListMembers(gomock.Any(), "tid").Return(nil, e)
-				expectRunNow(d.runner)
+				testutil.ExpectRunNow(d.runner)
 				d.cacher.EXPECT().Clear().Return(nil)
 			},
-			wantErr: reqErr(),
+			wantErr: testutil.ReqErr(http.StatusBadRequest),
 		},
 	}
 
@@ -510,7 +501,7 @@ func TestOpsWithCache_GetMemberByID(t *testing.T) {
 			name: "Success - Caches member",
 			setup: func(d sutDepsWithCache) {
 				d.teamOps.EXPECT().GetMemberByID(gomock.Any(), "tid", "mid").Return(member, nil)
-				expectRunNow(d.runner)
+				testutil.ExpectRunNow(d.runner)
 				d.cacher.EXPECT().Set(cacher.NewTeamMemberKey("tid", "a@b.com", nil), "m1").Return(nil)
 			},
 			want: member,
@@ -525,12 +516,12 @@ func TestOpsWithCache_GetMemberByID(t *testing.T) {
 		{
 			name: "Error - Clears cache",
 			setup: func(d sutDepsWithCache) {
-				e := reqErr()
+				e := testutil.ReqErr(http.StatusBadRequest)
 				d.teamOps.EXPECT().GetMemberByID(gomock.Any(), "tid", "mid").Return(nil, e)
-				expectRunNow(d.runner)
+				testutil.ExpectRunNow(d.runner)
 				d.cacher.EXPECT().Clear().Return(nil)
 			},
-			wantErr: reqErr(),
+			wantErr: testutil.ReqErr(http.StatusBadRequest),
 		},
 	}
 
@@ -568,7 +559,7 @@ func TestOpsWithCache_AddMember(t *testing.T) {
 			name: "Success - Caches member",
 			setup: func(d sutDepsWithCache) {
 				d.teamOps.EXPECT().AddMember(gomock.Any(), "tid", "uid", true).Return(member, nil)
-				expectRunNow(d.runner)
+				testutil.ExpectRunNow(d.runner)
 				d.cacher.EXPECT().Set(cacher.NewTeamMemberKey("tid", "a@b.com", nil), "m1").Return(nil)
 			},
 			want: member,
@@ -576,12 +567,12 @@ func TestOpsWithCache_AddMember(t *testing.T) {
 		{
 			name: "Error - Clears cache",
 			setup: func(d sutDepsWithCache) {
-				e := reqErr()
+				e := testutil.ReqErr(http.StatusBadRequest)
 				d.teamOps.EXPECT().AddMember(gomock.Any(), "tid", "uid", true).Return(nil, e)
-				expectRunNow(d.runner)
+				testutil.ExpectRunNow(d.runner)
 				d.cacher.EXPECT().Clear().Return(nil)
 			},
-			wantErr: reqErr(),
+			wantErr: testutil.ReqErr(http.StatusBadRequest),
 		},
 	}
 
@@ -625,12 +616,12 @@ func TestOpsWithCache_UpdateMemberRoles(t *testing.T) {
 		{
 			name: "Error - Clears cache",
 			setup: func(d sutDepsWithCache) {
-				e := reqErr()
+				e := testutil.ReqErr(http.StatusBadRequest)
 				d.teamOps.EXPECT().UpdateMemberRoles(gomock.Any(), "tid", "mid", true).Return(nil, e)
-				expectRunNow(d.runner)
+				testutil.ExpectRunNow(d.runner)
 				d.cacher.EXPECT().Clear().Return(nil)
 			},
-			wantErr: reqErr(),
+			wantErr: testutil.ReqErr(http.StatusBadRequest),
 		},
 	}
 
@@ -665,19 +656,19 @@ func TestOpsWithCache_RemoveMember(t *testing.T) {
 			name: "Success - Invalidates member key",
 			setup: func(d sutDepsWithCache) {
 				d.teamOps.EXPECT().RemoveMember(gomock.Any(), "tid", "mid", "a@b.com").Return(nil)
-				expectRunNow(d.runner)
+				testutil.ExpectRunNow(d.runner)
 				d.cacher.EXPECT().Invalidate(cacher.NewTeamMemberKey("tid", "a@b.com", nil)).Return(nil)
 			},
 		},
 		{
 			name: "Error - Clears cache",
 			setup: func(d sutDepsWithCache) {
-				e := reqErr()
+				e := testutil.ReqErr(http.StatusBadRequest)
 				d.teamOps.EXPECT().RemoveMember(gomock.Any(), "tid", "mid", "a@b.com").Return(e)
-				expectRunNow(d.runner)
+				testutil.ExpectRunNow(d.runner)
 				d.cacher.EXPECT().Clear().Return(nil)
 			},
-			wantErr: reqErr(),
+			wantErr: testutil.ReqErr(http.StatusBadRequest),
 		},
 	}
 
