@@ -3,44 +3,51 @@ package util
 import (
 	"sync/atomic"
 	"testing"
+	"time"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func TestSyncRunner_RunAndWait(t *testing.T) {
-	var called int32
-	r := &SyncRunner{}
+func TestTaskRunners_RunAndWait(t *testing.T) {
+	t.Parallel()
 
-	r.Run(func() {
-		atomic.AddInt32(&called, 1)
-	})
-	r.Wait()
-
-	assert.Equal(t, int32(1), atomic.LoadInt32(&called))
-}
-
-func TestAsyncRunner_RunAndWait(t *testing.T) {
-	var called int32
-	r := &AsyncRunner{}
-
-	const n = 10
-	for range n {
-		r.Run(func() {
-			atomic.AddInt32(&called, 1)
-		})
+	tests := []struct {
+		name   string
+		runner TaskRunner
+		n      int
+	}{
+		{"SyncRunner", &SyncRunner{}, 5},
+		{"AsyncRunner", &AsyncRunner{}, 25},
 	}
 
-	r.Wait()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-	assert.Equal(t, int32(n), atomic.LoadInt32(&called))
+			var called int32
+
+			for i := 0; i < tt.n; i++ {
+				tt.runner.Run(func() {
+					atomic.AddInt32(&called, 1)
+				})
+			}
+
+			tt.runner.Wait()
+			require.Equal(t, int32(tt.n), atomic.LoadInt32(&called))
+		})
+	}
 }
 
-func TestAsyncRunner_WaitWithNoTasks(_ *testing.T) {
+func TestAsyncRunner_WaitWithNoTasks(t *testing.T) {
+	t.Parallel()
+
 	var r AsyncRunner
 	r.Wait()
 }
 
 func TestAsyncRunner_RunIsNonBlocking(t *testing.T) {
+	t.Parallel()
+
 	r := &AsyncRunner{}
 
 	block := make(chan struct{})
@@ -51,20 +58,25 @@ func TestAsyncRunner_RunIsNonBlocking(t *testing.T) {
 		close(done)
 	})
 
-	// Check that Run does not block
-	select {
-	case <-done:
-		assert.Fail(t, "Run should not execute function synchronously")
-	default:
-	}
+	require.Never(t, func() bool {
+		select {
+		case <-done:
+			return true
+		default:
+			return false
+		}
+	}, 100*time.Millisecond, 5*time.Millisecond, "Run should not execute function synchronously")
 
 	close(block)
 	r.Wait()
 
-	select {
-	case <-done:
-		// success
-	default:
-		assert.Fail(t, "expected function to finish after Wait()")
-	}
+	require.Eventually(t, func() bool {
+		select {
+		case <-done:
+			return true
+		default:
+			return false
+		}
+	}, 2*time.Second, 10*time.Millisecond, "expected function to finish after Wait()")
 }
+
