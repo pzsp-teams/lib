@@ -24,7 +24,6 @@ func TestIsLikelyThreadConversationID(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			require.Equal(t, tt.want, IsLikelyThreadConversationID(tt.in))
@@ -50,7 +49,6 @@ func TestIsLikelyChatID(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			require.Equal(t, tt.want, IsLikelyChatID(tt.in))

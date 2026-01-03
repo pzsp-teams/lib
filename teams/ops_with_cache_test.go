@@ -147,7 +147,6 @@ func TestOpsWithCache_ListMyJoinedTeams(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			sut, d := newSUTWithCache(t)
 			tc.setup(d)
@@ -198,7 +197,6 @@ func TestOpsWithCache_CreateFromTemplate(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			sut, d := newSUTWithCache(t)
 			tc.setup(d)
@@ -249,7 +247,6 @@ func TestOpsWithCache_CreateViaGroup(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			sut, d := newSUTWithCache(t)
 			tc.setup(d)
@@ -297,7 +294,6 @@ func TestOpsWithCache_Archive(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			sut, d := newSUTWithCache(t)
 			tc.setup(d)
@@ -341,7 +337,6 @@ func TestOpsWithCache_Unarchive(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			sut, d := newSUTWithCache(t)
 			tc.setup(d)
@@ -387,7 +382,6 @@ func TestOpsWithCache_DeleteTeam(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			sut, d := newSUTWithCache(t)
 			tc.setup(d)
@@ -433,7 +427,6 @@ func TestOpsWithCache_RestoreDeletedTeam(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			sut, d := newSUTWithCache(t)
 			tc.setup(d)
@@ -484,7 +477,6 @@ func TestOpsWithCache_ListMembers(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			sut, d := newSUTWithCache(t)
 			tc.setup(d)
@@ -543,7 +535,6 @@ func TestOpsWithCache_GetMemberByID(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			sut, d := newSUTWithCache(t)
 			tc.setup(d)
@@ -595,7 +586,6 @@ func TestOpsWithCache_AddMember(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			sut, d := newSUTWithCache(t)
 			tc.setup(d)
@@ -645,7 +635,6 @@ func TestOpsWithCache_UpdateMemberRoles(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			sut, d := newSUTWithCache(t)
 			tc.setup(d)
@@ -693,7 +682,6 @@ func TestOpsWithCache_RemoveMember(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			sut, d := newSUTWithCache(t)
 			tc.setup(d)
