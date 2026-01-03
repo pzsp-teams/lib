@@ -822,3 +822,290 @@ func TestService_UpdateMemberRoles(t *testing.T) {
 		})
 	}
 }
+
+func TestService_Archive_ResolverError(t *testing.T) {
+	type testCase struct {
+		name       string
+		arg        *bool
+		setupMocks func(d sutDeps, readOnly *bool)
+		assertErr  func(t *testing.T, err error)
+	}
+
+	readOnly := true
+
+	testCases := []testCase{
+		{
+			name: "resolver error is wrapped (ops not called)",
+			arg:  &readOnly,
+			setupMocks: func(d sutDeps, _ *bool) {
+				d.resolver.EXPECT().
+					ResolveTeamRefToID(gomock.Any(), "T1").
+					Return("", errors.New("resolver boom")).
+					Times(1)
+
+				d.ops.EXPECT().
+					Archive(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+					Times(0)
+			},
+			assertErr: func(t *testing.T, err error) { _ = testutil.RequireWrapped(t, err) },
+		},
+		{
+			name: "passes nil spoReadOnlyForMembers through",
+			arg:  nil,
+			setupMocks: func(d sutDeps, _ *bool) {
+				d.resolver.EXPECT().
+					ResolveTeamRefToID(gomock.Any(), "T1").
+					Return("team-id", nil).
+					Times(1)
+
+				d.ops.EXPECT().
+					Archive(gomock.Any(), "team-id", "T1", nil).
+					Return(nil).
+					Times(1)
+			},
+			assertErr: func(t *testing.T, err error) { require.NoError(t, err) },
+		},
+		{
+			name: "passes non-nil spoReadOnlyForMembers through (sanity)",
+			arg:  &readOnly,
+			setupMocks: func(d sutDeps, ro *bool) {
+				d.resolver.EXPECT().
+					ResolveTeamRefToID(gomock.Any(), "T1").
+					Return("team-id", nil).
+					Times(1)
+
+				d.ops.EXPECT().
+					Archive(gomock.Any(), "team-id", "T1", ro).
+					Return(nil).
+					Times(1)
+			},
+			assertErr: func(t *testing.T, err error) { require.NoError(t, err) },
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			svc, ctx := newSUT(t, func(d sutDeps) { tc.setupMocks(d, tc.arg) })
+			err := svc.Archive(ctx, "T1", tc.arg)
+			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestService_Unarchive_ResolverError(t *testing.T) {
+	type testCase struct {
+		name       string
+		setupMocks func(d sutDeps)
+		assertErr  func(t *testing.T, err error)
+	}
+
+	testCases := []testCase{
+		{
+			name: "resolver error is wrapped (ops not called)",
+			setupMocks: func(d sutDeps) {
+				d.resolver.EXPECT().
+					ResolveTeamRefToID(gomock.Any(), "T1").
+					Return("", errors.New("resolver boom")).
+					Times(1)
+
+				d.ops.EXPECT().
+					Unarchive(gomock.Any(), gomock.Any()).
+					Times(0)
+			},
+			assertErr: func(t *testing.T, err error) {
+				_ = testutil.RequireWrapped(t, err)
+			},
+		},
+		{
+			name: "ops error is wrapped (generic error)",
+			setupMocks: func(d sutDeps) {
+				d.resolver.EXPECT().
+					ResolveTeamRefToID(gomock.Any(), "T1").
+					Return("team-id", nil).
+					Times(1)
+
+				d.ops.EXPECT().
+					Unarchive(gomock.Any(), "team-id").
+					Return(errors.New("ops boom")).
+					Times(1)
+			},
+			assertErr: func(t *testing.T, err error) {
+				_ = testutil.RequireWrapped(t, err)
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			svc, ctx := newSUT(t, tc.setupMocks)
+			err := svc.Unarchive(ctx, "T1")
+			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestService_RemoveMember_ResolverError(t *testing.T) {
+	type testCase struct {
+		name       string
+		setupMocks func(d sutDeps)
+		assertErr  func(t *testing.T, err error)
+	}
+
+	testCases := []testCase{
+		{
+			name: "team resolver error is wrapped (member resolver + ops not called)",
+			setupMocks: func(d sutDeps) {
+				d.resolver.EXPECT().
+					ResolveTeamRefToID(gomock.Any(), "TeamX").
+					Return("", errors.New("team resolve boom")).
+					Times(1)
+
+				d.resolver.EXPECT().
+					ResolveTeamMemberRefToID(gomock.Any(), gomock.Any(), gomock.Any()).
+					Times(0)
+
+				d.ops.EXPECT().
+					RemoveMember(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+					Times(0)
+			},
+			assertErr: func(t *testing.T, err error) {
+				_ = testutil.RequireWrapped(t, err)
+			},
+		},
+		{
+			name: "ops error is wrapped (generic error)",
+			setupMocks: func(d sutDeps) {
+				d.resolver.EXPECT().
+					ResolveTeamRefToID(gomock.Any(), "TeamX").
+					Return("team-id", nil).
+					Times(1)
+
+				d.resolver.EXPECT().
+					ResolveTeamMemberRefToID(gomock.Any(), "team-id", "user@x.com").
+					Return("member-id", nil).
+					Times(1)
+
+				d.ops.EXPECT().
+					RemoveMember(gomock.Any(), "team-id", "member-id", "user@x.com").
+					Return(errors.New("ops boom")).
+					Times(1)
+			},
+			assertErr: func(t *testing.T, err error) {
+				_ = testutil.RequireWrapped(t, err)
+			},
+		},
+		{
+			name: "ops error is wrapped (request error code preserved)",
+			setupMocks: func(d sutDeps) {
+				d.resolver.EXPECT().
+					ResolveTeamRefToID(gomock.Any(), "TeamX").
+					Return("team-id", nil).
+					Times(1)
+
+				d.resolver.EXPECT().
+					ResolveTeamMemberRefToID(gomock.Any(), "team-id", "user@x.com").
+					Return("member-id", nil).
+					Times(1)
+
+				d.ops.EXPECT().
+					RemoveMember(gomock.Any(), "team-id", "member-id", "user@x.com").
+					Return(&sender.RequestError{Code: 403, Message: "nope"}).
+					Times(1)
+			},
+			assertErr: func(t *testing.T, err error) {
+				testutil.RequireReqErrCode(t, err, 403)
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			svc, ctx := newSUT(t, tc.setupMocks)
+			err := svc.RemoveMember(ctx, "TeamX", "user@x.com")
+			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestService_UpdateMemberRoles_ResolverErrors(t *testing.T) {
+	type testCase struct {
+		name       string
+		setupMocks func(d sutDeps)
+		assertErr  func(t *testing.T, err error)
+	}
+
+	testCases := []testCase{
+		{
+			name: "team resolver error is wrapped (member resolver + ops not called)",
+			setupMocks: func(d sutDeps) {
+				d.resolver.EXPECT().
+					ResolveTeamRefToID(gomock.Any(), "TeamX").
+					Return("", errors.New("team resolve boom")).
+					Times(1)
+
+				d.resolver.EXPECT().
+					ResolveTeamMemberRefToID(gomock.Any(), gomock.Any(), gomock.Any()).
+					Times(0)
+
+				d.ops.EXPECT().
+					UpdateMemberRoles(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+					Times(0)
+			},
+			assertErr: func(t *testing.T, err error) {
+				_ = testutil.RequireWrapped(t, err)
+			},
+		},
+		{
+			name: "member resolver error is wrapped (ops not called)",
+			setupMocks: func(d sutDeps) {
+				d.resolver.EXPECT().
+					ResolveTeamRefToID(gomock.Any(), "TeamX").
+					Return("team-id", nil).
+					Times(1)
+
+				d.resolver.EXPECT().
+					ResolveTeamMemberRefToID(gomock.Any(), "team-id", "user@x.com").
+					Return("", errors.New("member resolve boom")).
+					Times(1)
+
+				d.ops.EXPECT().
+					UpdateMemberRoles(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+					Times(0)
+			},
+			assertErr: func(t *testing.T, err error) {
+				_ = testutil.RequireWrapped(t, err)
+			},
+		},
+		{
+			name: "ops generic error is wrapped",
+			setupMocks: func(d sutDeps) {
+				d.resolver.EXPECT().
+					ResolveTeamRefToID(gomock.Any(), "TeamX").
+					Return("team-id", nil).
+					Times(1)
+
+				d.resolver.EXPECT().
+					ResolveTeamMemberRefToID(gomock.Any(), "team-id", "user@x.com").
+					Return("member-id", nil).
+					Times(1)
+
+				d.ops.EXPECT().
+					UpdateMemberRoles(gomock.Any(), "team-id", "member-id", true).
+					Return(nil, errors.New("ops boom")).
+					Times(1)
+			},
+			assertErr: func(t *testing.T, err error) {
+				_ = testutil.RequireWrapped(t, err)
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			svc, ctx := newSUT(t, tc.setupMocks)
+
+			_, err := svc.UpdateMemberRoles(ctx, "TeamX", "user@x.com", true)
+			tc.assertErr(t, err)
+		})
+	}
+}
