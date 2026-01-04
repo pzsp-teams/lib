@@ -100,7 +100,7 @@ func (o *opsWithCache) ListGroupChatMembers(ctx context.Context, chatID string) 
 	return members, nil
 }
 
-func (o *opsWithCache) UpdateGroupChatTopic(ctx context.Context, chatID string, topic string) (*models.Chat, error) {
+func (o *opsWithCache) UpdateGroupChatTopic(ctx context.Context, chatID, topic string) (*models.Chat, error) {
 	return cacher.WithErrorClear(func() (*models.Chat, error) {
 		return o.chatOps.UpdateGroupChatTopic(ctx, chatID, topic)
 	}, o.cacheHandler)

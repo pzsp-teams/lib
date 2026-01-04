@@ -13,7 +13,7 @@ type chatOps interface {
 	AddMemberToGroupChat(ctx context.Context, chatID, userID string) (*models.Member, error)
 	RemoveMemberFromGroupChat(ctx context.Context, chatID, userID string) error
 	ListGroupChatMembers(ctx context.Context, chatID string) ([]*models.Member, error)
-	UpdateGroupChatTopic(ctx context.Context, chatID string, topic string) (*models.Chat, error)
+	UpdateGroupChatTopic(ctx context.Context, chatID, topic string) (*models.Chat, error)
 	ListMessages(ctx context.Context, chatID string) ([]*models.Message, error)
 	SendMessage(ctx context.Context, chatID string, body models.MessageBody) (*models.Message, error)
 	DeleteMessage(ctx context.Context, chatID, messageID string) error

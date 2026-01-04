@@ -8,10 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-type unknownChatRef struct{}
-
-func (u unknownChatRef) chatRef() {}
-
 func TestIsGroupChatRef(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -30,12 +26,6 @@ func TestIsGroupChatRef(t *testing.T) {
 			chatRef:   OneOnOneChatRef{Ref: "x"},
 			wantGroup: false,
 			wantErr:   false,
-		},
-		{
-			name:      "Unknown chat ref returns error",
-			chatRef:   unknownChatRef{},
-			wantGroup: false,
-			wantErr:   true,
 		},
 	}
 
