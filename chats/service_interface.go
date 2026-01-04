@@ -24,7 +24,7 @@ import (
 type Service interface {
 	// CreateOneOneOne creates a one-on-one chat with the given recipient.
 	// The authenticated user is automatically added to the chat.
-	CreateOneOneOne(ctx context.Context, recipientRef string) (*models.Chat, error)
+	CreateOneOnOne(ctx context.Context, recipientRef string) (*models.Chat, error)
 
 	// CreateGroup creates a group chat with the given recipients and topic.
 	// The authenticated user may be included by setting includeMe to true.

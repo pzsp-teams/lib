@@ -2,7 +2,7 @@ package chats
 
 // ChatRef is an interface representing a reference to a chat, which can be either a group chat or a one-on-one chat.
 type ChatRef interface {
-	chatRef()
+	get() string
 }
 
 // GroupChatRef identifies a group chat.
@@ -29,5 +29,5 @@ type OneOnOneChatRef struct {
 	Ref string
 }
 
-func (GroupChatRef) chatRef()    {}
-func (OneOnOneChatRef) chatRef() {}
+func (c GroupChatRef) get() string    { return c.Ref }
+func (c OneOnOneChatRef) get() string { return c.Ref }

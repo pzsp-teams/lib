@@ -3,76 +3,89 @@ package chats
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
-	"github.com/pzsp-teams/lib/internal/adapter"
-	"github.com/pzsp-teams/lib/internal/api"
-	"github.com/pzsp-teams/lib/internal/mentions"
 	"github.com/pzsp-teams/lib/internal/resolver"
 	"github.com/pzsp-teams/lib/internal/resources"
 	snd "github.com/pzsp-teams/lib/internal/sender"
-	"github.com/pzsp-teams/lib/internal/util"
 	"github.com/pzsp-teams/lib/models"
 )
 
 type service struct {
-	chatAPI      api.ChatAPI
+	chatOps      chatOps
 	chatResolver resolver.ChatResolver
-	userAPI      api.UserAPI
 }
 
 // NewService creates a new instance of the chat service.
-func NewService(chatAPI api.ChatAPI, cr resolver.ChatResolver, userAPI api.UserAPI) Service {
-	return &service{chatAPI: chatAPI, chatResolver: cr, userAPI: userAPI}
+func NewService(chatOps chatOps, cr resolver.ChatResolver) Service {
+	return &service{chatOps: chatOps, chatResolver: cr}
 }
 
-func (s *service) CreateOneOneOne(ctx context.Context, recipientRef string) (*models.Chat, error) {
-	resp, requestErr := s.chatAPI.CreateOneOnOneChat(ctx, recipientRef)
-	if requestErr != nil {
-		return nil, snd.MapError(requestErr, snd.WithResource(resources.User, recipientRef))
+func (s *service) CreateOneOnOne(ctx context.Context, recipientRef string) (*models.Chat, error) {
+	resp, err := s.chatOps.CreateOneOnOne(ctx, recipientRef)
+	if err != nil {
+		return nil, snd.Wrap("CreateOneOnOne", err,
+			snd.NewParam(resources.UserRef, recipientRef),
+		)
 	}
 
-	return adapter.MapGraphChat(resp), nil
+	return resp, nil
 }
 
 func (s *service) CreateGroup(ctx context.Context, recipientRefs []string, topic string, includeMe bool) (*models.Chat, error) {
-	resp, requestErr := s.chatAPI.CreateGroupChat(ctx, recipientRefs, topic, includeMe)
-	if requestErr != nil {
-		return nil, snd.MapError(requestErr, snd.WithResources(resources.User, recipientRefs))
+	resp, err := s.chatOps.CreateGroup(ctx, recipientRefs, topic, includeMe)
+	if err != nil {
+		return nil, snd.Wrap("CreateGroup", err,
+			snd.NewParam(resources.UserRef, recipientRefs...),
+		)
 	}
 
-	return adapter.MapGraphChat(resp), nil
+	return resp, nil
 }
 
 func (s *service) AddMemberToGroupChat(ctx context.Context, chatRef GroupChatRef, userRef string) (*models.Member, error) {
 	chatID, err := s.resolveChatIDFromRef(ctx, chatRef)
 	if err != nil {
-		return nil, err
+		return nil, snd.Wrap("AddMemberToGroupChat", err,
+			snd.NewParam(resources.GroupChatRef, chatRef.get()),
+			snd.NewParam(resources.UserRef, userRef),
+		)
 	}
 
-	resp, requestErr := s.chatAPI.AddMemberToGroupChat(ctx, chatID, userRef)
-	if requestErr != nil {
-		return nil, snd.MapError(requestErr, snd.WithResource(resources.GroupChat, chatID), snd.WithResource(resources.User, userRef))
+	resp, err := s.chatOps.AddMemberToGroupChat(ctx, chatID, userRef)
+	if err != nil {
+		return nil, snd.Wrap("AddMemberToGroupChat", err,
+			snd.NewParam(resources.GroupChatRef, chatRef.get()),
+			snd.NewParam(resources.UserRef, userRef),
+		)
 	}
 
-	return adapter.MapGraphMember(resp), nil
+	return resp, nil
 }
 
 func (s *service) RemoveMemberFromGroupChat(ctx context.Context, chatRef GroupChatRef, userRef string) error {
 	chatID, err := s.resolveChatIDFromRef(ctx, chatRef)
 	if err != nil {
-		return err
+		return snd.Wrap("RemoveMemberFromGroupChat", err,
+			snd.NewParam(resources.GroupChatRef, chatRef.get()),
+			snd.NewParam(resources.UserRef, userRef),
+		)
 	}
 
 	memberID, err := s.chatResolver.ResolveChatMemberRefToID(ctx, chatID, userRef)
 	if err != nil {
-		return err
+		return snd.Wrap("RemoveMemberFromGroupChat", err,
+			snd.NewParam(resources.GroupChatRef, chatRef.get()),
+			snd.NewParam(resources.UserRef, userRef),
+		)
 	}
 
-	requestErr := s.chatAPI.RemoveMemberFromGroupChat(ctx, chatID, memberID)
-	if requestErr != nil {
-		return snd.MapError(requestErr, snd.WithResource(resources.GroupChat, chatID), snd.WithResource(resources.User, userRef))
+	err = s.chatOps.RemoveMemberFromGroupChat(ctx, chatID, memberID)
+	if err != nil {
+		return snd.Wrap("RemoveMemberFromGroupChat", err,
+			snd.NewParam(resources.GroupChatRef, chatRef.get()),
+			snd.NewParam(resources.UserRef, userRef),
+		)
 	}
 
 	return nil
@@ -81,75 +94,94 @@ func (s *service) RemoveMemberFromGroupChat(ctx context.Context, chatRef GroupCh
 func (s *service) ListGroupChatMembers(ctx context.Context, chatRef GroupChatRef) ([]*models.Member, error) {
 	chatID, err := s.resolveChatIDFromRef(ctx, chatRef)
 	if err != nil {
-		return nil, err
+		return nil, snd.Wrap("ListGroupChatMembers", err,
+			snd.NewParam(resources.GroupChatRef, chatRef.get()),
+		)
 	}
 
-	resp, requestErr := s.chatAPI.ListGroupChatMembers(ctx, chatID)
-	if requestErr != nil {
-		return nil, snd.MapError(requestErr, snd.WithResource(resources.GroupChat, chatID))
+	resp, err := s.chatOps.ListGroupChatMembers(ctx, chatID)
+	if err != nil {
+		return nil, snd.Wrap("ListGroupChatMembers", err,
+			snd.NewParam(resources.GroupChatRef, chatRef.get()),
+		)
 	}
 
-	return util.MapSlices(resp.GetValue(), adapter.MapGraphMember), nil
+	return resp, nil
 }
 
 func (s *service) UpdateGroupChatTopic(ctx context.Context, chatRef GroupChatRef, topic string) (*models.Chat, error) {
 	chatID, err := s.resolveChatIDFromRef(ctx, chatRef)
 	if err != nil {
-		return nil, err
+		return nil, snd.Wrap("UpdateGroupChatTopic", err,
+			snd.NewParam(resources.GroupChatRef, chatRef.get()),
+		)
 	}
 
-	resp, requestErr := s.chatAPI.UpdateGroupChatTopic(ctx, chatID, topic)
-	if requestErr != nil {
-		return nil, snd.MapError(requestErr, snd.WithResource(resources.GroupChat, chatID))
+	resp, err := s.chatOps.UpdateGroupChatTopic(ctx, chatID, topic)
+	if err != nil {
+		return nil, snd.Wrap("UpdateGroupChatTopic", err,
+			snd.NewParam(resources.GroupChatRef, chatRef.get()),
+		)
 	}
 
-	return adapter.MapGraphChat(resp), nil
+	return resp, nil
 }
 
 func (s *service) ListMessages(ctx context.Context, chatRef ChatRef) ([]*models.Message, error) {
 	chatID, err := s.resolveChatIDFromRef(ctx, chatRef)
 	if err != nil {
-		return nil, err
+		return nil, snd.Wrap("ListMessages", err,
+			snd.NewParam(resources.ChatRef, chatRef.get()),
+		)
 	}
 
-	resp, requestErr := s.chatAPI.ListMessages(ctx, chatID)
-	if requestErr != nil {
-		return nil, snd.MapError(requestErr, snd.WithResource(resources.Chat, chatID))
+	resp, err := s.chatOps.ListMessages(ctx, chatID)
+	if err != nil {
+		return nil, snd.Wrap("ListMessages", err,
+			snd.NewParam(resources.ChatRef, chatRef.get()),
+		)
 	}
 
-	return util.MapSlices(resp.GetValue(), adapter.MapGraphMessage), nil
+	return resp, nil
 }
 
 func (s *service) SendMessage(ctx context.Context, chatRef ChatRef, body models.MessageBody) (*models.Message, error) {
 	chatID, err := s.resolveChatIDFromRef(ctx, chatRef)
 	if err != nil {
-		return nil, err
+		return nil, snd.Wrap("SendMessage", err,
+			snd.NewParam(resources.ChatRef, chatRef.get()),
+		)
 	}
+
 	if err := validateChatMentions(chatRef, body.Mentions); err != nil {
-		return nil, err
+		return nil, snd.Wrap("SendMessage", err,
+			snd.NewParam(resources.ChatRef, chatRef.get()),
+		)
 	}
-	ments, err := mentions.PrepareMentions(&body)
+
+	resp, err := s.chatOps.SendMessage(ctx, chatID, body)
 	if err != nil {
-		return nil, err
+		return nil, snd.Wrap("SendMessage", err,
+			snd.NewParam(resources.ChatRef, chatRef.get()),
+		)
 	}
 
-	resp, requestErr := s.chatAPI.SendMessage(ctx, chatID, body.Content, string(body.ContentType), ments)
-	if requestErr != nil {
-		return nil, snd.MapError(requestErr, snd.WithResource(resources.Chat, chatID))
-	}
-
-	return adapter.MapGraphMessage(resp), nil
+	return resp, nil
 }
 
 func (s *service) DeleteMessage(ctx context.Context, chatRef ChatRef, messageID string) error {
 	chatID, err := s.resolveChatIDFromRef(ctx, chatRef)
 	if err != nil {
-		return err
+		return snd.Wrap("DeleteMessage", err,
+			snd.NewParam(resources.ChatRef, chatRef.get()),
+		)
 	}
 
-	requestErr := s.chatAPI.DeleteMessage(ctx, chatID, messageID)
-	if requestErr != nil {
-		return snd.MapError(requestErr, snd.WithResource(resources.Chat, chatID), snd.WithResource(resources.Message, messageID))
+	err = s.chatOps.DeleteMessage(ctx, chatID, messageID)
+	if err != nil {
+		return snd.Wrap("DeleteMessage", err,
+			snd.NewParam(resources.ChatRef, chatRef.get()),
+		)
 	}
 
 	return nil
@@ -158,71 +190,70 @@ func (s *service) DeleteMessage(ctx context.Context, chatRef ChatRef, messageID 
 func (s *service) GetMessage(ctx context.Context, chatRef ChatRef, messageID string) (*models.Message, error) {
 	chatID, err := s.resolveChatIDFromRef(ctx, chatRef)
 	if err != nil {
-		return nil, err
+		return nil, snd.Wrap("GetMessage", err,
+			snd.NewParam(resources.ChatRef, chatRef.get()),
+		)
 	}
 
-	resp, requestErr := s.chatAPI.GetMessage(ctx, chatID, messageID)
-	if requestErr != nil {
-		return nil, snd.MapError(requestErr, snd.WithResource(resources.Chat, chatID), snd.WithResource(resources.Message, messageID))
+	resp, err := s.chatOps.GetMessage(ctx, chatID, messageID)
+	if err != nil {
+		return nil, snd.Wrap("GetMessage", err,
+			snd.NewParam(resources.ChatRef, chatRef.get()),
+		)
 	}
 
-	return adapter.MapGraphMessage(resp), nil
+	return resp, nil
 }
 
 func (s *service) ListChats(ctx context.Context, chatType *models.ChatType) ([]*models.Chat, error) {
-	var apiType *string
-
-	if chatType != nil {
-		switch *chatType {
-		case models.ChatTypeGroup:
-			groupChat := "group"
-			apiType = &groupChat
-		case models.ChatTypeOneOnOne:
-			oneOnOneChat := "oneOnOne"
-			apiType = &oneOnOneChat
-		}
+	resp, err := s.chatOps.ListChats(ctx, chatType)
+	if err != nil {
+		return nil, snd.Wrap("ListChats", err)
 	}
 
-	resp, requestErr := s.chatAPI.ListChats(ctx, apiType)
-	if requestErr != nil {
-		return nil, snd.MapError(requestErr)
-	}
-
-	return util.MapSlices(resp.GetValue(), adapter.MapGraphChat), nil
+	return resp, nil
 }
 
 func (s *service) ListAllMessages(ctx context.Context, startTime, endTime *time.Time, top *int32) ([]*models.Message, error) {
-	resp, requestErr := s.chatAPI.ListAllMessages(ctx, startTime, endTime, top)
-	if requestErr != nil {
-		return nil, snd.MapError(requestErr)
+	resp, err := s.chatOps.ListAllMessages(ctx, startTime, endTime, top)
+	if err != nil {
+		return nil, snd.Wrap("ListAllMessages", err)
 	}
 
-	return util.MapSlices(resp.GetValue(), adapter.MapGraphMessage), nil
+	return resp, nil
 }
 
 func (s *service) ListPinnedMessages(ctx context.Context, chatRef ChatRef) ([]*models.Message, error) {
 	chatID, err := s.resolveChatIDFromRef(ctx, chatRef)
 	if err != nil {
-		return nil, err
+		return nil, snd.Wrap("ListPinnedMessages", err,
+			snd.NewParam(resources.ChatRef, chatRef.get()),
+		)
 	}
 
-	resp, requestErr := s.chatAPI.ListPinnedMessages(ctx, chatID)
-	if requestErr != nil {
-		return nil, snd.MapError(requestErr, snd.WithResource(resources.Chat, chatID))
+	resp, err := s.chatOps.ListPinnedMessages(ctx, chatID)
+	if err != nil {
+		return nil, snd.Wrap("ListPinnedMessages", err,
+			snd.NewParam(resources.ChatRef, chatRef.get()),
+		)
 	}
 
-	return util.MapSlices(resp.GetValue(), adapter.MapGraphMessage), nil
+	return resp, nil
 }
 
 func (s *service) PinMessage(ctx context.Context, chatRef ChatRef, messageID string) error {
 	chatID, err := s.resolveChatIDFromRef(ctx, chatRef)
 	if err != nil {
-		return err
+		return snd.Wrap("PinMessage", err,
+			snd.NewParam(resources.ChatRef, chatRef.get()),
+		)
 	}
 
-	requestErr := s.chatAPI.PinMessage(ctx, chatID, messageID)
-	if requestErr != nil {
-		return snd.MapError(requestErr, snd.WithResource(resources.Chat, chatID), snd.WithResource(resources.Message, messageID))
+	err = s.chatOps.PinMessage(ctx, chatID, messageID)
+	if err != nil {
+		return snd.Wrap("PinMessage", err,
+			snd.NewParam(resources.ChatRef, chatRef.get()),
+		)
 	}
 
 	return nil
@@ -231,12 +262,16 @@ func (s *service) PinMessage(ctx context.Context, chatRef ChatRef, messageID str
 func (s *service) UnpinMessage(ctx context.Context, chatRef ChatRef, pinnedMessageID string) error {
 	chatID, err := s.resolveChatIDFromRef(ctx, chatRef)
 	if err != nil {
-		return err
+		return snd.Wrap("UnpinMessage", err,
+			snd.NewParam(resources.ChatRef, chatRef.get()),
+		)
 	}
 
-	requestErr := s.chatAPI.UnpinMessage(ctx, chatID, pinnedMessageID)
-	if requestErr != nil {
-		return snd.MapError(requestErr, snd.WithResource(resources.Chat, chatID), snd.WithResource(resources.PinnedMessage, pinnedMessageID))
+	err = s.chatOps.UnpinMessage(ctx, chatID, pinnedMessageID)
+	if err != nil {
+		return snd.Wrap("UnpinMessage", err,
+			snd.NewParam(resources.ChatRef, chatRef.get()),
+		)
 	}
 
 	return nil
@@ -245,44 +280,26 @@ func (s *service) UnpinMessage(ctx context.Context, chatRef ChatRef, pinnedMessa
 func (s *service) GetMentions(ctx context.Context, chatRef ChatRef, rawMentions []string) ([]models.Mention, error) {
 	chatID, err := s.resolveChatIDFromRef(ctx, chatRef)
 	if err != nil {
-		return nil, err
+		return nil, snd.Wrap("GetMentions", err,
+			snd.NewParam(resources.ChatRef, chatRef.get()),
+		)
 	}
 
 	isGroup, err := isGroupChatRef(chatRef)
 	if err != nil {
-		return nil, err
+		return nil, snd.Wrap("GetMentions", err,
+			snd.NewParam(resources.ChatRef, chatRef.get()),
+		)
 	}
 
-	out := make([]models.Mention, 0, len(rawMentions))
-	adder := mentions.NewMentionAdder(&out)
-
-	for _, raw := range rawMentions {
-		raw = strings.TrimSpace(raw)
-		if raw == "" {
-			continue
-		}
-
-		if ok, err := tryAddEveryoneMention(adder, chatID, isGroup, raw); err != nil {
-			return nil, err
-		} else if ok {
-			continue
-		}
-
-		if checkThisMentionValidity(isGroup, raw) {
-			raw = chatRef.(OneOnOneChatRef).Ref
-		}
-
-		if util.IsLikelyEmail(raw) {
-			if err := adder.AddUserMention(ctx, raw, s.userAPI); err != nil {
-				return nil, err
-			}
-			continue
-		}
-
-		return nil, fmt.Errorf("cannot resolve mention reference: %s", raw)
+	resp, err := s.chatOps.GetMentions(ctx, chatID, isGroup, rawMentions)
+	if err != nil {
+		return nil, snd.Wrap("GetMentions", err,
+			snd.NewParam(resources.ChatRef, chatRef.get()),
+		)
 	}
 
-	return out, nil
+	return resp, nil
 }
 
 func (s *service) resolveChatIDFromRef(ctx context.Context, chatRef ChatRef) (string, error) {
