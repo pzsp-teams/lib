@@ -20,6 +20,12 @@ func NewService(ops channelOps, tr resolver.TeamResolver, cr resolver.ChannelRes
 	return &service{ops: ops, teamResolver: tr, channelResolver: cr}
 }
 
+func (s *service) Wait() {
+	if waiter, ok := s.ops.(interface{ Wait() }); ok {
+		waiter.Wait()
+	}
+}
+
 func (s *service) ListChannels(ctx context.Context, teamRef string) ([]*models.Channel, error) {
 	teamID, err := s.teamResolver.ResolveTeamRefToID(ctx, teamRef)
 	if err != nil {
