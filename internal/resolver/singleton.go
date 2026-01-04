@@ -6,8 +6,8 @@ import (
 )
 
 var (
-	chatSingleton ChatResolver
-	teamSingleton TeamResolver
+	chatSingleton    ChatResolver
+	teamSingleton    TeamResolver
 	channelSingleton ChannelResolver
 )
 

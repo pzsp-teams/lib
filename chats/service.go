@@ -21,12 +21,6 @@ func NewService(chatOps chatOps, cr resolver.ChatResolver) Service {
 	return &service{chatOps: chatOps, chatResolver: cr}
 }
 
-func (s *service) Wait() {
-	if waiter, ok := s.chatOps.(interface{ Wait() }); ok {
-		waiter.Wait()
-	}
-}
-
 func (s *service) CreateOneOnOne(ctx context.Context, recipientRef string) (*models.Chat, error) {
 	resp, err := s.chatOps.CreateOneOnOne(ctx, recipientRef)
 	if err != nil {
