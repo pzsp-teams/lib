@@ -78,4 +78,7 @@ type Service interface {
 	//   - Everyone (for group chats)
 	//   - User IDs
 	GetMentions(ctx context.Context, chatRef ChatRef, rawMentions []string) ([]models.Mention, error)
+
+	// Wait blocks until all background operations (like cache updates) are completed.
+	Wait()
 }
