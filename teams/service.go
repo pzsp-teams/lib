@@ -19,12 +19,6 @@ func NewService(teamOps teamsOps, tr resolver.TeamResolver) Service {
 	return &service{teamOps: teamOps, teamResolver: tr}
 }
 
-func (s *service) Wait() {
-	if waiter, ok := s.teamOps.(interface{ Wait() }); ok {
-		waiter.Wait()
-	}
-}
-
 func (s *service) Get(ctx context.Context, teamRef string) (*models.Team, error) {
 	teamID, err := s.teamResolver.ResolveTeamRefToID(ctx, teamRef)
 	if err != nil {
