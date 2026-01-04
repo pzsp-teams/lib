@@ -60,7 +60,7 @@ func main() {
 		fmt.Printf("Error creating Teams client: %v\n", err)
 		os.Exit(1)
 	}
-	defer client.Close()
+	defer lib.Close()
 	switch cmd {
 	case "create-channel":
 		if len(os.Args) < 4 {
