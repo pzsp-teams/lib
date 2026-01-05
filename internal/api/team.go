@@ -11,10 +11,11 @@ import (
 
 	"github.com/pzsp-teams/lib/config"
 	"github.com/pzsp-teams/lib/internal/sender"
+	"github.com/pzsp-teams/lib/models"
 )
 
 type TeamAPI interface {
-	CreateFromTemplate(ctx context.Context, displayName, description string, owners []string) (string, *sender.RequestError)
+	CreateFromTemplate(ctx context.Context, displayName, description string, owners, members []string, visibility string) (string, *sender.RequestError)
 	CreateViaGroup(ctx context.Context, displayName, mailNickname, visibility string) (string, *sender.RequestError)
 	Get(ctx context.Context, teamID string) (msmodels.Teamable, *sender.RequestError)
 	ListMyJoined(ctx context.Context) (msmodels.TeamCollectionResponseable, *sender.RequestError)
@@ -23,6 +24,7 @@ type TeamAPI interface {
 	Unarchive(ctx context.Context, teamID string) *sender.RequestError
 	Delete(ctx context.Context, teamID string) *sender.RequestError
 	RestoreDeleted(ctx context.Context, deletedGroupID string) (msmodels.DirectoryObjectable, *sender.RequestError)
+	UpdateTeam(ctx context.Context, teamID string, update *models.TeamUpdate) (msmodels.Teamable, *sender.RequestError)
 	ListMembers(ctx context.Context, teamID string) (msmodels.ConversationMemberCollectionResponseable, *sender.RequestError)
 	GetMember(ctx context.Context, teamID, memberID string) (msmodels.ConversationMemberable, *sender.RequestError)
 	AddMember(ctx context.Context, teamID, userRef string, roles []string) (msmodels.ConversationMemberable, *sender.RequestError)
@@ -39,10 +41,15 @@ func NewTeams(client *graph.GraphServiceClient, senderCfg *config.SenderConfig) 
 	return &teamAPI{client, senderCfg}
 }
 
-func (t *teamAPI) CreateFromTemplate(ctx context.Context, displayName, description string, owners []string) (string, *sender.RequestError) {
+func (t *teamAPI) CreateFromTemplate(ctx context.Context, displayName, description string, owners, members []string, visibility string) (string, *sender.RequestError) {
 	body := msmodels.NewTeam()
 	body.SetDisplayName(&displayName)
 	body.SetDescription(&description)
+	teamVisibility := msmodels.PUBLIC_TEAMVISIBILITYTYPE
+	if visibility == "private" {
+		teamVisibility = msmodels.PRIVATE_TEAMVISIBILITYTYPE
+	}
+	body.SetVisibility(&teamVisibility)
 	first := "General"
 	body.SetFirstChannelName(&first)
 	body.SetAdditionalData(map[string]any{
@@ -211,6 +218,35 @@ func (t *teamAPI) RestoreDeleted(ctx context.Context, deletedGroupID string) (ms
 	out, ok := resp.(msmodels.DirectoryObjectable)
 	if !ok {
 		return nil, newTypeError("DirectoryObjectable")
+	}
+	return out, nil
+}
+
+func (t *teamAPI) UpdateTeam(ctx context.Context, teamID string, update *models.TeamUpdate) (msmodels.Teamable, *sender.RequestError) {
+	patch := msmodels.NewTeam()
+	if update.DisplayName != nil {
+		patch.SetDisplayName(update.DisplayName)
+	}
+	if update.Description != nil {
+		patch.SetDescription(update.Description)
+	}
+	if update.Visibility != nil {
+		teamVisibility := msmodels.PUBLIC_TEAMVISIBILITYTYPE
+		if *update.Visibility == "private" {
+			teamVisibility = msmodels.PRIVATE_TEAMVISIBILITYTYPE
+		}
+		patch.SetVisibility(&teamVisibility)
+	}
+	call := func(ctx context.Context) (sender.Response, error) {
+		return t.client.Teams().ByTeamId(teamID).Patch(ctx, patch, nil)
+	}
+	resp, err := sender.SendRequest(ctx, call, t.senderCfg)
+	if err != nil {
+		return nil, err
+	}
+	out, ok := resp.(msmodels.Teamable)
+	if !ok {
+		return nil, newTypeError("Teamable")
 	}
 	return out, nil
 }
