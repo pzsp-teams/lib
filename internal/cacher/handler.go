@@ -37,7 +37,7 @@ func WithErrorClear[T any](
 
 func shouldClearCache(err error) bool {
 	if sc, ok := sender.StatusCode(err); ok {
-		return sc == http.StatusBadRequest || sc == http.StatusNotFound || sc == http.StatusForbidden
+		return sc == http.StatusBadRequest || sc == http.StatusNotFound
 	}
 	return false
 }
