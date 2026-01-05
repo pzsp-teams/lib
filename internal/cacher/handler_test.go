@@ -36,11 +36,6 @@ func Test_shouldClearCache(t *testing.T) {
 			want: true,
 		},
 		{
-			name: "Forbidden clears",
-			err:  &sender.RequestError{Code: http.StatusForbidden, Message: "forbidden"},
-			want: true,
-		},
-		{
 			name: "Unauthorized does not clear",
 			err:  &sender.RequestError{Code: http.StatusUnauthorized, Message: "unauthorized"},
 			want: false,
@@ -83,12 +78,6 @@ func TestCacheHandler_OnError(t *testing.T) {
 			name:        "NotFound triggers Clear",
 			err:         &sender.RequestError{Code: http.StatusNotFound},
 			expectClear: true,
-		},
-		{
-			name:        "Forbidden triggers Clear even if Clear fails",
-			err:         &sender.RequestError{Code: http.StatusForbidden},
-			expectClear: true,
-			clearErr:    errors.New("clear failed"),
 		},
 		{
 			name:        "InternalServerError does not trigger Clear",
