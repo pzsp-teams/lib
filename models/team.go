@@ -8,3 +8,10 @@ type Team struct {
 	IsArchived  bool
 	Visibility  *string
 }
+
+// TeamUpdate represents the fields that can be updated for a Team.
+type TeamUpdate struct {
+	DisplayName *string
+	Description *string
+	Visibility  *string
+}
