@@ -15,6 +15,7 @@ import (
 
 	models "github.com/microsoftgraph/msgraph-sdk-go/models"
 	sender "github.com/pzsp-teams/lib/internal/sender"
+	models0 "github.com/pzsp-teams/lib/models"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -246,4 +247,19 @@ func (m *MockTeamAPI) UpdateMemberRoles(ctx context.Context, teamID, memberID st
 func (mr *MockTeamAPIMockRecorder) UpdateMemberRoles(ctx, teamID, memberID, roles any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateMemberRoles", reflect.TypeOf((*MockTeamAPI)(nil).UpdateMemberRoles), ctx, teamID, memberID, roles)
+}
+
+// UpdateTeam mocks base method.
+func (m *MockTeamAPI) UpdateTeam(ctx context.Context, teamID string, update *models0.TeamUpdate) (models.Teamable, *sender.RequestError) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateTeam", ctx, teamID, update)
+	ret0, _ := ret[0].(models.Teamable)
+	ret1, _ := ret[1].(*sender.RequestError)
+	return ret0, ret1
+}
+
+// UpdateTeam indicates an expected call of UpdateTeam.
+func (mr *MockTeamAPIMockRecorder) UpdateTeam(ctx, teamID, update any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateTeam", reflect.TypeOf((*MockTeamAPI)(nil).UpdateTeam), ctx, teamID, update)
 }
