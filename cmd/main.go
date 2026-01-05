@@ -236,6 +236,12 @@ func handlePrintAllChannels(client *lib.Client) {
 		}
 		for _, ch := range channels {
 			fmt.Printf("  - Channel: %s (ID: %s)\n", ch.Name, ch.ID)
+			messages, err := client.Channels.ListMessages(context.TODO(), team.ID, ch.ID, nil, false)
+			if err != nil {
+				fmt.Printf("    Error listing messages: %v\n", err)
+				continue
+			}
+			fmt.Printf("    Messages count: %d\n", len(messages))
 		}
 	}
 }
