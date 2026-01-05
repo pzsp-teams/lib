@@ -346,7 +346,7 @@ func handleListMessages(client *lib.Client, args []string) {
 		opts = &models.ListMessagesOptions{Top: &top}
 	}
 
-	messages, err := client.Channels.ListMessages(context.TODO(), teamName, channelName, opts)
+	messages, err := client.Channels.ListMessages(context.TODO(), teamName, channelName, opts, true)
 	if err != nil {
 		fmt.Printf("Error listing messages: %v\n", err)
 		os.Exit(1)
@@ -380,7 +380,7 @@ func handleListReplies(client *lib.Client, args []string) {
 		top = &topVal
 	}
 
-	replies, err := client.Channels.ListReplies(context.TODO(), teamName, channelName, messageID, top)
+	replies, err := client.Channels.ListReplies(context.TODO(), teamName, channelName, messageID, top, true)
 	if err != nil {
 		fmt.Printf("Error listing replies: %v\n", err)
 		os.Exit(1)
