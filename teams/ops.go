@@ -3,6 +3,7 @@ package teams
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/pzsp-teams/lib/internal/adapter"
 	"github.com/pzsp-teams/lib/internal/api"
@@ -123,4 +124,12 @@ func (o *ops) UpdateMemberRoles(ctx context.Context, teamID, memberID string, is
 		return nil, snd.MapError(err, snd.WithResource(resources.Team, teamID), snd.WithResource(resources.User, memberID))
 	}
 	return adapter.MapGraphMember(resp), nil
+}
+
+func (o *ops) ListAllMessages(ctx context.Context, teamID string, startTime, endTime *time.Time, top *int32) ([]*models.Message, error) {
+	resp, err := o.teamAPI.ListAllMessages(ctx, teamID, startTime, endTime, top)
+	if err != nil {
+		return nil, snd.MapError(err, snd.WithResource(resources.Team, teamID))
+	}
+	return util.MapSlices(resp.GetValue(), adapter.MapGraphMessage), nil
 }

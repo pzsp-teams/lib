@@ -2,6 +2,7 @@ package teams
 
 import (
 	"context"
+	"time"
 
 	"github.com/pzsp-teams/lib/internal/resolver"
 	"github.com/pzsp-teams/lib/internal/resources"
@@ -240,4 +241,22 @@ func (s *service) UpdateMemberRoles(ctx context.Context, teamRef, userRef string
 		)
 	}
 	return updated, nil
+}
+
+func (s *service) ListAllMessages(ctx context.Context, teamRef string, startTime, endTime *time.Time, top *int32) ([]*models.Message, error) {
+	teamID, err := s.teamResolver.ResolveTeamRefToID(ctx, teamRef)
+	if err != nil {
+		return nil, sender.Wrap("ListAllMessages", err,
+			sender.NewParam(resources.TeamRef, teamRef),
+		)
+	}
+
+	resp, err := s.teamOps.ListAllMessages(ctx, teamID, startTime, endTime, top)
+	if err != nil {
+		return nil, sender.Wrap("ListAllMessages", err,
+			sender.NewParam(resources.TeamRef, teamRef),
+		)
+	}
+
+	return resp, nil
 }

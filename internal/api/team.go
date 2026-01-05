@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -28,6 +29,7 @@ type TeamAPI interface {
 	AddMember(ctx context.Context, teamID, userRef string, roles []string) (msmodels.ConversationMemberable, *sender.RequestError)
 	RemoveMember(ctx context.Context, teamID, memberID string) *sender.RequestError
 	UpdateMemberRoles(ctx context.Context, teamID, memberID string, roles []string) (msmodels.ConversationMemberable, *sender.RequestError)
+	ListAllMessages(ctx context.Context, teamID string, startTime, endTime *time.Time, top *int32) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError)
 }
 
 type teamAPI struct {
@@ -306,5 +308,45 @@ func (t *teamAPI) UpdateMemberRoles(ctx context.Context, teamID, memberID string
 	if !ok {
 		return nil, newTypeError("ConversationMemberable")
 	}
+	return out, nil
+}
+
+func (t *teamAPI) ListAllMessages(ctx context.Context, teamID string, startTime, endTime *time.Time, top *int32) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError) {
+	requestParameters := &graphteams.ItemChannelsGetAllMessagesRequestBuilderGetQueryParameters{
+		Top: top,
+	}
+
+	if startTime != nil && endTime != nil {
+		filter := fmt.Sprintf(
+			"lastModifiedDateTime gt %s and lastModifiedDateTime lt %s",
+			startTime.UTC().Format(time.RFC3339),
+			endTime.UTC().Format(time.RFC3339),
+		)
+		requestParameters.Filter = &filter
+	}
+
+	configuration := &graphteams.ItemChannelsGetAllMessagesRequestBuilderGetRequestConfiguration{
+		QueryParameters: requestParameters,
+	}
+
+	call := func(ctx context.Context) (sender.Response, error) {
+		return t.client.
+			Teams().
+			ByTeamId(teamID).
+			Channels().
+			GetAllMessages().
+			GetAsGetAllMessagesGetResponse(ctx, configuration)
+	}
+
+	resp, err := sender.SendRequest(ctx, call, t.senderCfg)
+	if err != nil {
+		return nil, err
+	}
+
+	out, ok := resp.(msmodels.ChatMessageCollectionResponseable)
+	if !ok {
+		return nil, newTypeError("ChatMessageCollectionResponseable")
+	}
+
 	return out, nil
 }
