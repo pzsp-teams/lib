@@ -469,12 +469,12 @@ func TestService_ListMessages_ListReplies(t *testing.T) {
 		svc, ctx := newSUT(t, func(d sutDeps) {
 			expectResolveTeamAndChannel(t, d)
 			d.ops.EXPECT().
-				ListMessages(gomock.Any(), "team-id", "chan-id", opts).
+				ListMessages(gomock.Any(), "team-id", "chan-id", opts, false).
 				Return([]*models.Message{{ID: "m1"}, {ID: "m2"}}, nil).
 				Times(1)
 		})
 
-		got, err := svc.ListMessages(ctx, "TeamA", "ChanA", opts)
+		got, err := svc.ListMessages(ctx, "TeamA", "ChanA", opts, false)
 		require.NoError(t, err)
 		require.Len(t, got, 2)
 	})
@@ -485,8 +485,8 @@ func TestService_ListMessages_ListReplies(t *testing.T) {
 		svc, ctx := newSUT(t, func(d sutDeps) {
 			expectResolveTeamAndChannel(t, d)
 			d.ops.EXPECT().
-				ListReplies(gomock.Any(), "team-id", "chan-id", "msg-1", gomock.Any()).
-				DoAndReturn(func(_ context.Context, teamID, channelID, msgID string, opts *models.ListMessagesOptions) ([]*models.Message, error) {
+				ListReplies(gomock.Any(), "team-id", "chan-id", "msg-1", gomock.Any(), false).
+				DoAndReturn(func(_ context.Context, teamID, channelID, msgID string, opts *models.ListMessagesOptions, includeSystemEvents bool) ([]*models.Message, error) {
 					require.Equal(t, "team-id", teamID)
 					require.Equal(t, "chan-id", channelID)
 					require.Equal(t, "msg-1", msgID)
@@ -498,7 +498,7 @@ func TestService_ListMessages_ListReplies(t *testing.T) {
 				Times(1)
 		})
 
-		got, err := svc.ListReplies(ctx, "TeamA", "ChanA", "msg-1", &top)
+		got, err := svc.ListReplies(ctx, "TeamA", "ChanA", "msg-1", &top, false)
 		require.NoError(t, err)
 		require.Len(t, got, 1)
 	})
@@ -868,7 +868,7 @@ func TestService_ListMessages_Errors(t *testing.T) {
 			setupMocks: func(d sutDeps) {
 				expectResolveTeamAndChannel(t, d)
 				d.ops.EXPECT().
-					ListMessages(gomock.Any(), defaultTeamID, defaultChannelID, opts).
+					ListMessages(gomock.Any(), defaultTeamID, defaultChannelID, opts, false).
 					Return(nil, &snd.ErrAccessForbidden{Code: 403, OriginalMessage: "nope"}).
 					Times(1)
 			},
@@ -879,7 +879,7 @@ func TestService_ListMessages_Errors(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			svc, ctx := newSUT(t, tc.setupMocks)
-			_, err := svc.ListMessages(ctx, defaultTeamRef, defaultChannelRef, opts)
+			_, err := svc.ListMessages(ctx, defaultTeamRef, defaultChannelRef, opts, false)
 			tc.assertErr(t, err)
 		})
 	}
@@ -891,8 +891,8 @@ func TestService_ListReplies_Errors_AndNilTop(t *testing.T) {
 			expectResolveTeamAndChannel(t, d)
 
 			d.ops.EXPECT().
-				ListReplies(gomock.Any(), defaultTeamID, defaultChannelID, "msg-1", gomock.Any()).
-				DoAndReturn(func(_ context.Context, teamID, channelID, messageID string, opts *models.ListMessagesOptions) ([]*models.Message, error) {
+				ListReplies(gomock.Any(), defaultTeamID, defaultChannelID, "msg-1", gomock.Any(), false).
+				DoAndReturn(func(_ context.Context, teamID, channelID, messageID string, opts *models.ListMessagesOptions, includeSystemEvents bool) ([]*models.Message, error) {
 					require.NotNil(t, opts)
 					require.Nil(t, opts.Top)
 					return []*models.Message{{ID: "r1"}}, nil
@@ -900,7 +900,7 @@ func TestService_ListReplies_Errors_AndNilTop(t *testing.T) {
 				Times(1)
 		})
 
-		_, err := svc.ListReplies(ctx, defaultTeamRef, defaultChannelRef, "msg-1", nil)
+		_, err := svc.ListReplies(ctx, defaultTeamRef, defaultChannelRef, "msg-1", nil, false)
 		require.NoError(t, err)
 	})
 
@@ -939,7 +939,7 @@ func TestService_ListReplies_Errors_AndNilTop(t *testing.T) {
 			setupMocks: func(d sutDeps) {
 				expectResolveTeamAndChannel(t, d)
 				d.ops.EXPECT().
-					ListReplies(gomock.Any(), defaultTeamID, defaultChannelID, "msg-1", gomock.Any()).
+					ListReplies(gomock.Any(), defaultTeamID, defaultChannelID, "msg-1", gomock.Any(), false).
 					Return(nil, &snd.ErrAccessForbidden{Code: 403, OriginalMessage: "nope"}).
 					Times(1)
 			},
@@ -950,7 +950,7 @@ func TestService_ListReplies_Errors_AndNilTop(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			svc, ctx := newSUT(t, tc.setupMocks)
-			_, err := svc.ListReplies(ctx, defaultTeamRef, defaultChannelRef, "msg-1", &top)
+			_, err := svc.ListReplies(ctx, defaultTeamRef, defaultChannelRef, "msg-1", &top, false)
 			tc.assertErr(t, err)
 		})
 	}

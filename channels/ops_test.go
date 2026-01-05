@@ -443,12 +443,12 @@ func TestOps_ListMessages(t *testing.T) {
 				testutil.NewGraphMessage(&testutil.NewMessageParams{ID: util.Ptr("m2"), Content: util.Ptr("b")}),
 			})
 			d.channelAPI.EXPECT().
-				ListMessages(gomock.Any(), "team-1", "chan-1", nil).
+				ListMessages(gomock.Any(), "team-1", "chan-1", nil, false).
 				Return(col, nil).
 				Times(1)
 		})
 
-		got, err := op.ListMessages(ctx, "team-1", "chan-1", nil)
+		got, err := op.ListMessages(ctx, "team-1", "chan-1", nil, false)
 		require.NoError(t, err)
 		require.Len(t, got, 2)
 		assert.Equal(t, "m1", got[0].ID)
@@ -461,12 +461,12 @@ func TestOps_ListMessages(t *testing.T) {
 			col := msmodels.NewChatMessageCollectionResponse()
 			col.SetValue([]msmodels.ChatMessageable{})
 			d.channelAPI.EXPECT().
-				ListMessages(gomock.Any(), "team-1", "chan-1", &top).
+				ListMessages(gomock.Any(), "team-1", "chan-1", &top, false).
 				Return(col, nil).
 				Times(1)
 		})
 
-		_, err := op.ListMessages(ctx, "team-1", "chan-1", &models.ListMessagesOptions{Top: &top})
+		_, err := op.ListMessages(ctx, "team-1", "chan-1", &models.ListMessagesOptions{Top: &top}, false)
 		require.NoError(t, err)
 	})
 
@@ -474,12 +474,12 @@ func TestOps_ListMessages(t *testing.T) {
 		var top int32 = 5
 		op, ctx := newOpsSUT(t, func(d opsSUTDeps) {
 			d.channelAPI.EXPECT().
-				ListMessages(gomock.Any(), "team-1", "chan-1", &top).
+				ListMessages(gomock.Any(), "team-1", "chan-1", &top, false).
 				Return(nil, &snd.RequestError{Code: 404, Message: "missing"}).
 				Times(1)
 		})
 
-		got, err := op.ListMessages(ctx, "team-1", "chan-1", &models.ListMessagesOptions{Top: &top})
+		got, err := op.ListMessages(ctx, "team-1", "chan-1", &models.ListMessagesOptions{Top: &top}, false)
 		require.Nil(t, got)
 		require.Error(t, err)
 
@@ -541,12 +541,12 @@ func TestOps_ListReplies(t *testing.T) {
 				testutil.NewGraphMessage(&testutil.NewMessageParams{ID: util.Ptr("r1"), Content: util.Ptr("x")}),
 			})
 			d.channelAPI.EXPECT().
-				ListReplies(gomock.Any(), "team-1", "chan-1", "m-1", nil).
+				ListReplies(gomock.Any(), "team-1", "chan-1", "m-1", nil, false).
 				Return(col, nil).
 				Times(1)
 		})
 
-		got, err := op.ListReplies(ctx, "team-1", "chan-1", "m-1", nil)
+		got, err := op.ListReplies(ctx, "team-1", "chan-1", "m-1", nil, false)
 		require.NoError(t, err)
 		require.Len(t, got, 1)
 		assert.Equal(t, "r1", got[0].ID)
@@ -558,12 +558,12 @@ func TestOps_ListReplies(t *testing.T) {
 			col := msmodels.NewChatMessageCollectionResponse()
 			col.SetValue([]msmodels.ChatMessageable{})
 			d.channelAPI.EXPECT().
-				ListReplies(gomock.Any(), "team-1", "chan-1", "m-1", &top).
+				ListReplies(gomock.Any(), "team-1", "chan-1", "m-1", &top, false).
 				Return(col, nil).
 				Times(1)
 		})
 
-		_, err := op.ListReplies(ctx, "team-1", "chan-1", "m-1", &models.ListMessagesOptions{Top: &top})
+		_, err := op.ListReplies(ctx, "team-1", "chan-1", "m-1", &models.ListMessagesOptions{Top: &top}, false)
 		require.NoError(t, err)
 	})
 
@@ -571,12 +571,12 @@ func TestOps_ListReplies(t *testing.T) {
 		var top int32 = 5
 		op, ctx := newOpsSUT(t, func(d opsSUTDeps) {
 			d.channelAPI.EXPECT().
-				ListReplies(gomock.Any(), "team-1", "chan-1", "m-1", &top).
+				ListReplies(gomock.Any(), "team-1", "chan-1", "m-1", &top, false).
 				Return(nil, &snd.RequestError{Code: 404, Message: "missing"}).
 				Times(1)
 		})
 
-		got, err := op.ListReplies(ctx, "team-1", "chan-1", "m-1", &models.ListMessagesOptions{Top: &top})
+		got, err := op.ListReplies(ctx, "team-1", "chan-1", "m-1", &models.ListMessagesOptions{Top: &top}, false)
 		require.Nil(t, got)
 		require.Error(t, err)
 

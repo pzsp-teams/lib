@@ -106,9 +106,9 @@ func (o *opsWithCache) UpdateGroupChatTopic(ctx context.Context, chatID, topic s
 	}, o.cacheHandler)
 }
 
-func (o *opsWithCache) ListMessages(ctx context.Context, chatID string) ([]*models.Message, error) {
+func (o *opsWithCache) ListMessages(ctx context.Context, chatID string, includeSystem bool) ([]*models.Message, error) {
 	return cacher.WithErrorClear(func() ([]*models.Message, error) {
-		return o.chatOps.ListMessages(ctx, chatID)
+		return o.chatOps.ListMessages(ctx, chatID, includeSystem)
 	}, o.cacheHandler)
 }
 
