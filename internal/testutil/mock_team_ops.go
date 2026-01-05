@@ -12,6 +12,7 @@ package testutil
 import (
 	context "context"
 	reflect "reflect"
+	time "time"
 
 	models "github.com/pzsp-teams/lib/models"
 	gomock "go.uber.org/mock/gomock"
@@ -142,6 +143,21 @@ func (m *MockteamsOps) GetTeamByID(ctx context.Context, teamID string) (*models.
 func (mr *MockteamsOpsMockRecorder) GetTeamByID(ctx, teamID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTeamByID", reflect.TypeOf((*MockteamsOps)(nil).GetTeamByID), ctx, teamID)
+}
+
+// ListAllMessages mocks base method.
+func (m *MockteamsOps) ListAllMessages(ctx context.Context, teamID string, startTime, endTime *time.Time, top *int32) ([]*models.Message, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListAllMessages", ctx, teamID, startTime, endTime, top)
+	ret0, _ := ret[0].([]*models.Message)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListAllMessages indicates an expected call of ListAllMessages.
+func (mr *MockteamsOpsMockRecorder) ListAllMessages(ctx, teamID, startTime, endTime, top any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAllMessages", reflect.TypeOf((*MockteamsOps)(nil).ListAllMessages), ctx, teamID, startTime, endTime, top)
 }
 
 // ListMembers mocks base method.

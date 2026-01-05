@@ -16,6 +16,7 @@ package teams
 
 import (
 	"context"
+	"time"
 
 	"github.com/pzsp-teams/lib/models"
 )
@@ -61,4 +62,7 @@ type Service interface {
 
 	// UpdateMemberRoles updates the roles of a team member (e.g., promote to owner or demote to member).
 	UpdateMemberRoles(ctx context.Context, teamRef, userRef string, isOwner bool) (*models.Member, error)
+
+	// ListAllMessages retrieves all messages from a team within an optional time range.
+	ListAllMessages(ctx context.Context, teamRef string, startTime, endTime *time.Time, top *int32) ([]*models.Message, error)
 }

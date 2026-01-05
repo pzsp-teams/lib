@@ -2,6 +2,7 @@ package teams
 
 import (
 	"context"
+	"time"
 
 	"github.com/pzsp-teams/lib/models"
 )
@@ -20,4 +21,5 @@ type teamsOps interface {
 	AddMember(ctx context.Context, teamID, userRef string, isOwner bool) (*models.Member, error)
 	UpdateMemberRoles(ctx context.Context, teamID, memberID string, isOwner bool) (*models.Member, error)
 	RemoveMember(ctx context.Context, teamID, memberID, userRef string) error
+	ListAllMessages(ctx context.Context, teamID string, startTime, endTime *time.Time, top *int32) ([]*models.Message, error)
 }

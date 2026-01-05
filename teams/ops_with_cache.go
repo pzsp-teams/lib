@@ -2,6 +2,7 @@ package teams
 
 import (
 	"context"
+	"time"
 
 	"github.com/pzsp-teams/lib/internal/cacher"
 	"github.com/pzsp-teams/lib/internal/util"
@@ -180,6 +181,12 @@ func (o *opsWithCache) RemoveMember(ctx context.Context, teamID, memberID, userR
 		o.removeMemberFromCache(teamID, userRef)
 	})
 	return nil
+}
+
+func (o *opsWithCache) ListAllMessages(ctx context.Context, teamID string, startTime, endTime *time.Time, top *int32) ([]*models.Message, error) {
+	return cacher.WithErrorClear(func() ([]*models.Message, error) {
+		return o.teamOps.ListAllMessages(ctx, teamID, startTime, endTime, top)
+	}, o.cacheHandler)
 }
 
 func (o *opsWithCache) addTeamsToCache(teams ...models.Team) {
