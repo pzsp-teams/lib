@@ -16,6 +16,7 @@ package teams
 
 import (
 	"context"
+	"time"
 
 	"github.com/pzsp-teams/lib/models"
 )
@@ -64,4 +65,6 @@ type Service interface {
 
 	// UpdateTeam applies updates to a team using the provided TeamUpdate object.
 	UpdateTeam(ctx context.Context, teamRef string, update *models.TeamUpdate) (*models.Team, error)
+	// ListAllMessages retrieves all messages from a team within an optional time range.
+	ListAllMessages(ctx context.Context, teamRef string, startTime, endTime *time.Time, top *int32) ([]*models.Message, error)
 }
