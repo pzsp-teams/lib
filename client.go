@@ -145,6 +145,9 @@ func NewChatServiceFromGraphClient(ctx context.Context, authCfg *config.AuthConf
 // Close waits for all background operations to complete.
 func Close() {
 	if cacher.Singleton != nil {
+		fmt.Println("debug print - cache is still alive!!!")
 		cacher.Singleton.Runner.Wait()
+	} else {
+		fmt.Println("debug print - cache is dead!!!")
 	}
 }
