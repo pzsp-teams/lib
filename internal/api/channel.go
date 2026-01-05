@@ -23,9 +23,9 @@ type ChannelAPI interface {
 	DeleteChannel(ctx context.Context, teamID, channelID string) *sender.RequestError
 	SendMessage(ctx context.Context, teamID, channelID, content, contentType string, mentions []msmodels.ChatMessageMentionable) (msmodels.ChatMessageable, *sender.RequestError)
 	SendReply(ctx context.Context, teamID, channelID, messageID, content, contentType string, mentions []msmodels.ChatMessageMentionable) (msmodels.ChatMessageable, *sender.RequestError)
-	ListMessages(ctx context.Context, teamID, channelID string, top *int32) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError)
+	ListMessages(ctx context.Context, teamID, channelID string, top *int32, includeSystem bool) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError)
 	GetMessage(ctx context.Context, teamID, channelID, messageID string) (msmodels.ChatMessageable, *sender.RequestError)
-	ListReplies(ctx context.Context, teamID, channelID, messageID string, top *int32) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError)
+	ListReplies(ctx context.Context, teamID, channelID, messageID string, top *int32, includeSystem bool) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError)
 	GetReply(ctx context.Context, teamID, channelID, messageID, replyID string) (msmodels.ChatMessageable, *sender.RequestError)
 	ListMembers(ctx context.Context, teamID, channelID string) (msmodels.ConversationMemberCollectionResponseable, *sender.RequestError)
 	AddMember(ctx context.Context, teamID, channelID, userRef string, roles []string) (msmodels.ConversationMemberable, *sender.RequestError)
@@ -217,7 +217,7 @@ func (c *channelAPI) SendReply(ctx context.Context, teamID, channelID, messageID
 	return out, nil
 }
 
-func (c *channelAPI) ListMessages(ctx context.Context, teamID, channelID string, top *int32) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError) {
+func (c *channelAPI) ListMessages(ctx context.Context, teamID, channelID string, top *int32, includeSystem bool) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError) {
 	call := func(ctx context.Context) (sender.Response, error) {
 		queryParameters := &graphteams.ItemChannelsItemMessagesRequestBuilderGetQueryParameters{}
 		if top != nil {
@@ -242,6 +242,10 @@ func (c *channelAPI) ListMessages(ctx context.Context, teamID, channelID string,
 	out, ok := resp.(msmodels.ChatMessageCollectionResponseable)
 	if !ok {
 		return nil, newTypeError("ChatMessageCollectionResponseable")
+	}
+	if !includeSystem {
+		filtered := filterOutSystemEvents(out)
+		out.SetValue(filtered)
 	}
 
 	return out, nil
@@ -272,7 +276,7 @@ func (c *channelAPI) GetMessage(ctx context.Context, teamID, channelID, messageI
 	return out, nil
 }
 
-func (c *channelAPI) ListReplies(ctx context.Context, teamID, channelID, messageID string, top *int32) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError) {
+func (c *channelAPI) ListReplies(ctx context.Context, teamID, channelID, messageID string, top *int32, includeSystem bool) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError) {
 	call := func(ctx context.Context) (sender.Response, error) {
 		queryParameters := &graphteams.ItemChannelsItemMessagesItemRepliesRequestBuilderGetQueryParameters{}
 		if top != nil {
@@ -299,6 +303,11 @@ func (c *channelAPI) ListReplies(ctx context.Context, teamID, channelID, message
 	out, ok := resp.(msmodels.ChatMessageCollectionResponseable)
 	if !ok {
 		return nil, newTypeError("ChatMessageCollectionResponseable")
+	}
+
+	if !includeSystem {
+		filtered := filterOutSystemEvents(out)
+		out.SetValue(filtered)
 	}
 
 	return out, nil

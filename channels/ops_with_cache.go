@@ -109,15 +109,15 @@ func (o *opsWithCache) SendReply(ctx context.Context, teamID, channelID, message
 	}, o.cacheHandler)
 }
 
-func (o *opsWithCache) ListMessages(ctx context.Context, teamID, channelID string, opts *models.ListMessagesOptions) ([]*models.Message, error) {
+func (o *opsWithCache) ListMessages(ctx context.Context, teamID, channelID string, opts *models.ListMessagesOptions, includeSystem bool) ([]*models.Message, error) {
 	return cacher.WithErrorClear(func() ([]*models.Message, error) {
-		return o.chanOps.ListMessages(ctx, teamID, channelID, opts)
+		return o.chanOps.ListMessages(ctx, teamID, channelID, opts, includeSystem)
 	}, o.cacheHandler)
 }
 
-func (o *opsWithCache) ListReplies(ctx context.Context, teamID, channelID, messageID string, opts *models.ListMessagesOptions) ([]*models.Message, error) {
+func (o *opsWithCache) ListReplies(ctx context.Context, teamID, channelID, messageID string, opts *models.ListMessagesOptions, includeSystem bool) ([]*models.Message, error) {
 	return cacher.WithErrorClear(func() ([]*models.Message, error) {
-		return o.chanOps.ListReplies(ctx, teamID, channelID, messageID, opts)
+		return o.chanOps.ListReplies(ctx, teamID, channelID, messageID, opts, includeSystem)
 	}, o.cacheHandler)
 }
 

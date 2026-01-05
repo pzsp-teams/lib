@@ -435,20 +435,20 @@ func TestOpsWithCache_WithErrorClearMethods_ClearCacheOnError(t *testing.T) {
 		{
 			name: "ListMessages",
 			expect: func(d opsWithCacheSUTDeps) {
-				d.chanOps.EXPECT().ListMessages(gomock.Any(), teamID, channelID, gomock.Any()).Return(nil, err400).Times(1)
+				d.chanOps.EXPECT().ListMessages(gomock.Any(), teamID, channelID, gomock.Any(), false).Return(nil, err400).Times(1)
 			},
 			call: func(sut channelOps, ctx context.Context) (bool, error) {
-				msgs, err := sut.ListMessages(ctx, teamID, channelID, nil)
+				msgs, err := sut.ListMessages(ctx, teamID, channelID, nil, false)
 				return msgs == nil, err
 			},
 		},
 		{
 			name: "ListReplies",
 			expect: func(d opsWithCacheSUTDeps) {
-				d.chanOps.EXPECT().ListReplies(gomock.Any(), teamID, channelID, messageID, gomock.Any()).Return(nil, err400).Times(1)
+				d.chanOps.EXPECT().ListReplies(gomock.Any(), teamID, channelID, messageID, gomock.Any(), false).Return(nil, err400).Times(1)
 			},
 			call: func(sut channelOps, ctx context.Context) (bool, error) {
-				msgs, err := sut.ListReplies(ctx, teamID, channelID, messageID, nil)
+				msgs, err := sut.ListReplies(ctx, teamID, channelID, messageID, nil, false)
 				return msgs == nil, err
 			},
 		},

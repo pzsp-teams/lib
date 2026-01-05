@@ -14,9 +14,9 @@ type channelOps interface {
 	DeleteChannel(ctx context.Context, teamID, channelID, channelRef string) error
 	SendMessage(ctx context.Context, teamID, channelID string, body models.MessageBody) (*models.Message, error)
 	SendReply(ctx context.Context, teamID, channelID, messageID string, body models.MessageBody) (*models.Message, error)
-	ListMessages(ctx context.Context, teamID, channelID string, opts *models.ListMessagesOptions) ([]*models.Message, error)
+	ListMessages(ctx context.Context, teamID, channelID string, opts *models.ListMessagesOptions, includeSystem bool) ([]*models.Message, error)
 	GetMessage(ctx context.Context, teamID, channelID, messageID string) (*models.Message, error)
-	ListReplies(ctx context.Context, teamID, channelID, messageID string, opts *models.ListMessagesOptions) ([]*models.Message, error)
+	ListReplies(ctx context.Context, teamID, channelID, messageID string, opts *models.ListMessagesOptions, includeSystem bool) ([]*models.Message, error)
 	GetReply(ctx context.Context, teamID, channelID, messageID, replyID string) (*models.Message, error)
 	ListMembers(ctx context.Context, teamID, channelID string) ([]*models.Member, error)
 	AddMember(ctx context.Context, teamID, channelID, userID string, isOwner bool) (*models.Member, error)

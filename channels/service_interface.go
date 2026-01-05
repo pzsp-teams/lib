@@ -55,13 +55,13 @@ type Service interface {
 	SendReply(ctx context.Context, teamRef, channelRef, messageID string, body models.MessageBody) (*models.Message, error)
 
 	// ListMessages returns all messages in a channel.
-	ListMessages(ctx context.Context, teamRef, channelRef string, opts *models.ListMessagesOptions) ([]*models.Message, error)
+	ListMessages(ctx context.Context, teamRef, channelRef string, opts *models.ListMessagesOptions, includeSystem bool) ([]*models.Message, error)
 
 	// GetMessage retrieves a specific message from a channel by its ID.
 	GetMessage(ctx context.Context, teamRef, channelRef, messageID string) (*models.Message, error)
 
 	// ListReplies returns all replies to a specific message in a channel.
-	ListReplies(ctx context.Context, teamRef, channelRef, messageID string, top *int32) ([]*models.Message, error)
+	ListReplies(ctx context.Context, teamRef, channelRef, messageID string, top *int32, includeSystem bool) ([]*models.Message, error)
 
 	// GetReply retrieves a specific reply to a message in a channel by its ID.
 	GetReply(ctx context.Context, teamRef, channelRef, messageID, replyID string) (*models.Message, error)

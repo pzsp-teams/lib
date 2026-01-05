@@ -56,3 +56,28 @@ func newTypeError(expected string) *sender.RequestError {
 		Message: "Expected " + expected,
 	}
 }
+
+func isSystemEvent(m msmodels.ChatMessageable) bool {
+	if m.GetEventDetail() != nil {
+		return true
+	}
+	if mt := m.GetMessageType(); mt != nil && *mt == msmodels.CHATEVENT_CHATMESSAGETYPE {
+		return true
+	}
+	return false
+}
+
+func filterOutSystemEvents(messages msmodels.ChatMessageCollectionResponseable) []msmodels.ChatMessageable {
+	vals := messages.GetValue()
+	if vals == nil {
+		return nil
+	}
+	filtered := make([]msmodels.ChatMessageable, 0, len(vals))
+	for _, v := range vals {
+		if v == nil || isSystemEvent(v) {
+			continue
+		}
+		filtered = append(filtered, v)
+	}
+	return filtered
+}

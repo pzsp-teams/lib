@@ -127,7 +127,7 @@ func (s *service) UpdateGroupChatTopic(ctx context.Context, chatRef GroupChatRef
 	return resp, nil
 }
 
-func (s *service) ListMessages(ctx context.Context, chatRef ChatRef) ([]*models.Message, error) {
+func (s *service) ListMessages(ctx context.Context, chatRef ChatRef, includeSystem bool) ([]*models.Message, error) {
 	chatID, err := s.resolveChatIDFromRef(ctx, chatRef)
 	if err != nil {
 		return nil, snd.Wrap("ListMessages", err,
@@ -135,7 +135,7 @@ func (s *service) ListMessages(ctx context.Context, chatRef ChatRef) ([]*models.
 		)
 	}
 
-	resp, err := s.chatOps.ListMessages(ctx, chatID)
+	resp, err := s.chatOps.ListMessages(ctx, chatID, includeSystem)
 	if err != nil {
 		return nil, snd.Wrap("ListMessages", err,
 			snd.NewParam(resources.ChatRef, chatRef.get()),
