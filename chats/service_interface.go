@@ -43,7 +43,7 @@ type Service interface {
 	UpdateGroupChatTopic(ctx context.Context, chatRef GroupChatRef, topic string) (*models.Chat, error)
 
 	// ListMessages returns all messages in a chat.
-	ListMessages(ctx context.Context, chatRef ChatRef) ([]*models.Message, error)
+	ListMessages(ctx context.Context, chatRef ChatRef, includeSystem bool) ([]*models.Message, error)
 
 	// SendMessage sends a message to a chat.
 	// Body parameter is the body of the message. It includes:
@@ -62,6 +62,8 @@ type Service interface {
 	ListChats(ctx context.Context, chatType *models.ChatType) ([]*models.Chat, error)
 
 	// ListAllMessages returns all messages in all chats within the specified time range. Top limits the number of messages returned.
+	//
+	// Note: This operation does not work in delegated permission mode.
 	ListAllMessages(ctx context.Context, startTime, endTime *time.Time, top *int32) ([]*models.Message, error)
 
 	// ListPinnedMessages returns all pinned messages in a chat.

@@ -27,7 +27,7 @@ type GroupChatAPI interface {
 type ChatAPI interface {
 	OneOnOneChatAPI
 	GroupChatAPI
-	ListMessages(ctx context.Context, chatID string) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError)
+	ListMessages(ctx context.Context, chatID string, includeSystem bool) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError)
 	ListChats(ctx context.Context, chatType *string) (msmodels.ChatCollectionResponseable, *sender.RequestError)
 	SendMessage(ctx context.Context, chatID, content, contentType string, mentions []msmodels.ChatMessageMentionable) (msmodels.ChatMessageable, *sender.RequestError)
 	DeleteMessage(ctx context.Context, chatID, messageID string) *sender.RequestError
@@ -217,7 +217,7 @@ func (c *chatsAPI) UpdateGroupChatTopic(ctx context.Context, chatID, topic strin
 	return out, nil
 }
 
-func (c *chatsAPI) ListMessages(ctx context.Context, chatID string) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError) {
+func (c *chatsAPI) ListMessages(ctx context.Context, chatID string, includeSystem bool) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError) {
 	call := func(ctx context.Context) (sender.Response, error) {
 		return c.client.Chats().ByChatId(chatID).Messages().Get(ctx, nil)
 	}
@@ -230,6 +230,10 @@ func (c *chatsAPI) ListMessages(ctx context.Context, chatID string) (msmodels.Ch
 	out, ok := resp.(msmodels.ChatMessageCollectionResponseable)
 	if !ok {
 		return nil, newTypeError("ChatCollectionResponseable")
+	}
+	if !includeSystem {
+		filtered := filterOutSystemEvents(out)
+		out.SetValue(filtered)
 	}
 
 	return out, nil

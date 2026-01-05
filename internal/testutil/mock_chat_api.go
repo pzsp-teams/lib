@@ -300,18 +300,18 @@ func (mr *MockChatAPIMockRecorder) ListGroupChatMembers(ctx, chatID any) *gomock
 }
 
 // ListMessages mocks base method.
-func (m *MockChatAPI) ListMessages(ctx context.Context, chatID string) (models.ChatMessageCollectionResponseable, *sender.RequestError) {
+func (m *MockChatAPI) ListMessages(ctx context.Context, chatID string, includeSystem bool) (models.ChatMessageCollectionResponseable, *sender.RequestError) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListMessages", ctx, chatID)
+	ret := m.ctrl.Call(m, "ListMessages", ctx, chatID, includeSystem)
 	ret0, _ := ret[0].(models.ChatMessageCollectionResponseable)
 	ret1, _ := ret[1].(*sender.RequestError)
 	return ret0, ret1
 }
 
 // ListMessages indicates an expected call of ListMessages.
-func (mr *MockChatAPIMockRecorder) ListMessages(ctx, chatID any) *gomock.Call {
+func (mr *MockChatAPIMockRecorder) ListMessages(ctx, chatID, includeSystem any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListMessages", reflect.TypeOf((*MockChatAPI)(nil).ListMessages), ctx, chatID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListMessages", reflect.TypeOf((*MockChatAPI)(nil).ListMessages), ctx, chatID, includeSystem)
 }
 
 // ListPinnedMessages mocks base method.

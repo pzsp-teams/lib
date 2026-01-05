@@ -214,3 +214,97 @@ func TestNewTypeError(t *testing.T) {
 		})
 	}
 }
+
+func TestIsSystemEvent(t *testing.T) {
+	t.Parallel()
+
+	t.Run("returns true when eventDetail is present", func(t *testing.T) {
+		t.Parallel()
+
+		m := msmodels.NewChatMessage()
+		m.SetEventDetail(msmodels.NewChannelAddedEventMessageDetail())
+
+		require.True(t, isSystemEvent(m))
+	})
+
+	t.Run("returns true when messageType is chatEvent", func(t *testing.T) {
+		t.Parallel()
+
+		m := msmodels.NewChatMessage()
+		mt := msmodels.CHATEVENT_CHATMESSAGETYPE
+		m.SetMessageType(&mt)
+
+		require.True(t, isSystemEvent(m))
+	})
+
+	t.Run("returns false for normal message (no eventDetail and no chatEvent type)", func(t *testing.T) {
+		t.Parallel()
+
+		m := msmodels.NewChatMessage()
+		require.False(t, isSystemEvent(m))
+	})
+}
+
+func TestFilterOutSystemEvents(t *testing.T) {
+	t.Parallel()
+
+	t.Run("returns nil when value is nil", func(t *testing.T) {
+		t.Parallel()
+
+		resp := msmodels.NewChatMessageCollectionResponse()
+		got := filterOutSystemEvents(resp)
+
+		require.Nil(t, got)
+	})
+
+	t.Run("filters out nil entries and system events, keeps order", func(t *testing.T) {
+		t.Parallel()
+
+		normal1 := msmodels.NewChatMessage()
+		id1 := "m1"
+		normal1.SetId(&id1)
+
+		sysByType := msmodels.NewChatMessage()
+		sysType := msmodels.CHATEVENT_CHATMESSAGETYPE
+		sysByType.SetMessageType(&sysType)
+
+		sysByDetail := msmodels.NewChatMessage()
+		sysByDetail.SetEventDetail(msmodels.NewChannelAddedEventMessageDetail())
+
+		normal2 := msmodels.NewChatMessage()
+		id2 := "m2"
+		normal2.SetId(&id2)
+
+		resp := msmodels.NewChatMessageCollectionResponse()
+		resp.SetValue([]msmodels.ChatMessageable{
+			nil,
+			normal1,
+			sysByType,
+			sysByDetail,
+			normal2,
+		})
+
+		got := filterOutSystemEvents(resp)
+
+		require.Len(t, got, 2)
+		require.NotNil(t, got[0].GetId())
+		require.NotNil(t, got[1].GetId())
+		require.Equal(t, "m1", *got[0].GetId())
+		require.Equal(t, "m2", *got[1].GetId())
+	})
+
+	t.Run("returns empty slice when all messages are filtered out", func(t *testing.T) {
+		t.Parallel()
+
+		sysByType := msmodels.NewChatMessage()
+		sysType := msmodels.CHATEVENT_CHATMESSAGETYPE
+		sysByType.SetMessageType(&sysType)
+
+		resp := msmodels.NewChatMessageCollectionResponse()
+		resp.SetValue([]msmodels.ChatMessageable{sysByType})
+
+		got := filterOutSystemEvents(resp)
+		require.NotNil(t, got)
+		require.Len(t, got, 0)
+	})
+}

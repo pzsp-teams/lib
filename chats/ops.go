@@ -72,8 +72,8 @@ func (o *ops) UpdateGroupChatTopic(ctx context.Context, chatID, topic string) (*
 	return adapter.MapGraphChat(resp), nil
 }
 
-func (o *ops) ListMessages(ctx context.Context, chatID string) ([]*models.Message, error) {
-	resp, requestErr := o.chatAPI.ListMessages(ctx, chatID)
+func (o *ops) ListMessages(ctx context.Context, chatID string, includeSystem bool) ([]*models.Message, error) {
+	resp, requestErr := o.chatAPI.ListMessages(ctx, chatID, includeSystem)
 	if requestErr != nil {
 		return nil, snd.MapError(requestErr, snd.WithResource(resources.Chat, chatID))
 	}

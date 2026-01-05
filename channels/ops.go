@@ -96,12 +96,12 @@ func (o *ops) SendReply(ctx context.Context, teamID, channelID, messageID string
 	return adapter.MapGraphMessage(resp), nil
 }
 
-func (o *ops) ListMessages(ctx context.Context, teamID, channelID string, opts *models.ListMessagesOptions) ([]*models.Message, error) {
+func (o *ops) ListMessages(ctx context.Context, teamID, channelID string, opts *models.ListMessagesOptions, includeSystem bool) ([]*models.Message, error) {
 	var top *int32
 	if opts != nil && opts.Top != nil {
 		top = opts.Top
 	}
-	resp, requestErr := o.channelAPI.ListMessages(ctx, teamID, channelID, top)
+	resp, requestErr := o.channelAPI.ListMessages(ctx, teamID, channelID, top, includeSystem)
 	if requestErr != nil {
 		return nil, snd.MapError(requestErr, snd.WithResource(resources.Team, teamID), snd.WithResource(resources.Channel, channelID))
 	}
@@ -121,12 +121,12 @@ func (o *ops) GetMessage(ctx context.Context, teamID, channelID, messageID strin
 	return adapter.MapGraphMessage(resp), nil
 }
 
-func (o *ops) ListReplies(ctx context.Context, teamID, channelID, messageID string, opts *models.ListMessagesOptions) ([]*models.Message, error) {
+func (o *ops) ListReplies(ctx context.Context, teamID, channelID, messageID string, opts *models.ListMessagesOptions, includeSystem bool) ([]*models.Message, error) {
 	var top *int32
 	if opts != nil && opts.Top != nil {
 		top = opts.Top
 	}
-	resp, requestErr := o.channelAPI.ListReplies(ctx, teamID, channelID, messageID, top)
+	resp, requestErr := o.channelAPI.ListReplies(ctx, teamID, channelID, messageID, top, includeSystem)
 	if requestErr != nil {
 		return nil, snd.MapError(
 			requestErr,
