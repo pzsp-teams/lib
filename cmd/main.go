@@ -43,6 +43,7 @@ func printUsage() {
 	fmt.Println("  delete-team <team-name>")
 	fmt.Println("  restore-team <deleted-group-id>")
 	fmt.Println("  list-all-messages <team-name> [start-time] [end-time] [top]")
+	fmt.Println("  print-all-channels")
 }
 
 func main() {
@@ -207,12 +208,35 @@ func main() {
 			os.Exit(1)
 		}
 		handleRemoveMember(client, os.Args[2:])
+	
+	case "print-all-channels":
+		handlePrintAllChannels(client)
 
 	default:
 		fmt.Println("Unknown command:", cmd)
 		fmt.Println()
 		printUsage()
 		os.Exit(1)
+	}
+}
+
+func handlePrintAllChannels(client *lib.Client) {
+	teams, err := client.Teams.ListMyJoined(context.TODO())
+	if err != nil {
+		fmt.Printf("Error listing teams: %v\n", err)
+		os.Exit(1)
+	}
+
+	for _, team := range teams {
+		fmt.Printf("Team: %s (ID: %s)\n", team.DisplayName, team.ID)
+		channels, err := client.Channels.ListChannels(context.TODO(), team.ID)
+		if err != nil {
+			fmt.Printf("  Error listing channels: %v\n", err)
+			continue
+		}
+		for _, ch := range channels {
+			fmt.Printf("  - Channel: %s (ID: %s)\n", ch.Name, ch.ID)
+		}
 	}
 }
 
