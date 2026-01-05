@@ -6,6 +6,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	lib "github.com/pzsp-teams/lib"
 	"github.com/pzsp-teams/lib/config"
@@ -41,6 +42,7 @@ func printUsage() {
 	fmt.Println("  unarchive-team <team-name>")
 	fmt.Println("  delete-team <team-name>")
 	fmt.Println("  restore-team <deleted-group-id>")
+	fmt.Println("  list-all-messages <team-name> [start-time] [end-time] [top]")
 }
 
 func main() {
@@ -170,6 +172,13 @@ func main() {
 			os.Exit(1)
 		}
 		handleRestoreTeam(client, os.Args[2:])
+
+	case "list-all-messages":
+		if len(os.Args) < 3 {
+			fmt.Println("Usage: teams list-all-messages <team-name> [start-time] [end-time] [top]")
+			os.Exit(1)
+		}
+		handleListAllMessages(client, os.Args[2:])
 
 	case "list-members":
 		if len(os.Args) < 4 {
@@ -514,6 +523,53 @@ func handleRestoreTeam(client *lib.Client, args []string) {
 		os.Exit(1)
 	}
 	fmt.Printf("Team restored. Directory object ID: %s\n", id)
+}
+
+func handleListAllMessages(client *lib.Client, args []string) {
+	teamName := args[0]
+
+	var startTime, endTime *time.Time
+	var top *int32
+
+	if len(args) > 1 {
+		t, err := time.Parse(time.RFC3339, args[1])
+		if err != nil {
+			fmt.Printf("Error: invalid start-time (expected RFC3339): %v\n", err)
+			os.Exit(1)
+		}
+		startTime = &t
+	}
+	if len(args) > 2 {
+		t, err := time.Parse(time.RFC3339, args[2])
+		if err != nil {
+			fmt.Printf("Error: invalid end-time (expected RFC3339): %v\n", err)
+			os.Exit(1)
+		}
+		endTime = &t
+	}
+	if len(args) > 3 {
+		var topVal int32
+		_, err := fmt.Sscanf(args[3], "%d", &topVal)
+		if err != nil {
+			fmt.Printf("Error: Invalid top value: %v\n", err)
+			os.Exit(1)
+		}
+		top = &topVal
+	}
+
+	messages, err := client.Teams.ListAllMessages(context.TODO(), teamName, startTime, endTime, top)
+	if err != nil {
+		fmt.Printf("Error listing all messages: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("All messages in team '%s':\n", teamName)
+	for _, msg := range messages {
+		fmt.Printf("\nID: %s\n", msg.ID)
+		fmt.Printf("From: %s\n", getMessageFrom(msg))
+		fmt.Printf("Created: %s\n", msg.CreatedDateTime.Format("2006-01-02 15:04:05"))
+		fmt.Printf("Content: %s\n", msg.Content)
+	}
 }
 
 func handleListMembers(client *lib.Client, args []string) {
