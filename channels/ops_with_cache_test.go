@@ -144,16 +144,16 @@ func TestOpsWithCache_GetChannelByID(t *testing.T) {
 	})
 
 	t.Run("error triggers cache clear", func(t *testing.T) {
-		err403 := testutil.ReqErr(http.StatusForbidden)
+		err404 := testutil.ReqErr(http.StatusNotFound)
 
 		sut, ctx := newOpsWithCacheSUT(t, func(_ context.Context, d opsWithCacheSUTDeps) {
-			d.chanOps.EXPECT().GetChannelByID(gomock.Any(), teamID, channelID).Return(nil, err403).Times(1)
+			d.chanOps.EXPECT().GetChannelByID(gomock.Any(), teamID, channelID).Return(nil, err404).Times(1)
 			expectClearNow(d)
 		})
 
 		ch, err := sut.GetChannelByID(ctx, teamID, channelID)
 		require.Nil(t, ch)
-		require.True(t, err == err403)
+		require.True(t, err == err404)
 	})
 }
 
@@ -267,17 +267,17 @@ func TestOpsWithCache_DeleteChannel(t *testing.T) {
 	})
 
 	t.Run("error triggers cache clear and does not invalidate", func(t *testing.T) {
-		err403 := testutil.ReqErr(http.StatusForbidden)
+		err404 := testutil.ReqErr(http.StatusNotFound)
 
 		sut, ctx := newOpsWithCacheSUT(t, func(_ context.Context, d opsWithCacheSUTDeps) {
-			d.chanOps.EXPECT().DeleteChannel(gomock.Any(), teamID, channelID, channelRef).Return(err403).Times(1)
+			d.chanOps.EXPECT().DeleteChannel(gomock.Any(), teamID, channelID, channelRef).Return(err404).Times(1)
 			expectClearNow(d)
 
 			d.cacher.EXPECT().Invalidate(gomock.Any()).Times(0)
 		})
 
 		err := sut.DeleteChannel(ctx, teamID, channelID, channelRef)
-		require.True(t, err == err403)
+		require.True(t, err == err404)
 	})
 }
 
