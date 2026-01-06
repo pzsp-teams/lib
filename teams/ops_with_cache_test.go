@@ -168,7 +168,7 @@ func TestOpsWithCache_CreateFromTemplate(t *testing.T) {
 		{
 			name: "Success - Invalidates team key",
 			setup: func(d sutDepsWithCache) {
-				d.teamOps.EXPECT().CreateFromTemplate(gomock.Any(), "Team A", "d", gomock.Any()).Return("id", nil)
+				d.teamOps.EXPECT().CreateFromTemplate(gomock.Any(), "Team A", "d", gomock.Any(), nil, "").Return("id", nil)
 				testutil.ExpectRunNow(d.runner)
 				d.cacher.EXPECT().Invalidate(cacher.NewTeamKey("Team A")).Return(nil)
 			},
@@ -178,7 +178,7 @@ func TestOpsWithCache_CreateFromTemplate(t *testing.T) {
 			name: "Error - Clears cache",
 			setup: func(d sutDepsWithCache) {
 				e := testutil.ReqErr(http.StatusBadRequest)
-				d.teamOps.EXPECT().CreateFromTemplate(gomock.Any(), "Team A", "d", gomock.Any()).Return("id", e)
+				d.teamOps.EXPECT().CreateFromTemplate(gomock.Any(), "Team A", "d", gomock.Any(), nil, "").Return("id", e)
 				testutil.ExpectRunNow(d.runner)
 				d.cacher.EXPECT().Clear().Return(nil)
 			},
@@ -192,7 +192,7 @@ func TestOpsWithCache_CreateFromTemplate(t *testing.T) {
 			sut, d := newSUTWithCache(t)
 			tc.setup(d)
 
-			id, err := sut.CreateFromTemplate(context.Background(), "Team A", "d", []string{"u1"})
+			id, err := sut.CreateFromTemplate(context.Background(), "Team A", "d", []string{"u1"}, nil, "")
 
 			assert.Equal(t, tc.wantID, id)
 			if tc.wantErr != nil {

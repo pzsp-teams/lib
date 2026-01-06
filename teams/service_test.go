@@ -300,7 +300,7 @@ func TestService_CreateFromTemplate(t *testing.T) {
 			name: "returns id",
 			setupMocks: func(d sutDeps) {
 				d.ops.EXPECT().
-					CreateFromTemplate(gomock.Any(), "Tpl", "Desc", gomock.Any()).
+					CreateFromTemplate(gomock.Any(), "Tpl", "Desc", gomock.Any(), nil, "").
 					Return("tmpl-123", nil).
 					Times(1)
 			},
@@ -310,7 +310,7 @@ func TestService_CreateFromTemplate(t *testing.T) {
 			name: "wraps error (403) and returns empty id",
 			setupMocks: func(d sutDeps) {
 				d.ops.EXPECT().
-					CreateFromTemplate(gomock.Any(), "Tpl", "Desc", gomock.Any()).
+					CreateFromTemplate(gomock.Any(), "Tpl", "Desc", gomock.Any(), nil, "").
 					Return("", &sender.RequestError{Code: 403, Message: "nope"}).
 					Times(1)
 			},
@@ -323,7 +323,7 @@ func TestService_CreateFromTemplate(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			svc, ctx := newSUT(t, tc.setupMocks)
 
-			got, err := svc.CreateFromTemplate(ctx, "Tpl", "Desc", nil)
+			got, err := svc.CreateFromTemplate(ctx, "Tpl", "Desc", nil, nil, "")
 
 			if tc.wantReqCode != 0 {
 				assert.Equal(t, tc.wantID, got)

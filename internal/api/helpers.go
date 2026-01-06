@@ -1,8 +1,12 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"net/http"
+	"regexp"
+	"strings"
+	"time"
 
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
 	"github.com/pzsp-teams/lib/internal/sender"
@@ -80,4 +84,91 @@ func filterOutSystemEvents(messages msmodels.ChatMessageCollectionResponseable) 
 		filtered = append(filtered, v)
 	}
 	return filtered
+}
+
+var (
+	reTeamIDQuoted = regexp.MustCompile(`/teams\('([^']+)'\)`)
+	reTeamIDSlash  = regexp.MustCompile(`/teams/([^/?]+)`)
+)
+
+func normalizeVisibilityForGroup(v string) string {
+	switch strings.ToLower(strings.TrimSpace(v)) {
+	case "private":
+		return "Private"
+	case "public":
+		return "Public"
+	default:
+		if v == "" {
+			return "Public"
+		}
+		return v
+	}
+}
+
+func parseTeamIDFromHeaders(contentLocation, location string) (string, bool) {
+	for _, h := range []string{contentLocation, location} {
+		h = strings.TrimSpace(h)
+		if h == "" {
+			continue
+		}
+		if m := reTeamIDQuoted.FindStringSubmatch(h); len(m) == 2 {
+			return m[1], true
+		}
+		if m := reTeamIDSlash.FindStringSubmatch(h); len(m) == 2 {
+			return m[1], true
+		}
+		if idx := strings.Index(h, "/operations"); idx > 0 {
+			part := h[:idx]
+			if m := reTeamIDQuoted.FindStringSubmatch(part); len(m) == 2 {
+				return m[1], true
+			}
+			if m := reTeamIDSlash.FindStringSubmatch(part); len(m) == 2 {
+				return m[1], true
+			}
+		}
+	}
+	return "", false
+}
+
+func sleepWithContext(ctx context.Context, d time.Duration) error {
+	t := time.NewTimer(d)
+	defer t.Stop()
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-t.C:
+		return nil
+	}
+}
+
+func (t *teamAPI) waitTeamReady(ctx context.Context, teamID string, timeout time.Duration) *sender.RequestError {
+	deadline := time.Now().Add(timeout)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return &sender.RequestError{
+				Code:    http.StatusRequestTimeout,
+				Message: ctx.Err().Error(),
+			}
+		default:
+		}
+
+		call := func(ctx context.Context) (sender.Response, error) {
+			return t.client.Teams().ByTeamId(teamID).Get(ctx, nil)
+		}
+		if _, err := sender.SendRequest(ctx, call, t.senderCfg); err == nil {
+			return nil
+		}
+
+		if time.Now().After(deadline) {
+			return &sender.RequestError{
+				Code:    http.StatusRequestTimeout,
+				Message: "Team not ready within timeout",
+			}
+		}
+
+		_ = sleepWithContext(ctx, 2*time.Second)
+	}
 }
