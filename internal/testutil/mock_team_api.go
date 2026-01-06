@@ -73,18 +73,18 @@ func (mr *MockTeamAPIMockRecorder) Archive(ctx, teamID, spoReadOnlyForMembers an
 }
 
 // CreateFromTemplate mocks base method.
-func (m *MockTeamAPI) CreateFromTemplate(ctx context.Context, displayName, description string, owners, members []string, visibility string) (string, *sender.RequestError) {
+func (m *MockTeamAPI) CreateFromTemplate(ctx context.Context, displayName, description string, owners, members []string, visibility string, includeMe bool) (string, *sender.RequestError) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateFromTemplate", ctx, displayName, description, owners, members, visibility)
+	ret := m.ctrl.Call(m, "CreateFromTemplate", ctx, displayName, description, owners, members, visibility, includeMe)
 	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(*sender.RequestError)
 	return ret0, ret1
 }
 
 // CreateFromTemplate indicates an expected call of CreateFromTemplate.
-func (mr *MockTeamAPIMockRecorder) CreateFromTemplate(ctx, displayName, description, owners, members, visibility any) *gomock.Call {
+func (mr *MockTeamAPIMockRecorder) CreateFromTemplate(ctx, displayName, description, owners, members, visibility, includeMe any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateFromTemplate", reflect.TypeOf((*MockTeamAPI)(nil).CreateFromTemplate), ctx, displayName, description, owners, members, visibility)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateFromTemplate", reflect.TypeOf((*MockTeamAPI)(nil).CreateFromTemplate), ctx, displayName, description, owners, members, visibility, includeMe)
 }
 
 // CreateViaGroup mocks base method.

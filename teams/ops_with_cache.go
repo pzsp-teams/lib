@@ -55,8 +55,8 @@ func (o *opsWithCache) ListMyJoinedTeams(ctx context.Context) ([]*models.Team, e
 	return out, nil
 }
 
-func (o *opsWithCache) CreateFromTemplate(ctx context.Context, displayName, description string, owners, members []string, visibility string) (string, error) {
-	id, requestErr := o.teamOps.CreateFromTemplate(ctx, displayName, description, owners, members, visibility)
+func (o *opsWithCache) CreateFromTemplate(ctx context.Context, displayName, description string, owners, members []string, visibility string, includeMe bool) (string, error) {
+	id, requestErr := o.teamOps.CreateFromTemplate(ctx, displayName, description, owners, members, visibility, includeMe)
 	if requestErr != nil {
 		o.cacheHandler.OnError(requestErr)
 		return id, requestErr
