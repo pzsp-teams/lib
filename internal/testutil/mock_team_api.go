@@ -12,6 +12,7 @@ package testutil
 import (
 	context "context"
 	reflect "reflect"
+	time "time"
 
 	models "github.com/microsoftgraph/msgraph-sdk-go/models"
 	sender "github.com/pzsp-teams/lib/internal/sender"
@@ -144,6 +145,21 @@ func (m *MockTeamAPI) GetMember(ctx context.Context, teamID, memberID string) (m
 func (mr *MockTeamAPIMockRecorder) GetMember(ctx, teamID, memberID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMember", reflect.TypeOf((*MockTeamAPI)(nil).GetMember), ctx, teamID, memberID)
+}
+
+// ListAllMessages mocks base method.
+func (m *MockTeamAPI) ListAllMessages(ctx context.Context, teamID string, startTime, endTime *time.Time, top *int32) (models.ChatMessageCollectionResponseable, *sender.RequestError) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListAllMessages", ctx, teamID, startTime, endTime, top)
+	ret0, _ := ret[0].(models.ChatMessageCollectionResponseable)
+	ret1, _ := ret[1].(*sender.RequestError)
+	return ret0, ret1
+}
+
+// ListAllMessages indicates an expected call of ListAllMessages.
+func (mr *MockTeamAPIMockRecorder) ListAllMessages(ctx, teamID, startTime, endTime, top any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAllMessages", reflect.TypeOf((*MockTeamAPI)(nil).ListAllMessages), ctx, teamID, startTime, endTime, top)
 }
 
 // ListMembers mocks base method.
