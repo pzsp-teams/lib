@@ -490,6 +490,28 @@ func TestOps_ListMessages(t *testing.T) {
 		var nf *snd.ErrResourceNotFound
 		require.ErrorAs(t, err, &nf)
 	})
+
+	t.Run("sets NextLink from graph response", func(t *testing.T) {
+		next := "https://graph.microsoft.com/v1.0/next"
+		op, ctx := newOpsSUT(t, func(d opsSUTDeps) {
+			col := msmodels.NewChatMessageCollectionResponse()
+			col.SetValue([]msmodels.ChatMessageable{
+				testutil.NewGraphMessage(&testutil.NewMessageParams{ID: util.Ptr("m1"), Content: util.Ptr("a")}),
+			})
+			col.SetOdataNextLink(&next)
+
+			d.channelAPI.EXPECT().
+				ListMessages(gomock.Any(), "team-1", "chan-1", nil, false).
+				Return(col, nil).
+				Times(1)
+		})
+
+		got, err := op.ListMessages(ctx, "team-1", "chan-1", nil, false)
+		require.NoError(t, err)
+		require.NotNil(t, got)
+		require.NotNil(t, got.NextLink)
+		assert.Equal(t, next, *got.NextLink)
+	})
 }
 
 func TestOps_GetMessage(t *testing.T) {
@@ -587,6 +609,28 @@ func TestOps_ListReplies(t *testing.T) {
 
 		var nf *snd.ErrResourceNotFound
 		require.ErrorAs(t, err, &nf)
+	})
+
+	t.Run("sets NextLink from graph response", func(t *testing.T) {
+		next := "https://graph.microsoft.com/v1.0/next"
+		op, ctx := newOpsSUT(t, func(d opsSUTDeps) {
+			col := msmodels.NewChatMessageCollectionResponse()
+			col.SetValue([]msmodels.ChatMessageable{
+				testutil.NewGraphMessage(&testutil.NewMessageParams{ID: util.Ptr("r1"), Content: util.Ptr("x")}),
+			})
+			col.SetOdataNextLink(&next)
+
+			d.channelAPI.EXPECT().
+				ListReplies(gomock.Any(), "team-1", "chan-1", "m-1", nil, false).
+				Return(col, nil).
+				Times(1)
+		})
+
+		got, err := op.ListReplies(ctx, "team-1", "chan-1", "m-1", nil, false)
+		require.NoError(t, err)
+		require.NotNil(t, got)
+		require.NotNil(t, got.NextLink)
+		assert.Equal(t, next, *got.NextLink)
 	})
 }
 
@@ -854,5 +898,138 @@ func TestOps_GetMentions(t *testing.T) {
 		got, err := op.GetMentions(ctx, "teamID", "teamRef", "chanRef", "chanID", []string{" ", "", "\t"})
 		require.NoError(t, err)
 		require.Len(t, got, 0)
+	})
+}
+
+func TestOps_ListMessagesNext(t *testing.T) {
+	t.Run("passes nextLink and maps messages + nextLink", func(t *testing.T) {
+		nextIn := "https://graph.microsoft.com/v1.0/whatever?$skiptoken=abc"
+		nextOut := "https://graph.microsoft.com/v1.0/whatever?$skiptoken=def"
+
+		op, ctx := newOpsSUT(t, func(d opsSUTDeps) {
+			col := msmodels.NewChatMessageCollectionResponse()
+			col.SetValue([]msmodels.ChatMessageable{
+				testutil.NewGraphMessage(&testutil.NewMessageParams{ID: util.Ptr("m1"), Content: util.Ptr("a")}),
+				testutil.NewGraphMessage(&testutil.NewMessageParams{ID: util.Ptr("m2"), Content: util.Ptr("b")}),
+			})
+			col.SetOdataNextLink(&nextOut)
+
+			d.channelAPI.EXPECT().
+				ListMessagesNext(gomock.Any(), "team-1", "chan-1", nextIn, false).
+				Return(col, nil).
+				Times(1)
+		})
+
+		got, err := op.ListMessagesNext(ctx, "team-1", "chan-1", nextIn, false)
+		require.NoError(t, err)
+		require.NotNil(t, got)
+		require.Len(t, got.Messages, 2)
+		assert.Equal(t, "m1", got.Messages[0].ID)
+		assert.Equal(t, "b", got.Messages[1].Content)
+		require.NotNil(t, got.NextLink)
+		assert.Equal(t, nextOut, *got.NextLink)
+	})
+
+	t.Run("passes includeSystem through", func(t *testing.T) {
+		nextIn := "next"
+		op, ctx := newOpsSUT(t, func(d opsSUTDeps) {
+			col := msmodels.NewChatMessageCollectionResponse()
+			col.SetValue([]msmodels.ChatMessageable{})
+
+			d.channelAPI.EXPECT().
+				ListMessagesNext(gomock.Any(), "team-1", "chan-1", nextIn, true).
+				Return(col, nil).
+				Times(1)
+		})
+
+		_, err := op.ListMessagesNext(ctx, "team-1", "chan-1", nextIn, true)
+		require.NoError(t, err)
+	})
+
+	t.Run("maps api error via sender", func(t *testing.T) {
+		nextIn := "next"
+		op, ctx := newOpsSUT(t, func(d opsSUTDeps) {
+			d.channelAPI.EXPECT().
+				ListMessagesNext(gomock.Any(), "team-1", "chan-1", nextIn, false).
+				Return(nil, &snd.RequestError{Code: 403, Message: "nope"}).
+				Times(1)
+		})
+
+		got, err := op.ListMessagesNext(ctx, "team-1", "chan-1", nextIn, false)
+		require.Nil(t, got)
+		require.Error(t, err)
+
+		requireStatus(t, err, 403)
+		requireErrDataHas(t, err, resources.Team, "team-1")
+		requireErrDataHas(t, err, resources.Channel, "chan-1")
+
+		var af *snd.ErrAccessForbidden
+		require.ErrorAs(t, err, &af)
+	})
+}
+
+func TestOps_ListRepliesNext(t *testing.T) {
+	t.Run("passes nextLink and maps replies + nextLink", func(t *testing.T) {
+		nextIn := "https://graph.microsoft.com/v1.0/replies?$skiptoken=abc"
+		nextOut := "https://graph.microsoft.com/v1.0/replies?$skiptoken=def"
+
+		op, ctx := newOpsSUT(t, func(d opsSUTDeps) {
+			col := msmodels.NewChatMessageCollectionResponse()
+			col.SetValue([]msmodels.ChatMessageable{
+				testutil.NewGraphMessage(&testutil.NewMessageParams{ID: util.Ptr("r1"), Content: util.Ptr("x")}),
+			})
+			col.SetOdataNextLink(&nextOut)
+
+			d.channelAPI.EXPECT().
+				ListRepliesNext(gomock.Any(), "team-1", "chan-1", "m-1", nextIn, false).
+				Return(col, nil).
+				Times(1)
+		})
+
+		got, err := op.ListRepliesNext(ctx, "team-1", "chan-1", "m-1", nextIn, false)
+		require.NoError(t, err)
+		require.NotNil(t, got)
+		require.Len(t, got.Messages, 1)
+		assert.Equal(t, "r1", got.Messages[0].ID)
+		require.NotNil(t, got.NextLink)
+		assert.Equal(t, nextOut, *got.NextLink)
+	})
+
+	t.Run("passes includeSystem through", func(t *testing.T) {
+		nextIn := "next"
+		op, ctx := newOpsSUT(t, func(d opsSUTDeps) {
+			col := msmodels.NewChatMessageCollectionResponse()
+			col.SetValue([]msmodels.ChatMessageable{})
+
+			d.channelAPI.EXPECT().
+				ListRepliesNext(gomock.Any(), "team-1", "chan-1", "m-1", nextIn, true).
+				Return(col, nil).
+				Times(1)
+		})
+
+		_, err := op.ListRepliesNext(ctx, "team-1", "chan-1", "m-1", nextIn, true)
+		require.NoError(t, err)
+	})
+
+	t.Run("maps api error via sender (includes message id)", func(t *testing.T) {
+		nextIn := "next"
+		op, ctx := newOpsSUT(t, func(d opsSUTDeps) {
+			d.channelAPI.EXPECT().
+				ListRepliesNext(gomock.Any(), "team-1", "chan-1", "m-1", nextIn, false).
+				Return(nil, &snd.RequestError{Code: 404, Message: "missing"}).
+				Times(1)
+		})
+
+		got, err := op.ListRepliesNext(ctx, "team-1", "chan-1", "m-1", nextIn, false)
+		require.Nil(t, got)
+		require.Error(t, err)
+
+		requireStatus(t, err, 404)
+		requireErrDataHas(t, err, resources.Team, "team-1")
+		requireErrDataHas(t, err, resources.Channel, "chan-1")
+		requireErrDataHas(t, err, resources.Message, "m-1")
+
+		var nf *snd.ErrResourceNotFound
+		require.ErrorAs(t, err, &nf)
 	})
 }
