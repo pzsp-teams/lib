@@ -208,7 +208,7 @@ func main() {
 			os.Exit(1)
 		}
 		handleRemoveMember(client, os.Args[2:])
-	
+
 	case "print-all-channels":
 		handlePrintAllChannels(client)
 
@@ -492,7 +492,7 @@ func handleCreateTeamFromTemplate(client *lib.Client, args []string) {
 	}
 
 	ctx := context.TODO()
-	id, err := client.Teams.CreateFromTemplate(ctx, displayName, description, nil, nil, "private")
+	id, err := client.Teams.CreateFromTemplate(ctx, displayName, description, nil, nil, "private", false)
 	if err != nil {
 		fmt.Printf("Error creating team from template: %v\n", err)
 		os.Exit(1)
