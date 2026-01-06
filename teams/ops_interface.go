@@ -10,7 +10,7 @@ type teamsOps interface {
 	GetTeamByID(ctx context.Context, teamID string) (*models.Team, error)
 	ListMyJoinedTeams(ctx context.Context) ([]*models.Team, error)
 	CreateViaGroup(ctx context.Context, displayName, mailNickname, visibility string) (*models.Team, error)
-	CreateFromTemplate(ctx context.Context, displayName, description string, ownerIDs, membersIDs []string, visibility string) (string, error)
+	CreateFromTemplate(ctx context.Context, displayName, description string, ownerIDs, membersIDs []string, visibility string, includeMe bool) (string, error)
 	Archive(ctx context.Context, teamID, teamRef string, spoReadOnlyForMembers *bool) error
 	Unarchive(ctx context.Context, teamID string) error
 	DeleteTeam(ctx context.Context, teamID, teamRef string) error

@@ -54,8 +54,8 @@ func (s *service) CreateViaGroup(ctx context.Context, displayName, mailNickname,
 	return t, nil
 }
 
-func (s *service) CreateFromTemplate(ctx context.Context, displayName, description string, owners, members []string, visibility string) (string, error) {
-	id, err := s.teamOps.CreateFromTemplate(ctx, displayName, description, owners, members, visibility)
+func (s *service) CreateFromTemplate(ctx context.Context, displayName, description string, owners, members []string, visibility string, includeMe bool) (string, error) {
+	id, err := s.teamOps.CreateFromTemplate(ctx, displayName, description, owners, members, visibility, includeMe)
 	if err != nil {
 		return "", sender.Wrap("CreateFromTemplate", err)
 	}
