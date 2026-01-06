@@ -96,7 +96,7 @@ func (o *ops) SendReply(ctx context.Context, teamID, channelID, messageID string
 	return adapter.MapGraphMessage(resp), nil
 }
 
-func (o *ops) ListMessages(ctx context.Context, teamID, channelID string, opts *models.ListMessagesOptions, includeSystem bool) ([]*models.Message, error) {
+func (o *ops) ListMessages(ctx context.Context, teamID, channelID string, opts *models.ListMessagesOptions, includeSystem bool) (*models.MessageCollection, error) {
 	var top *int32
 	if opts != nil && opts.Top != nil {
 		top = opts.Top
@@ -105,7 +105,23 @@ func (o *ops) ListMessages(ctx context.Context, teamID, channelID string, opts *
 	if requestErr != nil {
 		return nil, snd.MapError(requestErr, snd.WithResource(resources.Team, teamID), snd.WithResource(resources.Channel, channelID))
 	}
-	return util.MapSlices(resp.GetValue(), adapter.MapGraphMessage), nil
+	messages := util.MapSlices(resp.GetValue(), adapter.MapGraphMessage)
+	return &models.MessageCollection{
+		Messages: messages,
+		NextLink: resp.GetOdataNextLink(),
+	}, nil
+}
+
+func (o *ops) ListMessagesNext(ctx context.Context, teamID, channelID, nextLink string, includeSystem bool) (*models.MessageCollection, error) {
+	resp, requestErr := o.channelAPI.ListMessagesNext(ctx, teamID, channelID, nextLink, includeSystem)
+	if requestErr != nil {
+		return nil, snd.MapError(requestErr, snd.WithResource(resources.Team, teamID), snd.WithResource(resources.Channel, channelID))
+	}
+	messages := util.MapSlices(resp.GetValue(), adapter.MapGraphMessage)
+	return &models.MessageCollection{
+		Messages: messages,
+		NextLink: resp.GetOdataNextLink(),
+	}, nil
 }
 
 func (o *ops) GetMessage(ctx context.Context, teamID, channelID, messageID string) (*models.Message, error) {
@@ -121,7 +137,7 @@ func (o *ops) GetMessage(ctx context.Context, teamID, channelID, messageID strin
 	return adapter.MapGraphMessage(resp), nil
 }
 
-func (o *ops) ListReplies(ctx context.Context, teamID, channelID, messageID string, opts *models.ListMessagesOptions, includeSystem bool) ([]*models.Message, error) {
+func (o *ops) ListReplies(ctx context.Context, teamID, channelID, messageID string, opts *models.ListMessagesOptions, includeSystem bool) (*models.MessageCollection, error) {
 	var top *int32
 	if opts != nil && opts.Top != nil {
 		top = opts.Top
@@ -135,7 +151,28 @@ func (o *ops) ListReplies(ctx context.Context, teamID, channelID, messageID stri
 			snd.WithResource(resources.Message, messageID),
 		)
 	}
-	return util.MapSlices(resp.GetValue(), adapter.MapGraphMessage), nil
+	messages := util.MapSlices(resp.GetValue(), adapter.MapGraphMessage)
+	return &models.MessageCollection{
+		Messages: messages,
+		NextLink: resp.GetOdataNextLink(),
+	}, nil
+}
+
+func (o *ops) ListRepliesNext(ctx context.Context, teamID, channelID, messageID, nextLink string, includeSystem bool) (*models.MessageCollection, error) {
+	resp, requestErr := o.channelAPI.ListRepliesNext(ctx, teamID, channelID, messageID, nextLink, includeSystem)
+	if requestErr != nil {
+		return nil, snd.MapError(
+			requestErr,
+			snd.WithResource(resources.Team, teamID),
+			snd.WithResource(resources.Channel, channelID),
+			snd.WithResource(resources.Message, messageID),
+		)
+	}
+	messages := util.MapSlices(resp.GetValue(), adapter.MapGraphMessage)
+	return &models.MessageCollection{
+		Messages: messages,
+		NextLink: resp.GetOdataNextLink(),
+	}, nil
 }
 
 func (o *ops) GetReply(ctx context.Context, teamID, channelID, messageID, replyID string) (*models.Message, error) {

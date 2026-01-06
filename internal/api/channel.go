@@ -31,6 +31,8 @@ type ChannelAPI interface {
 	AddMember(ctx context.Context, teamID, channelID, userRef string, roles []string) (msmodels.ConversationMemberable, *sender.RequestError)
 	UpdateMemberRoles(ctx context.Context, teamID, channelID, memberID string, roles []string) (msmodels.ConversationMemberable, *sender.RequestError)
 	RemoveMember(ctx context.Context, teamID, channelID, memberID string) *sender.RequestError
+	ListMessagesNext(ctx context.Context, teamID, channelID, nextLink string, includeSystem bool) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError)
+	ListRepliesNext(ctx context.Context, teamID, channelID, messageID, nextLink string, includeSystem bool) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError)
 }
 
 type channelAPI struct {
@@ -431,4 +433,62 @@ func (c *channelAPI) RemoveMember(ctx context.Context, teamID, channelID, member
 
 	_, err := sender.SendRequest(ctx, call, c.senderCfg)
 	return err
+}
+
+func (c *channelAPI) ListMessagesNext(ctx context.Context, teamID, channelID, nextLink string, includeSystem bool) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError) {
+	call := func(ctx context.Context) (sender.Response, error) {
+		return c.client.
+			Teams().
+			ByTeamId(teamID).
+			Channels().
+			ByChannelId(channelID).
+			Messages().
+			WithUrl(nextLink).
+			Get(ctx, nil)
+	}
+	resp, err := sender.SendRequest(ctx, call, c.senderCfg)
+	if err != nil {
+		return nil, err
+	}
+
+	out, ok := resp.(msmodels.ChatMessageCollectionResponseable)
+	if !ok {
+		return nil, newTypeError("ChatMessageCollectionResponseable")
+	}
+	if !includeSystem {
+		filtered := filterOutSystemEvents(out)
+		out.SetValue(filtered)
+	}
+
+	return out, nil
+}
+
+func (c *channelAPI) ListRepliesNext(ctx context.Context, teamID, channelID, messageID, nextLink string, includeSystem bool) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError) {
+	call := func(ctx context.Context) (sender.Response, error) {
+		return c.client.
+			Teams().
+			ByTeamId(teamID).
+			Channels().
+			ByChannelId(channelID).
+			Messages().
+			ByChatMessageId(messageID).
+			Replies().
+			WithUrl(nextLink).
+			Get(ctx, nil)
+	}
+	resp, err := sender.SendRequest(ctx, call, c.senderCfg)
+	if err != nil {
+		return nil, err
+	}
+
+	out, ok := resp.(msmodels.ChatMessageCollectionResponseable)
+	if !ok {
+		return nil, newTypeError("ChatMessageCollectionResponseable")
+	}
+	if !includeSystem {
+		filtered := filterOutSystemEvents(out)
+		out.SetValue(filtered)
+	}
+
+	return out, nil
 }
