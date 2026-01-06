@@ -36,6 +36,7 @@ type ChatAPI interface {
 	ListPinnedMessages(ctx context.Context, chatID string) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError)
 	PinMessage(ctx context.Context, chatID, messageID string) *sender.RequestError
 	UnpinMessage(ctx context.Context, chatID, pinnedID string) *sender.RequestError
+	ListMessagesNext(ctx context.Context, chatID, nextLink string, includeSystem bool) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError)
 }
 
 type chatsAPI struct {
@@ -388,4 +389,30 @@ func (c *chatsAPI) UnpinMessage(ctx context.Context, chatID, pinnedID string) *s
 
 	_, err := sender.SendRequest(ctx, call, c.senderCfg)
 	return err
+}
+
+func (c *chatsAPI) ListMessagesNext(ctx context.Context, chatID, nextLink string, includeSystem bool) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError) {
+	call := func(ctx context.Context) (sender.Response, error) {
+		return c.client.
+			Chats().
+			ByChatId(chatID).
+			Messages().
+			WithUrl(nextLink).
+			Get(ctx, nil)
+	}
+
+	resp, err := sender.SendRequest(ctx, call, c.senderCfg)
+	if err != nil {
+		return nil, err
+	}
+
+	out, ok := resp.(msmodels.ChatMessageCollectionResponseable)
+	if !ok {
+		return nil, newTypeError("ChatMessageCollectionResponseable")
+	}
+	if !includeSystem {
+		filtered := filterOutSystemEvents(out)
+		out.SetValue(filtered)
+	}
+	return out, nil
 }

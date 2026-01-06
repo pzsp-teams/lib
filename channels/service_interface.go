@@ -54,14 +54,17 @@ type Service interface {
 	//   - Mentions: optional mentions to include in the message.
 	SendReply(ctx context.Context, teamRef, channelRef, messageID string, body models.MessageBody) (*models.Message, error)
 
-	// ListMessages returns all messages in a channel.
-	ListMessages(ctx context.Context, teamRef, channelRef string, opts *models.ListMessagesOptions, includeSystem bool) ([]*models.Message, error)
+	// ListMessages returns one page of messages in a channel.
+	//
+	// NextLink in the returned MessageCollection can be used to retrieve the next page of messages.
+	ListMessages(ctx context.Context, teamRef, channelRef string, opts *models.ListMessagesOptions, includeSystem bool, nextLink *string) (*models.MessageCollection, error)
 
 	// GetMessage retrieves a specific message from a channel by its ID.
 	GetMessage(ctx context.Context, teamRef, channelRef, messageID string) (*models.Message, error)
 
-	// ListReplies returns all replies to a specific message in a channel.
-	ListReplies(ctx context.Context, teamRef, channelRef, messageID string, top *int32, includeSystem bool) ([]*models.Message, error)
+	// ListReplies returns one page of replies to a specific message in a channel.
+	// NextLink in the returned MessageCollection can be used to retrieve the next page of replies.
+	ListReplies(ctx context.Context, teamRef, channelRef, messageID string, top *int32, includeSystem bool, nextLink *string) (*models.MessageCollection, error)
 
 	// GetReply retrieves a specific reply to a message in a channel by its ID.
 	GetReply(ctx context.Context, teamRef, channelRef, messageID, replyID string) (*models.Message, error)

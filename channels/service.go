@@ -145,13 +145,23 @@ func (s *service) SendReply(ctx context.Context, teamRef, channelRef, messageID 
 	return out, nil
 }
 
-func (s *service) ListMessages(ctx context.Context, teamRef, channelRef string, opts *models.ListMessagesOptions, includeSystem bool) ([]*models.Message, error) {
+func (s *service) ListMessages(ctx context.Context, teamRef, channelRef string, opts *models.ListMessagesOptions, includeSystem bool, nextLink *string) (*models.MessageCollection, error) {
 	teamID, channelID, err := s.resolveTeamAndChannelID(ctx, teamRef, channelRef)
 	if err != nil {
 		return nil, sender.Wrap("ListMessages", err,
 			sender.NewParam(resources.TeamRef, teamRef),
 			sender.NewParam(resources.ChannelRef, channelRef),
 		)
+	}
+	if nextLink != nil {
+		out, err := s.ops.ListMessagesNext(ctx, teamID, channelID, *nextLink, includeSystem)
+		if err != nil {
+			return nil, sender.Wrap("ListMessages", err,
+				sender.NewParam(resources.TeamRef, teamRef),
+				sender.NewParam(resources.ChannelRef, channelRef),
+			)
+		}
+		return out, nil
 	}
 	out, err := s.ops.ListMessages(ctx, teamID, channelID, opts, includeSystem)
 	if err != nil {
@@ -183,7 +193,7 @@ func (s *service) GetMessage(ctx context.Context, teamRef, channelRef, messageID
 	return out, nil
 }
 
-func (s *service) ListReplies(ctx context.Context, teamRef, channelRef, messageID string, top *int32, includeSystem bool) ([]*models.Message, error) {
+func (s *service) ListReplies(ctx context.Context, teamRef, channelRef, messageID string, top *int32, includeSystem bool, nextLink *string) (*models.MessageCollection, error) {
 	teamID, channelID, err := s.resolveTeamAndChannelID(ctx, teamRef, channelRef)
 	if err != nil {
 		return nil, sender.Wrap("ListReplies", err,
@@ -191,7 +201,16 @@ func (s *service) ListReplies(ctx context.Context, teamRef, channelRef, messageI
 			sender.NewParam(resources.ChannelRef, channelRef),
 		)
 	}
-
+	if nextLink != nil {
+		out, err := s.ops.ListRepliesNext(ctx, teamID, channelID, messageID, *nextLink, includeSystem)
+		if err != nil {
+			return nil, sender.Wrap("ListReplies", err,
+				sender.NewParam(resources.TeamRef, teamRef),
+				sender.NewParam(resources.ChannelRef, channelRef),
+			)
+		}
+		return out, nil
+	}
 	out, err := s.ops.ListReplies(ctx, teamID, channelID, messageID, &models.ListMessagesOptions{Top: top}, includeSystem)
 	if err != nil {
 		return nil, sender.Wrap("ListReplies", err,

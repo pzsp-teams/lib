@@ -470,13 +470,13 @@ func TestService_ListMessages_ListReplies(t *testing.T) {
 			expectResolveTeamAndChannel(t, d)
 			d.ops.EXPECT().
 				ListMessages(gomock.Any(), "team-id", "chan-id", opts, false).
-				Return([]*models.Message{{ID: "m1"}, {ID: "m2"}}, nil).
+				Return(&models.MessageCollection{Messages: []*models.Message{{ID: "m1"}, {ID: "m2"}}}, nil).
 				Times(1)
 		})
 
-		got, err := svc.ListMessages(ctx, "TeamA", "ChanA", opts, false)
+		got, err := svc.ListMessages(ctx, "TeamA", "ChanA", opts, false, nil)
 		require.NoError(t, err)
-		require.Len(t, got, 2)
+		require.Len(t, got.Messages, 2)
 	})
 
 	t.Run("ListReplies builds opts from top pointer and passes it", func(t *testing.T) {
@@ -486,21 +486,21 @@ func TestService_ListMessages_ListReplies(t *testing.T) {
 			expectResolveTeamAndChannel(t, d)
 			d.ops.EXPECT().
 				ListReplies(gomock.Any(), "team-id", "chan-id", "msg-1", gomock.Any(), false).
-				DoAndReturn(func(_ context.Context, teamID, channelID, msgID string, opts *models.ListMessagesOptions, includeSystemEvents bool) ([]*models.Message, error) {
+				DoAndReturn(func(_ context.Context, teamID, channelID, msgID string, opts *models.ListMessagesOptions, includeSystemEvents bool) (*models.MessageCollection, error) {
 					require.Equal(t, "team-id", teamID)
 					require.Equal(t, "chan-id", channelID)
 					require.Equal(t, "msg-1", msgID)
 					require.NotNil(t, opts)
 					require.NotNil(t, opts.Top)
 					assert.Equal(t, top, *opts.Top)
-					return []*models.Message{{ID: "r1"}}, nil
+					return &models.MessageCollection{Messages: []*models.Message{{ID: "r1"}}}, nil
 				}).
 				Times(1)
 		})
 
-		got, err := svc.ListReplies(ctx, "TeamA", "ChanA", "msg-1", &top, false)
+		got, err := svc.ListReplies(ctx, "TeamA", "ChanA", "msg-1", &top, false, nil)
 		require.NoError(t, err)
-		require.Len(t, got, 1)
+		require.Len(t, got.Messages, 1)
 	})
 }
 
@@ -879,7 +879,7 @@ func TestService_ListMessages_Errors(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			svc, ctx := newSUT(t, tc.setupMocks)
-			_, err := svc.ListMessages(ctx, defaultTeamRef, defaultChannelRef, opts, false)
+			_, err := svc.ListMessages(ctx, defaultTeamRef, defaultChannelRef, opts, false, nil)
 			tc.assertErr(t, err)
 		})
 	}
@@ -900,7 +900,7 @@ func TestService_ListReplies_Errors_AndNilTop(t *testing.T) {
 				Times(1)
 		})
 
-		_, err := svc.ListReplies(ctx, defaultTeamRef, defaultChannelRef, "msg-1", nil, false)
+		_, err := svc.ListReplies(ctx, defaultTeamRef, defaultChannelRef, "msg-1", nil, false, nil)
 		require.NoError(t, err)
 	})
 
@@ -950,7 +950,7 @@ func TestService_ListReplies_Errors_AndNilTop(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			svc, ctx := newSUT(t, tc.setupMocks)
-			_, err := svc.ListReplies(ctx, defaultTeamRef, defaultChannelRef, "msg-1", &top, false)
+			_, err := svc.ListReplies(ctx, defaultTeamRef, defaultChannelRef, "msg-1", &top, false, nil)
 			tc.assertErr(t, err)
 		})
 	}

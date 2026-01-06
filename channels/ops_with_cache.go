@@ -109,15 +109,27 @@ func (o *opsWithCache) SendReply(ctx context.Context, teamID, channelID, message
 	}, o.cacheHandler)
 }
 
-func (o *opsWithCache) ListMessages(ctx context.Context, teamID, channelID string, opts *models.ListMessagesOptions, includeSystem bool) ([]*models.Message, error) {
-	return cacher.WithErrorClear(func() ([]*models.Message, error) {
+func (o *opsWithCache) ListMessages(ctx context.Context, teamID, channelID string, opts *models.ListMessagesOptions, includeSystem bool) (*models.MessageCollection, error) {
+	return cacher.WithErrorClear(func() (*models.MessageCollection, error) {
 		return o.chanOps.ListMessages(ctx, teamID, channelID, opts, includeSystem)
 	}, o.cacheHandler)
 }
 
-func (o *opsWithCache) ListReplies(ctx context.Context, teamID, channelID, messageID string, opts *models.ListMessagesOptions, includeSystem bool) ([]*models.Message, error) {
-	return cacher.WithErrorClear(func() ([]*models.Message, error) {
+func (o *opsWithCache) ListMessagesNext(ctx context.Context, teamID, channelID, nextLink string, includeSystem bool) (*models.MessageCollection, error) {
+	return cacher.WithErrorClear(func() (*models.MessageCollection, error) {
+		return o.chanOps.ListMessagesNext(ctx, teamID, channelID, nextLink, includeSystem)
+	}, o.cacheHandler)
+}
+
+func (o *opsWithCache) ListReplies(ctx context.Context, teamID, channelID, messageID string, opts *models.ListMessagesOptions, includeSystem bool) (*models.MessageCollection, error) {
+	return cacher.WithErrorClear(func() (*models.MessageCollection, error) {
 		return o.chanOps.ListReplies(ctx, teamID, channelID, messageID, opts, includeSystem)
+	}, o.cacheHandler)
+}
+
+func (o *opsWithCache) ListRepliesNext(ctx context.Context, teamID, channelID, messageID, nextLink string, includeSystem bool) (*models.MessageCollection, error) {
+	return cacher.WithErrorClear(func() (*models.MessageCollection, error) {
+		return o.chanOps.ListRepliesNext(ctx, teamID, channelID, messageID, nextLink, includeSystem)
 	}, o.cacheHandler)
 }
 
