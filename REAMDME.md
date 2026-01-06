@@ -3,8 +3,9 @@
 [![Go Reference](https://pkg.go.dev/badge/github.com/pzsp-teams/lib.svg)](https://pkg.go.dev/github.com/pzsp-teams/lib)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-High-level Go (Golang) library that simplifies interaction with **Microsoft Graph API**.
-Provides abstraction over operations related to Teams, Channels, and Chats, adding a layer of automatic caching and name resolution.
+<br>
+
+High-level Go (Golang) library that simplifies interaction with **Microsoft Graph API**. Provides abstraction over operations related to Teams, Channels, and Chats, adding a layer of automatic caching and name resolution.
 
 ## 🚀 Key Features
 
@@ -104,7 +105,9 @@ There are two available ways to authenticate:
 
 If enabled, stores metadata and non-sensitive mappings, (e.g., `TeamRef` -> `UUID`) to provide efficient reference resolution.
 
-#### ⚠️ Important:
+<br>
+
+### ⚠️ Important:
 
 Because the cache might run background goroutines to keep data fresh, you **must** call lib.Close() when your application shuts down. This ensures all background operations complete and prevents memory leaks or race conditions.
 
