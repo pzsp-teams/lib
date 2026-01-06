@@ -43,7 +43,7 @@ type Service interface {
 	UpdateGroupChatTopic(ctx context.Context, chatRef GroupChatRef, topic string) (*models.Chat, error)
 
 	// ListMessages returns all messages in a chat.
-	ListMessages(ctx context.Context, chatRef ChatRef, includeSystem bool) ([]*models.Message, error)
+	ListMessages(ctx context.Context, chatRef ChatRef, includeSystem bool, nextLink *string) (*models.MessageCollection, error)
 
 	// SendMessage sends a message to a chat.
 	// Body parameter is the body of the message. It includes:

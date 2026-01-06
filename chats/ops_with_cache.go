@@ -106,8 +106,8 @@ func (o *opsWithCache) UpdateGroupChatTopic(ctx context.Context, chatID, topic s
 	}, o.cacheHandler)
 }
 
-func (o *opsWithCache) ListMessages(ctx context.Context, chatID string, includeSystem bool) ([]*models.Message, error) {
-	return cacher.WithErrorClear(func() ([]*models.Message, error) {
+func (o *opsWithCache) ListMessages(ctx context.Context, chatID string, includeSystem bool) (*models.MessageCollection, error) {
+	return cacher.WithErrorClear(func() (*models.MessageCollection, error) {
 		return o.chatOps.ListMessages(ctx, chatID, includeSystem)
 	}, o.cacheHandler)
 }
@@ -175,6 +175,12 @@ func (o *opsWithCache) UnpinMessage(ctx context.Context, chatID, messageID strin
 func (o *opsWithCache) GetMentions(ctx context.Context, chatID string, isGroup bool, rawMentions []string) ([]models.Mention, error) {
 	return cacher.WithErrorClear(func() ([]models.Mention, error) {
 		return o.chatOps.GetMentions(ctx, chatID, isGroup, rawMentions)
+	}, o.cacheHandler)
+}
+
+func (o *opsWithCache) ListMessagesNext(ctx context.Context, chatID, nextLink string, includeSystem bool) (*models.MessageCollection, error) {
+	return cacher.WithErrorClear(func() (*models.MessageCollection, error) {
+		return o.chatOps.ListMessagesNext(ctx, chatID, nextLink, includeSystem)
 	}, o.cacheHandler)
 }
 

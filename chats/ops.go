@@ -72,12 +72,15 @@ func (o *ops) UpdateGroupChatTopic(ctx context.Context, chatID, topic string) (*
 	return adapter.MapGraphChat(resp), nil
 }
 
-func (o *ops) ListMessages(ctx context.Context, chatID string, includeSystem bool) ([]*models.Message, error) {
+func (o *ops) ListMessages(ctx context.Context, chatID string, includeSystem bool) (*models.MessageCollection, error) {
 	resp, requestErr := o.chatAPI.ListMessages(ctx, chatID, includeSystem)
 	if requestErr != nil {
 		return nil, snd.MapError(requestErr, snd.WithResource(resources.Chat, chatID))
 	}
-	return util.MapSlices(resp.GetValue(), adapter.MapGraphMessage), nil
+	return &models.MessageCollection{
+		Messages: util.MapSlices(resp.GetValue(), adapter.MapGraphMessage),
+		NextLink: resp.GetOdataNextLink(),
+	}, nil
 }
 
 func (o *ops) SendMessage(ctx context.Context, chatID string, body models.MessageBody) (*models.Message, error) {
@@ -177,4 +180,15 @@ func (o *ops) GetMentions(ctx context.Context, chatID string, isGroup bool, rawM
 		return nil, fmt.Errorf("cannot resolve mention reference: %s", raw)
 	}
 	return out, nil
+}
+
+func (o *ops) ListMessagesNext(ctx context.Context, chatID, nextLink string, includeSystem bool) (*models.MessageCollection, error) {
+	resp, requestErr := o.chatAPI.ListMessagesNext(ctx, chatID, nextLink, includeSystem)
+	if requestErr != nil {
+		return nil, snd.MapError(requestErr, snd.WithResource(resources.Chat, chatID))
+	}
+	return &models.MessageCollection{
+		Messages: util.MapSlices(resp.GetValue(), adapter.MapGraphMessage),
+		NextLink: resp.GetOdataNextLink(),
+	}, nil
 }
