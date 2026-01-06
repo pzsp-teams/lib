@@ -92,13 +92,14 @@ var (
 )
 
 func normalizeVisibilityForGroup(v string) string {
-	switch strings.ToLower(strings.TrimSpace(v)) {
+	ve := strings.TrimSpace(strings.ToLower(v))
+	switch ve {
 	case "private":
 		return "Private"
 	case "public":
 		return "Public"
 	default:
-		if v == "" {
+		if ve == "" {
 			return "Public"
 		}
 		return v

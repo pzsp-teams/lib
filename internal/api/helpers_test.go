@@ -308,3 +308,131 @@ func TestFilterOutSystemEvents(t *testing.T) {
 		require.Len(t, got, 0)
 	})
 }
+
+func TestNormalizeVisibilityForGroup(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{name: "private lower", in: "private", want: "Private"},
+		{name: "private mixed + spaces", in: "  PrIvAtE  ", want: "Private"},
+		{name: "public lower", in: "public", want: "Public"},
+		{name: "public upper", in: "PUBLIC", want: "Public"},
+		{name: "empty -> public", in: "", want: "Public"},
+		{name: "spaces only -> public", in: "   ", want: "Public"},
+		{name: "passthrough unknown", in: "HiddenMembership", want: "HiddenMembership"},
+		{name: "passthrough already proper", in: "Private", want: "Private"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := normalizeVisibilityForGroup(tt.in)
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestParseTeamIDFromHeaders(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name            string
+		contentLocation string
+		location        string
+		wantID          string
+		wantOK          bool
+	}{
+		{
+			name:            "extracts from Content-Location quoted format",
+			contentLocation: "/teams('TEAM-ID-1')",
+			location:        "",
+			wantID:          "TEAM-ID-1",
+			wantOK:          true,
+		},
+		{
+			name:            "extracts from Location quoted format",
+			contentLocation: "",
+			location:        "/teams('TEAM-ID-2')",
+			wantID:          "TEAM-ID-2",
+			wantOK:          true,
+		},
+		{
+			name:            "extracts from Location when contains operations segment",
+			contentLocation: "",
+			location:        "/teams('TEAM-ID-3')/operations('OP-ID')",
+			wantID:          "TEAM-ID-3",
+			wantOK:          true,
+		},
+		{
+			name:            "extracts from Content-Location when contains operations segment",
+			contentLocation: "/teams('TEAM-ID-4')/operations('OP-ID')",
+			location:        "",
+			wantID:          "TEAM-ID-4",
+			wantOK:          true,
+		},
+		{
+			name:            "extracts from slash format /teams/{id}",
+			contentLocation: "/teams/TEAM-ID-5",
+			location:        "",
+			wantID:          "TEAM-ID-5",
+			wantOK:          true,
+		},
+		{
+			name:            "extracts from full-ish path with query (slash format stops before ?)",
+			contentLocation: "/teams/TEAM-ID-6?$select=id",
+			location:        "",
+			wantID:          "TEAM-ID-6",
+			wantOK:          true,
+		},
+		{
+			name:            "trims spaces around header values",
+			contentLocation: "   /teams('TEAM-ID-7')   ",
+			location:        "",
+			wantID:          "TEAM-ID-7",
+			wantOK:          true,
+		},
+		{
+			name:            "prefers Content-Location over Location when both are present",
+			contentLocation: "/teams('TEAM-ID-CL')",
+			location:        "/teams('TEAM-ID-LOC')",
+			wantID:          "TEAM-ID-CL",
+			wantOK:          true,
+		},
+		{
+			name:            "returns false when both headers empty",
+			contentLocation: "",
+			location:        "",
+			wantID:          "",
+			wantOK:          false,
+		},
+		{
+			name:            "returns false when headers do not contain a team id",
+			contentLocation: "/groups('G1')",
+			location:        "/operations('OP1')",
+			wantID:          "",
+			wantOK:          false,
+		},
+		{
+			name:            "returns false when only operations without teams",
+			contentLocation: "/teamsTemplates('standard')/operations('OP1')",
+			location:        "",
+			wantID:          "",
+			wantOK:          false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got, ok := parseTeamIDFromHeaders(tt.contentLocation, tt.location)
+			require.Equal(t, tt.wantOK, ok)
+			require.Equal(t, tt.wantID, got)
+		})
+	}
+}
