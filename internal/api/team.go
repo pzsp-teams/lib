@@ -85,10 +85,10 @@ func (t *teamAPI) CreateFromTemplate(ctx context.Context, displayName, descripti
 		return nil, nil
 	}
 
-	ctx = context.WithValue(ctx, abstractions.ResponseHandlerOptionKey, responseHandler)
+	postCtx := context.WithValue(ctx, abstractions.ResponseHandlerOptionKey, responseHandler)
 
-	call := func(ctx context.Context) (sender.Response, error) {
-		return t.client.Teams().Post(ctx, body, nil)
+	call := func(_ context.Context) (sender.Response, error) {
+		return t.client.Teams().Post(postCtx, body, nil)
 	}
 	if _, err := sender.SendRequest(ctx, call, t.senderCfg); err != nil {
 		return "", err
