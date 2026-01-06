@@ -494,6 +494,32 @@ func TestOpsWithCache_WithErrorClearMethods_ClearCacheOnError(t *testing.T) {
 				return ments == nil, err
 			},
 		},
+		{
+			name: "ListMessagesNext",
+			expect: func(d opsWithCacheSUTDeps) {
+				d.chanOps.EXPECT().
+					ListMessagesNext(gomock.Any(), teamID, channelID, "next-1", false).
+					Return(nil, err400).
+					Times(1)
+			},
+			call: func(sut channelOps, ctx context.Context) (bool, error) {
+				msgs, err := sut.ListMessagesNext(ctx, teamID, channelID, "next-1", false)
+				return msgs == nil, err
+			},
+		},
+		{
+			name: "ListRepliesNext",
+			expect: func(d opsWithCacheSUTDeps) {
+				d.chanOps.EXPECT().
+					ListRepliesNext(gomock.Any(), teamID, channelID, messageID, "next-2", false).
+					Return(nil, err400).
+					Times(1)
+			},
+			call: func(sut channelOps, ctx context.Context) (bool, error) {
+				msgs, err := sut.ListRepliesNext(ctx, teamID, channelID, messageID, "next-2", false)
+				return msgs == nil, err
+			},
+		},
 	}
 
 	for _, tc := range cases {
@@ -534,5 +560,145 @@ func TestOpsWithCache_GetMentions(t *testing.T) {
 		got, err := sut.GetMentions(ctx, teamID, "TeamRef", "ChanRef", channelID, []string{"@team"})
 		require.NoError(t, err)
 		require.Equal(t, out, got)
+	})
+}
+
+func TestOpsWithCache_ListMessagesNext(t *testing.T) {
+	teamID := "team-1"
+	channelID := "chan-1"
+	next := "https://graph.microsoft.com/v1.0/next"
+
+	t.Run("success passes through result and does not touch cache", func(t *testing.T) {
+		want := &models.MessageCollection{
+			Messages: []*models.Message{{ID: "m1"}},
+			NextLink: &next,
+		}
+
+		sut, ctx := newOpsWithCacheSUT(t, func(_ context.Context, d opsWithCacheSUTDeps) {
+			d.chanOps.EXPECT().
+				ListMessagesNext(gomock.Any(), teamID, channelID, next, false).
+				Return(want, nil).
+				Times(1)
+
+			d.runner.EXPECT().Run(gomock.Any()).Times(0)
+			d.cacher.EXPECT().Clear().Times(0)
+			d.cacher.EXPECT().Set(gomock.Any(), gomock.Any()).Times(0)
+			d.cacher.EXPECT().Invalidate(gomock.Any()).Times(0)
+		})
+
+		got, err := sut.ListMessagesNext(ctx, teamID, channelID, next, false)
+		require.NoError(t, err)
+		require.Equal(t, want, got)
+	})
+}
+
+func TestOpsWithCache_ListRepliesNext(t *testing.T) {
+	teamID := "team-1"
+	channelID := "chan-1"
+	messageID := "msg-1"
+	next := "https://graph.microsoft.com/v1.0/next"
+
+	t.Run("success passes through result and does not touch cache", func(t *testing.T) {
+		want := &models.MessageCollection{
+			Messages: []*models.Message{{ID: "r1"}},
+			NextLink: &next,
+		}
+
+		sut, ctx := newOpsWithCacheSUT(t, func(_ context.Context, d opsWithCacheSUTDeps) {
+			d.chanOps.EXPECT().
+				ListRepliesNext(gomock.Any(), teamID, channelID, messageID, next, true).
+				Return(want, nil).
+				Times(1)
+
+			d.runner.EXPECT().Run(gomock.Any()).Times(0)
+			d.cacher.EXPECT().Clear().Times(0)
+			d.cacher.EXPECT().Set(gomock.Any(), gomock.Any()).Times(0)
+			d.cacher.EXPECT().Invalidate(gomock.Any()).Times(0)
+		})
+
+		got, err := sut.ListRepliesNext(ctx, teamID, channelID, messageID, next, true)
+		require.NoError(t, err)
+		require.Equal(t, want, got)
+	})
+}
+
+func TestOpsWithCache_cacheHelpers(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	t.Cleanup(ctrl.Finish)
+
+	mockCacher := testutil.NewMockCacher(ctrl)
+
+	sut := &opsWithCache{
+		cacheHandler: &cacher.CacheHandler{Cacher: mockCacher},
+	}
+
+	t.Run("addChannelsToCache no-op on blank teamID", func(t *testing.T) {
+		mockCacher.EXPECT().Set(gomock.Any(), gomock.Any()).Times(0)
+		sut.addChannelsToCache("   ", models.Channel{ID: "c1", Name: "General"})
+	})
+
+	t.Run("addChannelsToCache skips blank channel name, sets valid ones", func(t *testing.T) {
+		mockCacher.EXPECT().
+			Set(cacher.NewChannelKey("team-1", "General"), "c1").
+			Return(nil).
+			Times(1)
+
+		mockCacher.EXPECT().Set(gomock.Any(), gomock.Any()).Times(0)
+
+		sut.addChannelsToCache("team-1",
+			models.Channel{ID: "c1", Name: "General"},
+			models.Channel{ID: "c2", Name: "   "},
+		)
+	})
+
+	t.Run("removeChannelFromCache no-op on blanks", func(t *testing.T) {
+		mockCacher.EXPECT().Invalidate(gomock.Any()).Times(0)
+		sut.removeChannelFromCache("", "General")
+		sut.removeChannelFromCache("team-1", "   ")
+	})
+
+	t.Run("removeChannelFromCache invalidates on valid input", func(t *testing.T) {
+		mockCacher.EXPECT().
+			Invalidate(cacher.NewChannelKey("team-1", "General")).
+			Return(nil).
+			Times(1)
+
+		sut.removeChannelFromCache("team-1", "General")
+	})
+
+	t.Run("addMembersToCache no-op on blank teamID/channelID", func(t *testing.T) {
+		mockCacher.EXPECT().Set(gomock.Any(), gomock.Any()).Times(0)
+		sut.addMembersToCache("", "chan-1", models.Member{ID: "m1", Email: "a@b.com"})
+		sut.addMembersToCache("team-1", "   ", models.Member{ID: "m1", Email: "a@b.com"})
+	})
+
+	t.Run("addMembersToCache skips blank email, sets valid ones", func(t *testing.T) {
+		mockCacher.EXPECT().
+			Set(cacher.NewChannelMemberKey("team-1", "chan-1", "a@b.com", nil), "m1").
+			Return(nil).
+			Times(1)
+
+		mockCacher.EXPECT().Set(gomock.Any(), gomock.Any()).Times(0)
+
+		sut.addMembersToCache("team-1", "chan-1",
+			models.Member{ID: "m1", Email: "a@b.com"},
+			models.Member{ID: "m2", Email: "   "},
+		)
+	})
+
+	t.Run("removeMemberFromCache no-op on blanks", func(t *testing.T) {
+		mockCacher.EXPECT().Invalidate(gomock.Any()).Times(0)
+		sut.removeMemberFromCache("", "chan-1", "a@b.com")
+		sut.removeMemberFromCache("team-1", "", "a@b.com")
+		sut.removeMemberFromCache("team-1", "chan-1", "   ")
+	})
+
+	t.Run("removeMemberFromCache invalidates on valid input", func(t *testing.T) {
+		mockCacher.EXPECT().
+			Invalidate(cacher.NewChannelMemberKey("team-1", "chan-1", "a@b.com", nil)).
+			Return(nil).
+			Times(1)
+
+		sut.removeMemberFromCache("team-1", "chan-1", "a@b.com")
 	})
 }
