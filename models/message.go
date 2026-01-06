@@ -51,3 +51,16 @@ type MessageCollection struct {
 	Messages []*Message
 	NextLink *string
 }
+
+// SearchMessagesOptions contains options for searching messages.
+type SearchMessagesOptions struct {
+	Query           string
+	From            *int32
+	To              *int32
+	Size            *int32
+	ExcludeAuthorID *string
+	IncludeSystem   bool
+	IsRead          *bool
+	StartDateTime   *time.Time
+	EndDateTime     *time.Time
+}

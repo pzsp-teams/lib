@@ -264,6 +264,21 @@ func (mr *MockchannelOpsMockRecorder) RemoveMember(ctx, teamID, channelID, membe
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveMember", reflect.TypeOf((*MockchannelOps)(nil).RemoveMember), ctx, teamID, channelID, memberID, userRef)
 }
 
+// SearchMessagesInChannel mocks base method.
+func (m *MockchannelOps) SearchMessagesInChannel(ctx context.Context, teamID, channelID string, opts *models.SearchMessagesOptions) ([]*models.Message, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SearchMessagesInChannel", ctx, teamID, channelID, opts)
+	ret0, _ := ret[0].([]*models.Message)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// SearchMessagesInChannel indicates an expected call of SearchMessagesInChannel.
+func (mr *MockchannelOpsMockRecorder) SearchMessagesInChannel(ctx, teamID, channelID, opts any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SearchMessagesInChannel", reflect.TypeOf((*MockchannelOps)(nil).SearchMessagesInChannel), ctx, teamID, channelID, opts)
+}
+
 // SendMessage mocks base method.
 func (m *MockchannelOps) SendMessage(ctx context.Context, teamID, channelID string, body models.MessageBody) (*models.Message, error) {
 	m.ctrl.T.Helper()
