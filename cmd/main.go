@@ -236,12 +236,12 @@ func handlePrintAllChannels(client *lib.Client) {
 		}
 		for _, ch := range channels {
 			fmt.Printf("  - Channel: %s (ID: %s)\n", ch.Name, ch.ID)
-			messages, err := client.Channels.ListMessages(context.TODO(), team.ID, ch.ID, nil, false)
+			messages, err := client.Channels.ListMessages(context.TODO(), team.ID, ch.ID, nil, false, nil)
 			if err != nil {
 				fmt.Printf("    Error listing messages: %v\n", err)
 				continue
 			}
-			fmt.Printf("    Messages count: %d\n", len(messages))
+			fmt.Printf("    Messages count: %d\n", len(messages.Messages))
 		}
 	}
 }
@@ -376,14 +376,14 @@ func handleListMessages(client *lib.Client, args []string) {
 		opts = &models.ListMessagesOptions{Top: &top}
 	}
 
-	messages, err := client.Channels.ListMessages(context.TODO(), teamName, channelName, opts, true)
+	messages, err := client.Channels.ListMessages(context.TODO(), teamName, channelName, opts, true, nil)
 	if err != nil {
 		fmt.Printf("Error listing messages: %v\n", err)
 		os.Exit(1)
 	}
 
 	fmt.Printf("Messages in channel '%s':\n", channelName)
-	for _, msg := range messages {
+	for _, msg := range messages.Messages {
 		fmt.Printf("\nID: %s\n", msg.ID)
 		fmt.Printf("From: %s\n", getMessageFrom(msg))
 		fmt.Printf("Created: %s\n", msg.CreatedDateTime.Format("2006-01-02 15:04:05"))
@@ -410,14 +410,14 @@ func handleListReplies(client *lib.Client, args []string) {
 		top = &topVal
 	}
 
-	replies, err := client.Channels.ListReplies(context.TODO(), teamName, channelName, messageID, top, true)
+	replies, err := client.Channels.ListReplies(context.TODO(), teamName, channelName, messageID, top, true, nil)	
 	if err != nil {
 		fmt.Printf("Error listing replies: %v\n", err)
 		os.Exit(1)
 	}
 
 	fmt.Printf("Replies to message %s in channel '%s':\n", messageID, channelName)
-	for _, reply := range replies {
+	for _, reply := range replies.Messages {
 		fmt.Printf("\nID: %s\n", reply.ID)
 		fmt.Printf("From: %s\n", getMessageFrom(reply))
 		fmt.Printf("Created: %s\n", reply.CreatedDateTime.Format("2006-01-02 15:04:05"))
