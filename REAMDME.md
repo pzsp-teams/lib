@@ -15,7 +15,7 @@ Provides abstraction over operations related to Teams, Channels, and Chats, addi
 ## 📦 Installation
 
 ```bash
-go get [github.com/pzsp-teams/lib](https://github.com/pzsp-teams/lib)
+go get (https://github.com/pzsp-teams/lib)
 ```
 
 ## 🛠️ Architecture & Concepts
@@ -59,7 +59,7 @@ func main() {
     // Cache config
     cacheCfg := &config.CacheConfig{
         Mode:     config.CacheAsync,
-        Provider: config.CacheProviderJSONFile, // Cache w pliku lokalnym
+        Provider: config.CacheProviderJSONFile, // Local file cache
     }
 
     // Client init
@@ -67,9 +67,6 @@ func main() {
     if err != nil {
         panic(err)
     }
-
-    // Usage
-
     defer lib.Close() // Important if using cache
 }
 ```
@@ -83,7 +80,7 @@ for _, t := range teams {
     fmt.Printf("Team: %s (ID: %s)\n", t.DisplayName, t.ID)
 }
 
-// Utwórz nowy zespół
+// Create a new team
 newTeam, _ := client.Teams.CreateViaGroup(ctx, "Project Alpha", "project-alpha", "public")
 ```
 
@@ -93,13 +90,13 @@ Complete list of scopes required by all functions is available [HERE](https://gi
 
 There are two available ways to authenticate:
 - **INTERACTIVE** - log in window will automatically be opened within your browser.
-- **DEVICE CODE** - library will provide you the **URL** and code, which need to be manually opened with browser of your chioce.
+- **DEVICE CODE** - library will provide you the **URL** and code, which need to be manually opened with browser of your choice.
 
 ## Cache
-If enabled, stores non vurnerable maps, (e.g., `TeamRef` -> `UUID`) in order to provide more efficient Refs resolving.
+If enabled, stores metadata and non-sensitive mappings, (e.g., `TeamRef` -> `UUID`) to provide efficient reference resolution.
 
 #### ⚠️ Important:
-Because the cache might run background goroutines to keep data fresh, you must call lib.Close() when your application shuts down. This ensures all background operations complete and prevents memory leaks or race conditions.
+Because the cache might run background goroutines to keep data fresh, you **must** call lib.Close() when your application shuts down. This ensures all background operations complete and prevents memory leaks or race conditions.
 
 ```go
 defer lib.Close()
