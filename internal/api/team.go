@@ -3,8 +3,10 @@ package api
 import (
 	"context"
 	"net/http"
+	"strings"
 	"time"
 
+	abstractions "github.com/microsoft/kiota-abstractions-go"
 	graph "github.com/microsoftgraph/msgraph-sdk-go"
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
 	graphteams "github.com/microsoftgraph/msgraph-sdk-go/teams"
@@ -19,7 +21,6 @@ type TeamAPI interface {
 	CreateViaGroup(ctx context.Context, displayName, mailNickname, visibility string) (string, *sender.RequestError)
 	Get(ctx context.Context, teamID string) (msmodels.Teamable, *sender.RequestError)
 	ListMyJoined(ctx context.Context) (msmodels.TeamCollectionResponseable, *sender.RequestError)
-	Update(ctx context.Context, teamID string, patch *msmodels.Team) (msmodels.Teamable, *sender.RequestError)
 	Archive(ctx context.Context, teamID string, spoReadOnlyForMembers *bool) *sender.RequestError
 	Unarchive(ctx context.Context, teamID string) *sender.RequestError
 	Delete(ctx context.Context, teamID string) *sender.RequestError
@@ -42,28 +43,64 @@ func NewTeams(client *graph.GraphServiceClient, senderCfg *config.SenderConfig) 
 }
 
 func (t *teamAPI) CreateFromTemplate(ctx context.Context, displayName, description string, owners, members []string, visibility string) (string, *sender.RequestError) {
+	if strings.TrimSpace(displayName) == "" {
+		return "", &sender.RequestError{Code: http.StatusBadRequest, Message: "displayName cannot be empty"}
+	}
+	if len(owners) == 0 {
+		return "", &sender.RequestError{Code: http.StatusBadRequest, Message: "at least one owner is required"}
+	}
+
 	body := msmodels.NewTeam()
 	body.SetDisplayName(&displayName)
-	body.SetDescription(&description)
+	if strings.TrimSpace(description) != "" {
+		body.SetDescription(&description)
+	}
+
 	teamVisibility := msmodels.PUBLIC_TEAMVISIBILITYTYPE
-	if visibility == "private" {
+	if strings.ToLower(strings.TrimSpace(visibility)) == "private" {
 		teamVisibility = msmodels.PRIVATE_TEAMVISIBILITYTYPE
 	}
 	body.SetVisibility(&teamVisibility)
+
 	first := "General"
 	body.SetFirstChannelName(&first)
 	body.SetAdditionalData(map[string]any{
 		templateBindKey: templateBindValue,
 	})
+
+	var convMembers []msmodels.ConversationMemberable
+	addToMembers(&convMembers, owners, []string{roleOwner})
+	addToMembers(&convMembers, members, []string{})
+	if len(convMembers) > 0 {
+		body.SetMembers(convMembers)
+	}
+	var loc, contentLoc string
+	responseHandler := func(resp any, _ abstractions.ErrorMappings) (any, error) {
+		httpResp, ok := resp.(*http.Response)
+		if !ok || httpResp == nil {
+			return nil, nil
+		}
+		loc = httpResp.Header.Get("Location")
+		contentLoc = httpResp.Header.Get("Content-Location")
+		return nil, nil
+	}
+
+	ctx = context.WithValue(ctx, abstractions.ResponseHandlerOptionKey, responseHandler)
+
 	call := func(ctx context.Context) (sender.Response, error) {
 		return t.client.Teams().Post(ctx, body, nil)
 	}
-	resp, err := sender.SendRequest(ctx, call, t.senderCfg)
-	if err != nil {
+	if _, err := sender.SendRequest(ctx, call, t.senderCfg); err != nil {
 		return "", err
 	}
-	_ = resp
-	return "id will be given later (async)", nil
+	teamID, ok := parseTeamIDFromHeaders(contentLoc, loc)
+	if !ok || teamID == "" {
+		return "", &sender.RequestError{Code: http.StatusInternalServerError, Message: "unable to parse team ID from response headers"}
+	}
+	if err := t.waitTeamReady(ctx, teamID, 30*time.Second); err != nil {
+		return "", err
+	}
+	return teamID, nil
 }
 
 func (t *teamAPI) CreateViaGroup(ctx context.Context, displayName, mailNickname, visibility string) (string, *sender.RequestError) {
@@ -76,10 +113,14 @@ func (t *teamAPI) CreateViaGroup(ctx context.Context, displayName, mailNickname,
 	grp.SetMailNickname(&mailNickname)
 	securityEnabled := false
 	grp.SetSecurityEnabled(&securityEnabled)
-	grp.SetVisibility(&visibility)
+
+	vis := normalizeVisibilityForGroup(visibility)
+	grp.SetVisibility(&vis)
+
 	createGroup := func(ctx context.Context) (sender.Response, error) {
 		return t.client.Groups().Post(ctx, grp, nil)
 	}
+
 	gresp, gerr := sender.SendRequest(ctx, createGroup, t.senderCfg)
 	if gerr != nil {
 		return "", gerr
@@ -89,6 +130,7 @@ func (t *teamAPI) CreateViaGroup(ctx context.Context, displayName, mailNickname,
 		return "", newTypeError("Groupable")
 	}
 	groupID := *group.GetId()
+
 	body := msmodels.NewTeam()
 	putTeam := func(ctx context.Context) (sender.Response, error) {
 		return t.client.Groups().ByGroupId(groupID).Team().Put(ctx, body, nil)
@@ -100,22 +142,6 @@ func (t *teamAPI) CreateViaGroup(ctx context.Context, displayName, mailNickname,
 		return "", err
 	}
 	return groupID, nil
-}
-
-func (t *teamAPI) waitTeamReady(ctx context.Context, teamID string, timeout time.Duration) *sender.RequestError {
-	deadline := time.Now().Add(timeout)
-	for {
-		call := func(ctx context.Context) (sender.Response, error) {
-			return t.client.Teams().ByTeamId(teamID).Get(ctx, nil)
-		}
-		if _, err := sender.SendRequest(ctx, call, t.senderCfg); err == nil {
-			return nil
-		}
-		if time.Now().After(deadline) {
-			return &sender.RequestError{Code: http.StatusRequestTimeout, Message: "Team not ready within timeout"}
-		}
-		time.Sleep(2 * time.Second)
-	}
 }
 
 func (t *teamAPI) Get(ctx context.Context, teamID string) (msmodels.Teamable, *sender.RequestError) {
@@ -144,21 +170,6 @@ func (t *teamAPI) ListMyJoined(ctx context.Context) (msmodels.TeamCollectionResp
 	out, ok := resp.(msmodels.TeamCollectionResponseable)
 	if !ok {
 		return nil, newTypeError("TeamCollectionResponseable")
-	}
-	return out, nil
-}
-
-func (t *teamAPI) Update(ctx context.Context, teamID string, patch *msmodels.Team) (msmodels.Teamable, *sender.RequestError) {
-	call := func(ctx context.Context) (sender.Response, error) {
-		return t.client.Teams().ByTeamId(teamID).Patch(ctx, patch, nil)
-	}
-	resp, err := sender.SendRequest(ctx, call, t.senderCfg)
-	if err != nil {
-		return nil, err
-	}
-	out, ok := resp.(msmodels.Teamable)
-	if !ok {
-		return nil, newTypeError("Teamable")
 	}
 	return out, nil
 }
@@ -223,32 +234,37 @@ func (t *teamAPI) RestoreDeleted(ctx context.Context, deletedGroupID string) (ms
 }
 
 func (t *teamAPI) UpdateTeam(ctx context.Context, teamID string, update *models.TeamUpdate) (msmodels.Teamable, *sender.RequestError) {
-	patch := msmodels.NewTeam()
+	if update == nil {
+		return t.Get(ctx, teamID)
+	}
+	patch := msmodels.NewGroup()
+	changed := false
+
 	if update.DisplayName != nil {
 		patch.SetDisplayName(update.DisplayName)
+		changed = true
 	}
 	if update.Description != nil {
 		patch.SetDescription(update.Description)
+		changed = true
 	}
 	if update.Visibility != nil {
-		teamVisibility := msmodels.PUBLIC_TEAMVISIBILITYTYPE
-		if *update.Visibility == "private" {
-			teamVisibility = msmodels.PRIVATE_TEAMVISIBILITYTYPE
+		vis := normalizeVisibilityForGroup(*update.Visibility)
+		patch.SetVisibility(&vis)
+		changed = true
+	}
+	if changed {
+		call := func(ctx context.Context) (sender.Response, error) {
+			return t.client.
+				Groups().
+				ByGroupId(teamID).
+				Patch(ctx, patch, nil)
 		}
-		patch.SetVisibility(&teamVisibility)
+		if _, err := sender.SendRequest(ctx, call, t.senderCfg); err != nil {
+			return nil, err
+		}
 	}
-	call := func(ctx context.Context) (sender.Response, error) {
-		return t.client.Teams().ByTeamId(teamID).Patch(ctx, patch, nil)
-	}
-	resp, err := sender.SendRequest(ctx, call, t.senderCfg)
-	if err != nil {
-		return nil, err
-	}
-	out, ok := resp.(msmodels.Teamable)
-	if !ok {
-		return nil, newTypeError("Teamable")
-	}
-	return out, nil
+	return t.Get(ctx, teamID)
 }
 
 func (t *teamAPI) ListMembers(ctx context.Context, teamID string) (msmodels.ConversationMemberCollectionResponseable, *sender.RequestError) {

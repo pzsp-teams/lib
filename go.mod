@@ -6,6 +6,7 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.19.1
 	github.com/AzureAD/microsoft-authentication-extensions-for-go/cache v0.1.1
 	github.com/AzureAD/microsoft-authentication-library-for-go v1.6.0
+	github.com/microsoft/kiota-abstractions-go v1.9.3
 	github.com/microsoftgraph/msgraph-sdk-go v1.90.0
 	github.com/stretchr/testify v1.11.1
 	github.com/zalando/go-keyring v0.2.6
@@ -24,7 +25,6 @@ require (
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/keybase/go-keychain v0.0.0-20230523030712-b5615109f100 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
-	github.com/microsoft/kiota-abstractions-go v1.9.3 // indirect
 	github.com/microsoft/kiota-authentication-azure-go v1.3.1 // indirect
 	github.com/microsoft/kiota-http-go v1.5.4 // indirect
 	github.com/microsoft/kiota-serialization-form-go v1.1.2 // indirect

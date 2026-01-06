@@ -71,18 +71,18 @@ func (mr *MockteamsOpsMockRecorder) Archive(ctx, teamID, teamRef, spoReadOnlyFor
 }
 
 // CreateFromTemplate mocks base method.
-func (m *MockteamsOps) CreateFromTemplate(ctx context.Context, displayName, description string, ownerIDs []string) (string, error) {
+func (m *MockteamsOps) CreateFromTemplate(ctx context.Context, displayName, description string, ownerIDs, membersIDs []string, visibility string) (string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateFromTemplate", ctx, displayName, description, ownerIDs)
+	ret := m.ctrl.Call(m, "CreateFromTemplate", ctx, displayName, description, ownerIDs, membersIDs, visibility)
 	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CreateFromTemplate indicates an expected call of CreateFromTemplate.
-func (mr *MockteamsOpsMockRecorder) CreateFromTemplate(ctx, displayName, description, ownerIDs any) *gomock.Call {
+func (mr *MockteamsOpsMockRecorder) CreateFromTemplate(ctx, displayName, description, ownerIDs, membersIDs, visibility any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateFromTemplate", reflect.TypeOf((*MockteamsOps)(nil).CreateFromTemplate), ctx, displayName, description, ownerIDs)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateFromTemplate", reflect.TypeOf((*MockteamsOps)(nil).CreateFromTemplate), ctx, displayName, description, ownerIDs, membersIDs, visibility)
 }
 
 // CreateViaGroup mocks base method.
@@ -230,4 +230,19 @@ func (m *MockteamsOps) UpdateMemberRoles(ctx context.Context, teamID, memberID s
 func (mr *MockteamsOpsMockRecorder) UpdateMemberRoles(ctx, teamID, memberID, isOwner any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateMemberRoles", reflect.TypeOf((*MockteamsOps)(nil).UpdateMemberRoles), ctx, teamID, memberID, isOwner)
+}
+
+// UpdateTeam mocks base method.
+func (m *MockteamsOps) UpdateTeam(ctx context.Context, teamID string, update *models.TeamUpdate, teamRef string) (*models.Team, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateTeam", ctx, teamID, update, teamRef)
+	ret0, _ := ret[0].(*models.Team)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UpdateTeam indicates an expected call of UpdateTeam.
+func (mr *MockteamsOpsMockRecorder) UpdateTeam(ctx, teamID, update, teamRef any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateTeam", reflect.TypeOf((*MockteamsOps)(nil).UpdateTeam), ctx, teamID, update, teamRef)
 }
