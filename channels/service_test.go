@@ -7,6 +7,7 @@ import (
 
 	snd "github.com/pzsp-teams/lib/internal/sender"
 	"github.com/pzsp-teams/lib/internal/testutil"
+	"github.com/pzsp-teams/lib/internal/util"
 	"github.com/pzsp-teams/lib/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -504,6 +505,48 @@ func TestService_ListMessages_ListReplies(t *testing.T) {
 	})
 }
 
+func TestService_ListMessages_WithNextLink(t *testing.T) {
+	next := "next-link-1"
+
+	svc, ctx := newSUT(t, func(d sutDeps) {
+		expectResolveTeamAndChannel(t, d)
+		d.ops.EXPECT().
+			ListMessagesNext(gomock.Any(), defaultTeamID, defaultChannelID, next, true).
+			Return(&models.MessageCollection{Messages: []*models.Message{{ID: "m1"}}}, nil).
+			Times(1)
+
+		d.ops.EXPECT().
+			ListMessages(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			Times(0)
+	})
+
+	got, err := svc.ListMessages(ctx, defaultTeamRef, defaultChannelRef, &models.ListMessagesOptions{}, true, &next)
+	require.NoError(t, err)
+	require.NotNil(t, got)
+	require.Len(t, got.Messages, 1)
+	assert.Equal(t, "m1", got.Messages[0].ID)
+}
+
+func TestService_ListMessages_WithNextLink_Error(t *testing.T) {
+	next := "next-link-1"
+
+	svc, ctx := newSUT(t, func(d sutDeps) {
+		expectResolveTeamAndChannel(t, d)
+
+		d.ops.EXPECT().
+			ListMessagesNext(gomock.Any(), defaultTeamID, defaultChannelID, next, false).
+			Return(nil, &snd.ErrAccessForbidden{Code: 403, OriginalMessage: "nope"}).
+			Times(1)
+
+		d.ops.EXPECT().
+			ListMessages(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			Times(0)
+	})
+
+	_, err := svc.ListMessages(ctx, defaultTeamRef, defaultChannelRef, nil, false, &next)
+	testutil.RequireReqErrCode(t, err, 403)
+}
+
 func TestService_GetMessage_GetReply(t *testing.T) {
 	t.Run("GetMessage delegates", func(t *testing.T) {
 		svc, ctx := newSUT(t, func(d sutDeps) {
@@ -954,6 +997,72 @@ func TestService_ListReplies_Errors_AndNilTop(t *testing.T) {
 			tc.assertErr(t, err)
 		})
 	}
+}
+
+func TestService_ListReplies_WithNextLink(t *testing.T) {
+	next := "next-link-2"
+
+	svc, ctx := newSUT(t, func(d sutDeps) {
+		expectResolveTeamAndChannel(t, d)
+
+		d.ops.EXPECT().
+			ListRepliesNext(gomock.Any(), defaultTeamID, defaultChannelID, "msg-1", next, true).
+			Return(&models.MessageCollection{Messages: []*models.Message{{ID: "r1"}}}, nil).
+			Times(1)
+
+		d.ops.EXPECT().
+			ListReplies(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			Times(0)
+	})
+
+	got, err := svc.ListReplies(ctx, defaultTeamRef, defaultChannelRef, "msg-1", util.Ptr[int32](1), true, &next)
+	require.NoError(t, err)
+	require.NotNil(t, got)
+	require.Len(t, got.Messages, 1)
+	assert.Equal(t, "r1", got.Messages[0].ID)
+}
+
+func TestService_ListReplies_WithNextLink_Error(t *testing.T) {
+	next := "next-link-2"
+
+	svc, ctx := newSUT(t, func(d sutDeps) {
+		expectResolveTeamAndChannel(t, d)
+
+		d.ops.EXPECT().
+			ListRepliesNext(gomock.Any(), defaultTeamID, defaultChannelID, "msg-1", next, false).
+			Return(nil, &snd.ErrResourceNotFound{Code: 404, OriginalMessage: "missing"}).
+			Times(1)
+
+		d.ops.EXPECT().
+			ListReplies(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			Times(0)
+	})
+
+	_, err := svc.ListReplies(ctx, defaultTeamRef, defaultChannelRef, "msg-1", nil, false, &next)
+	testutil.RequireReqErrCode(t, err, 404)
+}
+
+func TestService_ListReplies_NilTop_PassesNilTopInOpts(t *testing.T) {
+	svc, ctx := newSUT(t, func(d sutDeps) {
+		expectResolveTeamAndChannel(t, d)
+
+		d.ops.EXPECT().
+			ListReplies(gomock.Any(), defaultTeamID, defaultChannelID, "msg-1", gomock.Any(), false).
+			DoAndReturn(func(_ context.Context, teamID, channelID, messageID string, opts *models.ListMessagesOptions, includeSystem bool) (*models.MessageCollection, error) {
+				require.Equal(t, defaultTeamID, teamID)
+				require.Equal(t, defaultChannelID, channelID)
+				require.Equal(t, "msg-1", messageID)
+
+				require.NotNil(t, opts)
+				require.Nil(t, opts.Top)
+
+				return &models.MessageCollection{Messages: []*models.Message{{ID: "r1"}}}, nil
+			}).
+			Times(1)
+	})
+
+	_, err := svc.ListReplies(ctx, defaultTeamRef, defaultChannelRef, "msg-1", nil, false, nil)
+	require.NoError(t, err)
 }
 
 func TestService_GetMessage_Errors(t *testing.T) {
