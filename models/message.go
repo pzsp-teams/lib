@@ -45,3 +45,9 @@ type ListMessagesOptions struct {
 	Top           *int32
 	ExpandReplies bool
 }
+
+// MessageCollection represents a collection of messages, potentially with a link to the next page of results.
+type MessageCollection struct {
+	Messages []*Message
+	NextLink *string
+}

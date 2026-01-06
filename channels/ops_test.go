@@ -450,9 +450,9 @@ func TestOps_ListMessages(t *testing.T) {
 
 		got, err := op.ListMessages(ctx, "team-1", "chan-1", nil, false)
 		require.NoError(t, err)
-		require.Len(t, got, 2)
-		assert.Equal(t, "m1", got[0].ID)
-		assert.Equal(t, "b", got[1].Content)
+		require.Len(t, got.Messages, 2)
+		assert.Equal(t, "m1", got.Messages[0].ID)
+		assert.Equal(t, "b", got.Messages[1].Content)
 	})
 
 	t.Run("passes top when provided", func(t *testing.T) {
@@ -548,8 +548,8 @@ func TestOps_ListReplies(t *testing.T) {
 
 		got, err := op.ListReplies(ctx, "team-1", "chan-1", "m-1", nil, false)
 		require.NoError(t, err)
-		require.Len(t, got, 1)
-		assert.Equal(t, "r1", got[0].ID)
+		require.Len(t, got.Messages, 1)
+		assert.Equal(t, "r1", got.Messages[0].ID)
 	})
 
 	t.Run("passes top when provided", func(t *testing.T) {
