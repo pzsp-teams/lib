@@ -2,6 +2,7 @@ package channels
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -19,12 +20,14 @@ import (
 type ops struct {
 	userAPI    api.UserAPI
 	channelAPI api.ChannelAPI
+	searchAPI  api.SearchAPI
 }
 
-func NewOps(channelAPI api.ChannelAPI, userAPI api.UserAPI) channelOps {
+func NewOps(channelAPI api.ChannelAPI, userAPI api.UserAPI, searchAPI api.SearchAPI) channelOps {
 	return &ops{
 		channelAPI: channelAPI,
 		userAPI:    userAPI,
+		searchAPI:  searchAPI,
 	}
 }
 
@@ -262,4 +265,38 @@ func (o *ops) GetMentions(ctx context.Context, teamID, teamRef, channelRef, chan
 	}
 
 	return out, nil
+}
+
+func (o *ops) SearchMessagesInChannel(ctx context.Context, teamID, channelID string, opts *models.SearchMessagesOptions) ([]*models.Message, error) {
+	if o.searchAPI == nil {
+		return nil, errors.New("SearchAPI is not configured")
+	}
+	if opts == nil || opts.Query == "" {
+		return nil, errors.New("missing opts.Query")
+	}
+
+	resp, requestErr := o.searchAPI.SearchChatMessages(ctx, opts.Query, opts.From, opts.Size)
+	if requestErr != nil {
+		return nil, snd.MapError(requestErr,
+			snd.WithResource(resources.Team, teamID),
+			snd.WithResource(resources.Channel, channelID),
+		)
+	}
+
+	raw := extractChatMessages(resp)
+	filtered := make([]msmodels.ChatMessageable, 0, len(raw))
+	for _, m := range raw {
+		if !isFromChannel(m, teamID, channelID) {
+			continue
+		}
+		if !opts.IncludeSystem && isSystemEvent(m) {
+			continue
+		}
+		if opts.ExcludeAuthorID != nil && isAuthoredBy(m, *opts.ExcludeAuthorID) {
+			continue
+		}
+		filtered = append(filtered, m)
+	}
+
+	return util.MapSlices(filtered, adapter.MapGraphMessage), nil
 }

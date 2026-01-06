@@ -364,6 +364,25 @@ func (s *service) GetMentions(ctx context.Context, teamRef, channelRef string, r
 	return out, nil
 }
 
+func (s *service) SearchMessages(ctx context.Context, teamRef, channelRef string, opts *models.SearchMessagesOptions) ([]*models.Message, error) {
+	teamID, channelID, err := s.resolveTeamAndChannelID(ctx, teamRef, channelRef)
+	if err != nil {
+		return nil, sender.Wrap("SearchMessages", err,
+			sender.NewParam(resources.TeamRef, teamRef),
+			sender.NewParam(resources.ChannelRef, channelRef),
+		)
+	}
+
+	out, err := s.ops.SearchMessagesInChannel(ctx, teamID, channelID, opts)
+	if err != nil {
+		return nil, sender.Wrap("SearchMessages", err,
+			sender.NewParam(resources.TeamRef, teamRef),
+			sender.NewParam(resources.ChannelRef, channelRef),
+		)
+	}
+	return out, nil
+}
+
 func (s *service) resolveTeamAndChannelID(ctx context.Context, teamRef, channelRef string) (teamID, channelID string, err error) {
 	teamID, err = s.teamResolver.ResolveTeamRefToID(ctx, teamRef)
 	if err != nil {

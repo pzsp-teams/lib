@@ -10,6 +10,7 @@ var (
 	chatSingleton    ChatAPI
 	teamSingleton    TeamAPI
 	userSingleton    UserAPI
+	searchSingleton  SearchAPI
 )
 
 func GetChannelAPI(c *graph.GraphServiceClient, sCfg *config.SenderConfig) ChannelAPI {
@@ -38,4 +39,11 @@ func GetUserAPI(c *graph.GraphServiceClient, sCfg *config.SenderConfig) UserAPI 
 		userSingleton = NewUser(c, sCfg)
 	}
 	return userSingleton
+}
+
+func GetSearchAPI(c *graph.GraphServiceClient, sCfg *config.SenderConfig) SearchAPI {
+	if searchSingleton == nil {
+		searchSingleton = NewSearch(c, sCfg)
+	}
+	return searchSingleton
 }

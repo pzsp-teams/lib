@@ -238,3 +238,9 @@ func (o *opsWithCache) GetMentions(ctx context.Context, teamID, teamRef, channel
 		return o.chanOps.GetMentions(ctx, teamID, teamRef, channelRef, channelID, rawMentions)
 	}, o.cacheHandler)
 }
+
+func (o *opsWithCache) SearchMessagesInChannel(ctx context.Context, teamID, channelID string, opts *models.SearchMessagesOptions) ([]*models.Message, error) {
+	return cacher.WithErrorClear(func() ([]*models.Message, error) {
+		return o.chanOps.SearchMessagesInChannel(ctx, teamID, channelID, opts)
+	}, o.cacheHandler)
+}

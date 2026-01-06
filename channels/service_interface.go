@@ -88,4 +88,7 @@ type Service interface {
 	//   - Team (only the parent team of the channel can be mentioned). It can be used by specifying "team" or team display name as raw mention.
 	//   - User IDs
 	GetMentions(ctx context.Context, teamRef, channelRef string, rawMentions []string) ([]models.Mention, error)
+
+	// SearchMessagesInChannel searches for messages in a channel matching the specified query and options.
+	SearchMessages(ctx context.Context, teamRef, channelRef string, opts *models.SearchMessagesOptions) ([]*models.Message, error)
 }
