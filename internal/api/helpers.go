@@ -143,7 +143,22 @@ func sleepWithContext(ctx context.Context, d time.Duration) error {
 }
 
 func (t *teamAPI) waitTeamReady(ctx context.Context, teamID string, timeout time.Duration) *sender.RequestError {
-	deadline := time.Now().Add(timeout)
+	deadline := time.NewTimer(timeout)
+	defer deadline.Stop()
+
+	ticker := time.NewTicker(2 * time.Second)
+	defer ticker.Stop()
+    tryOnce := func() bool {
+        call := func(ctx context.Context) (sender.Response, error) {
+            return t.client.Teams().ByTeamId(teamID).Get(ctx, nil)
+        }
+        _, err := sender.SendRequest(ctx, call, t.senderCfg)
+        return err == nil
+    }
+
+    if tryOnce() {
+        return nil
+    }
 
 	for {
 		select {
@@ -152,23 +167,15 @@ func (t *teamAPI) waitTeamReady(ctx context.Context, teamID string, timeout time
 				Code:    http.StatusRequestTimeout,
 				Message: ctx.Err().Error(),
 			}
-		default:
-		}
-
-		call := func(ctx context.Context) (sender.Response, error) {
-			return t.client.Teams().ByTeamId(teamID).Get(ctx, nil)
-		}
-		if _, err := sender.SendRequest(ctx, call, t.senderCfg); err == nil {
-			return nil
-		}
-
-		if time.Now().After(deadline) {
-			return &sender.RequestError{
-				Code:    http.StatusRequestTimeout,
-				Message: "Team not ready within timeout",
-			}
-		}
-
-		_ = sleepWithContext(ctx, 2*time.Second)
+        case <-deadline.C:
+            return &sender.RequestError{
+                Code:    http.StatusRequestTimeout,
+                Message: "Team not ready within timeout",
+            }
+        case <-ticker.C:
+            if tryOnce() {
+                return nil
+            }
+        }
 	}
 }

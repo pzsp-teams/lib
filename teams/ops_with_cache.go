@@ -62,7 +62,11 @@ func (o *opsWithCache) CreateFromTemplate(ctx context.Context, displayName, desc
 		return id, requestErr
 	}
 	o.cacheHandler.Runner.Run(func() {
-		o.removeTeamFromCache(displayName)
+		t := models.Team{
+			ID:          id,
+			DisplayName: displayName,
+		}
+		o.addTeamsToCache(t)
 	})
 	return id, nil
 }
