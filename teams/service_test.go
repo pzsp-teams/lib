@@ -1109,3 +1109,195 @@ func TestService_UpdateMemberRoles_ResolverErrors(t *testing.T) {
 		})
 	}
 }
+
+func TestService_Get_ResolverError_DoesNotCallOps(t *testing.T) {
+	svc, ctx := newSUT(t, func(d sutDeps) {
+		d.resolver.EXPECT().
+			ResolveTeamRefToID(gomock.Any(), "T1").
+			Return("", errors.New("boom")).
+			Times(1)
+
+		d.ops.EXPECT().
+			GetTeamByID(gomock.Any(), gomock.Any()).
+			Times(0)
+	})
+
+	out, err := svc.Get(ctx, "T1")
+	require.Nil(t, out)
+	_ = testutil.RequireWrapped(t, err)
+}
+
+func TestService_Get_ResolverRequestError_PreservesCode_AndDoesNotCallOps(t *testing.T) {
+	svc, ctx := newSUT(t, func(d sutDeps) {
+		d.resolver.EXPECT().
+			ResolveTeamRefToID(gomock.Any(), "T1").
+			Return("", &sender.RequestError{Code: 409, Message: "ambiguous"}).
+			Times(1)
+
+		d.ops.EXPECT().
+			GetTeamByID(gomock.Any(), gomock.Any()).
+			Times(0)
+	})
+
+	out, err := svc.Get(ctx, "T1")
+	require.Nil(t, out)
+	testutil.RequireReqErrCode(t, err, 409)
+}
+
+func TestService_CreateViaGroup_WrapsGenericOpsError(t *testing.T) {
+	svc, ctx := newSUT(t, func(d sutDeps) {
+		d.ops.EXPECT().
+			CreateViaGroup(gomock.Any(), "X", "x", "public").
+			Return(nil, errors.New("ops boom")).
+			Times(1)
+	})
+
+	out, err := svc.CreateViaGroup(ctx, "X", "x", "public")
+	require.Nil(t, out)
+	_ = testutil.RequireWrapped(t, err)
+}
+
+func TestService_CreateFromTemplate_WrapsGenericOpsError(t *testing.T) {
+	svc, ctx := newSUT(t, func(d sutDeps) {
+		d.ops.EXPECT().
+			CreateFromTemplate(gomock.Any(), "Tpl", "Desc", gomock.Any(), nil, "", false).
+			Return("", errors.New("ops boom")).
+			Times(1)
+	})
+
+	id, err := svc.CreateFromTemplate(ctx, "Tpl", "Desc", nil, nil, "", false)
+	require.Equal(t, "", id)
+	_ = testutil.RequireWrapped(t, err)
+}
+
+func TestService_ListMembers_ResolverError_DoesNotCallOps(t *testing.T) {
+	svc, ctx := newSUT(t, func(d sutDeps) {
+		d.resolver.EXPECT().
+			ResolveTeamRefToID(gomock.Any(), "TeamX").
+			Return("", errors.New("resolver boom")).
+			Times(1)
+
+		d.ops.EXPECT().
+			ListMembers(gomock.Any(), gomock.Any()).
+			Times(0)
+	})
+
+	out, err := svc.ListMembers(ctx, "TeamX")
+	require.Nil(t, out)
+	_ = testutil.RequireWrapped(t, err)
+}
+
+func TestService_AddMember_Success_NonOwner(t *testing.T) {
+	svc, ctx := newSUT(t, func(d sutDeps) {
+		d.resolver.EXPECT().
+			ResolveTeamRefToID(gomock.Any(), "TeamX").
+			Return("team-id", nil).
+			Times(1)
+
+		d.ops.EXPECT().
+			AddMember(gomock.Any(), "team-id", "user@x.com", false).
+			Return(&models.Member{ID: "m2"}, nil).
+			Times(1)
+	})
+
+	got, err := svc.AddMember(ctx, "TeamX", "user@x.com", false)
+	require.NoError(t, err)
+	require.NotNil(t, got)
+	require.Equal(t, "m2", got.ID)
+}
+
+func TestService_AddMember_ResolverError_DoesNotCallOps(t *testing.T) {
+	svc, ctx := newSUT(t, func(d sutDeps) {
+		d.resolver.EXPECT().
+			ResolveTeamRefToID(gomock.Any(), "TeamX").
+			Return("", errors.New("resolver boom")).
+			Times(1)
+
+		d.ops.EXPECT().
+			AddMember(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			Times(0)
+	})
+
+	out, err := svc.AddMember(ctx, "TeamX", "user@x.com", true)
+	require.Nil(t, out)
+	_ = testutil.RequireWrapped(t, err)
+}
+
+func TestService_GetMember_TeamResolverError_DoesNotCallMemberResolverOrOps(t *testing.T) {
+	svc, ctx := newSUT(t, func(d sutDeps) {
+		d.resolver.EXPECT().
+			ResolveTeamRefToID(gomock.Any(), "TeamX").
+			Return("", errors.New("team resolve boom")).
+			Times(1)
+
+		d.resolver.EXPECT().
+			ResolveTeamMemberRefToID(gomock.Any(), gomock.Any(), gomock.Any()).
+			Times(0)
+
+		d.ops.EXPECT().
+			GetMemberByID(gomock.Any(), gomock.Any(), gomock.Any()).
+			Times(0)
+	})
+
+	out, err := svc.GetMember(ctx, "TeamX", "user@x.com")
+	require.Nil(t, out)
+	_ = testutil.RequireWrapped(t, err)
+}
+
+func TestService_GetMember_MemberResolverRequestError_PreservesCode_AndDoesNotCallOps(t *testing.T) {
+	svc, ctx := newSUT(t, func(d sutDeps) {
+		d.resolver.EXPECT().
+			ResolveTeamRefToID(gomock.Any(), "TeamX").
+			Return("team-id", nil).
+			Times(1)
+
+		d.resolver.EXPECT().
+			ResolveTeamMemberRefToID(gomock.Any(), "team-id", "user@x.com").
+			Return("", &sender.RequestError{Code: 400, Message: "bad user ref"}).
+			Times(1)
+
+		d.ops.EXPECT().
+			GetMemberByID(gomock.Any(), gomock.Any(), gomock.Any()).
+			Times(0)
+	})
+
+	out, err := svc.GetMember(ctx, "TeamX", "user@x.com")
+	require.Nil(t, out)
+	testutil.RequireReqErrCode(t, err, 400)
+}
+
+func TestService_Archive_OpsGenericError_IsWrapped(t *testing.T) {
+	readOnly := true
+
+	svc, ctx := newSUT(t, func(d sutDeps) {
+		d.resolver.EXPECT().
+			ResolveTeamRefToID(gomock.Any(), "T1").
+			Return("team-id", nil).
+			Times(1)
+
+		d.ops.EXPECT().
+			Archive(gomock.Any(), "team-id", "T1", &readOnly).
+			Return(errors.New("ops boom")).
+			Times(1)
+	})
+
+	err := svc.Archive(ctx, "T1", &readOnly)
+	_ = testutil.RequireWrapped(t, err)
+}
+
+func TestService_Delete_OpsGenericError_IsWrapped(t *testing.T) {
+	svc, ctx := newSUT(t, func(d sutDeps) {
+		d.resolver.EXPECT().
+			ResolveTeamRefToID(gomock.Any(), "T1").
+			Return("team-id", nil).
+			Times(1)
+
+		d.ops.EXPECT().
+			DeleteTeam(gomock.Any(), "team-id", "T1").
+			Return(errors.New("ops boom")).
+			Times(1)
+	})
+
+	err := svc.Delete(ctx, "T1")
+	_ = testutil.RequireWrapped(t, err)
+}
