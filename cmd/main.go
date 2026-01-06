@@ -410,7 +410,7 @@ func handleListReplies(client *lib.Client, args []string) {
 		top = &topVal
 	}
 
-	replies, err := client.Channels.ListReplies(context.TODO(), teamName, channelName, messageID, top, true, nil)	
+	replies, err := client.Channels.ListReplies(context.TODO(), teamName, channelName, messageID, top, true, nil)
 	if err != nil {
 		fmt.Printf("Error listing replies: %v\n", err)
 		os.Exit(1)
