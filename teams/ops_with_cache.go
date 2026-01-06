@@ -55,8 +55,8 @@ func (o *opsWithCache) ListMyJoinedTeams(ctx context.Context) ([]*models.Team, e
 	return out, nil
 }
 
-func (o *opsWithCache) CreateFromTemplate(ctx context.Context, displayName, description string, owners []string) (string, error) {
-	id, requestErr := o.teamOps.CreateFromTemplate(ctx, displayName, description, owners)
+func (o *opsWithCache) CreateFromTemplate(ctx context.Context, displayName, description string, owners, members []string, visibility string) (string, error) {
+	id, requestErr := o.teamOps.CreateFromTemplate(ctx, displayName, description, owners, members, visibility)
 	if requestErr != nil {
 		o.cacheHandler.OnError(requestErr)
 		return id, requestErr
@@ -119,6 +119,24 @@ func (o *opsWithCache) RestoreDeletedTeam(ctx context.Context, deletedGroupID st
 	return cacher.WithErrorClear(func() (string, error) {
 		return o.teamOps.RestoreDeletedTeam(ctx, deletedGroupID)
 	}, o.cacheHandler)
+}
+
+func (o *opsWithCache) UpdateTeam(ctx context.Context, teamID string, update *models.TeamUpdate, teamRef string) (*models.Team, error) {
+	updated, err := o.teamOps.UpdateTeam(ctx, teamID, update, teamRef)
+	if err != nil {
+		o.cacheHandler.OnError(err)
+		return nil, err
+	}
+	if updated != nil {
+		if teamRef != updated.DisplayName && teamRef != updated.ID {
+			local := *updated
+			o.cacheHandler.Runner.Run(func() {
+				o.removeTeamFromCache(teamRef)
+				o.addTeamsToCache(local)
+			})
+		}
+	}
+	return updated, nil
 }
 
 func (o *opsWithCache) ListMembers(ctx context.Context, teamID string) ([]*models.Member, error) {

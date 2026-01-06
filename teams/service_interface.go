@@ -33,7 +33,7 @@ type Service interface {
 	CreateViaGroup(ctx context.Context, displayName, mailNickname, visibility string) (*models.Team, error)
 
 	// CreateFromTemplate creates a new team from a template.
-	CreateFromTemplate(ctx context.Context, displayName, description string, owners []string) (string, error)
+	CreateFromTemplate(ctx context.Context, displayName, description string, owners, members []string, visibility string) (string, error)
 
 	// Archive archives a team, optionally making SharePoint read-only for members.
 	Archive(ctx context.Context, teamRef string, spoReadOnlyForMembers *bool) error

@@ -52,8 +52,8 @@ func (o *ops) CreateViaGroup(ctx context.Context, displayName, mailNickname, vis
 	return adapter.MapGraphTeam(t), nil
 }
 
-func (o *ops) CreateFromTemplate(ctx context.Context, displayName, description string, ownerIDs []string) (string, error) {
-	id, err := o.teamAPI.CreateFromTemplate(ctx, displayName, description, ownerIDs)
+func (o *ops) CreateFromTemplate(ctx context.Context, displayName, description string, ownerIDs, membersIDs []string, visibility string) (string, error) {
+	id, err := o.teamAPI.CreateFromTemplate(ctx, displayName, description, ownerIDs, membersIDs, visibility)
 	if err != nil {
 		return id, snd.MapError(err, snd.WithResources(resources.User, ownerIDs))
 	}
@@ -85,6 +85,15 @@ func (o *ops) RestoreDeletedTeam(ctx context.Context, deletedGroupID string) (st
 		return "", fmt.Errorf("restored object has empty id")
 	}
 	return id, nil
+}
+
+func (o *ops) UpdateTeam(ctx context.Context, teamID string, update *models.TeamUpdate, teamRef string) (*models.Team, error) {
+	updated, err := o.teamAPI.UpdateTeam(ctx, teamID, update)
+	if err != nil {
+		return nil, snd.MapError(err, snd.WithResource(resources.Team, teamID))
+	}
+
+	return adapter.MapGraphTeam(updated), nil
 }
 
 func (o *ops) ListMembers(ctx context.Context, teamID string) ([]*models.Member, error) {

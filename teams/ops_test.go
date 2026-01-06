@@ -294,7 +294,7 @@ func TestOps_CreateFromTemplate(t *testing.T) {
 			name: "success",
 			setup: func(ctx context.Context, d *opsSUTDeps) {
 				d.teamAPI.EXPECT().
-					CreateFromTemplate(ctx, "N", "D", []string{"o1"}).
+					CreateFromTemplate(ctx, "N", "D", []string{"o1"}, nil, "").
 					Return("id-1", nil)
 			},
 			wantID: "id-1",
@@ -303,7 +303,7 @@ func TestOps_CreateFromTemplate(t *testing.T) {
 			name: "error returns id and is mapped with users",
 			setup: func(ctx context.Context, d *opsSUTDeps) {
 				d.teamAPI.EXPECT().
-					CreateFromTemplate(ctx, "N", "D", []string{"o1"}).
+					CreateFromTemplate(ctx, "N", "D", []string{"o1"}, nil, "").
 					Return("id-partial", &snd.RequestError{Code: 409, Message: "conflict"})
 			},
 			wantID:    "id-partial",
@@ -316,7 +316,7 @@ func TestOps_CreateFromTemplate(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			sut, ctx := newOpsSUT(t, tc.setup)
 
-			id, err := sut.CreateFromTemplate(ctx, "N", "D", []string{"o1"})
+			id, err := sut.CreateFromTemplate(ctx, "N", "D", []string{"o1"}, nil, "")
 
 			require.Equal(t, tc.wantID, id)
 			if tc.wantErr != 0 {
