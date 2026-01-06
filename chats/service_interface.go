@@ -43,6 +43,8 @@ type Service interface {
 	UpdateGroupChatTopic(ctx context.Context, chatRef GroupChatRef, topic string) (*models.Chat, error)
 
 	// ListMessages returns all messages in a chat.
+	//
+	// NextLink in the returned MessageCollection can be used to retrieve the next page of messages.
 	ListMessages(ctx context.Context, chatRef ChatRef, includeSystem bool, nextLink *string) (*models.MessageCollection, error)
 
 	// SendMessage sends a message to a chat.
