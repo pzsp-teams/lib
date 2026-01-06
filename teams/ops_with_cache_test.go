@@ -166,11 +166,11 @@ func TestOpsWithCache_CreateFromTemplate(t *testing.T) {
 		wantErr *snd.RequestError
 	}{
 		{
-			name: "Success - Invalidates team key",
+			name: "Success - add team key",
 			setup: func(d sutDepsWithCache) {
 				d.teamOps.EXPECT().CreateFromTemplate(gomock.Any(), "Team A", "d", gomock.Any(), nil, "", false).Return("id", nil)
 				testutil.ExpectRunNow(d.runner)
-				d.cacher.EXPECT().Invalidate(cacher.NewTeamKey("Team A")).Return(nil)
+				d.cacher.EXPECT().Set(cacher.NewTeamKey("Team A"), "id").Return(nil)
 			},
 			wantID: "id",
 		},
