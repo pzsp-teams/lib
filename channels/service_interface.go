@@ -63,6 +63,7 @@ type Service interface {
 	GetMessage(ctx context.Context, teamRef, channelRef, messageID string) (*models.Message, error)
 
 	// ListReplies returns one page of replies to a specific message in a channel.
+	//
 	// NextLink in the returned MessageCollection can be used to retrieve the next page of replies.
 	ListReplies(ctx context.Context, teamRef, channelRef, messageID string, top *int32, includeSystem bool, nextLink *string) (*models.MessageCollection, error)
 
