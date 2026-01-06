@@ -689,3 +689,253 @@ func TestOps_UpdateMemberRoles(t *testing.T) {
 		})
 	}
 }
+
+func TestOps_UpdateTeam(t *testing.T) {
+	t.Parallel()
+
+	type testCase struct {
+		name     string
+		setup    func(ctx context.Context, d *opsSUTDeps)
+		wantErr  int
+		wantTeam string
+		check    func(t *testing.T, got *models.Team, err error)
+	}
+
+	update := &models.TeamUpdate{}
+
+	testCases := []testCase{
+		{
+			name:     "error is mapped (team resource)",
+			wantErr:  404,
+			wantTeam: "t1",
+			setup: func(ctx context.Context, d *opsSUTDeps) {
+				d.teamAPI.EXPECT().
+					UpdateTeam(ctx, "t1", update).
+					Return(nil, &snd.RequestError{Code: 404, Message: "precondition"})
+			},
+			check: func(t *testing.T, got *models.Team, err error) {
+				require.Nil(t, got)
+				require.Error(t, err)
+				requireStatus(t, err, 404)
+				requireErrDataHas(t, err, resources.Team, "t1")
+			},
+		},
+		{
+			name: "maps updated team",
+			setup: func(ctx context.Context, d *opsSUTDeps) {
+				d.teamAPI.EXPECT().
+					UpdateTeam(ctx, "t2", update).
+					Return(testutil.NewGraphTeam(&testutil.NewTeamParams{
+						ID:          util.Ptr("t2"),
+						DisplayName: util.Ptr("Team Two"),
+					}), nil)
+			},
+			check: func(t *testing.T, got *models.Team, err error) {
+				require.NoError(t, err)
+				require.NotNil(t, got)
+				require.Equal(t, "t2", got.ID)
+				require.Equal(t, "Team Two", got.DisplayName)
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			teamID := "t2"
+			if tc.wantTeam != "" {
+				teamID = tc.wantTeam
+			}
+			sut, ctx := newOpsSUT(t, func(ctx context.Context, d *opsSUTDeps) {
+				tc.setup(ctx, d)
+			})
+
+			out, err := sut.UpdateTeam(ctx, teamID, update, "ignored-ref")
+			tc.check(t, out, err)
+		})
+	}
+}
+
+func TestOps_RestoreDeletedTeam_NilIDPointer_IsPlainError(t *testing.T) {
+	t.Parallel()
+
+	sut, ctx := newOpsSUT(t, func(ctx context.Context, d *opsSUTDeps) {
+		obj := msmodels.NewDirectoryObject()
+		d.teamAPI.EXPECT().RestoreDeleted(ctx, "dg-nil").Return(obj, nil)
+	})
+
+	id, err := sut.RestoreDeletedTeam(ctx, "dg-nil")
+	require.Equal(t, "", id)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "restored object has empty id")
+}
+
+func TestOps_ErrorMapping_ResourceRefs_ArePresent(t *testing.T) {
+	t.Parallel()
+
+	type testCase struct {
+		name  string
+		setup func(ctx context.Context, d *opsSUTDeps)
+		call  func(sut teamsOps, ctx context.Context) error
+		check func(t *testing.T, err error)
+	}
+
+	readOnly := true
+
+	cases := []testCase{
+		{
+			name: "GetTeamByID error has team resource ref",
+			setup: func(ctx context.Context, d *opsSUTDeps) {
+				d.teamAPI.EXPECT().
+					Get(ctx, "team-x").
+					Return(nil, &snd.RequestError{Code: 404, Message: "boom"})
+			},
+			call: func(sut teamsOps, ctx context.Context) error {
+				_, err := sut.GetTeamByID(ctx, "team-x")
+				return err
+			},
+			check: func(t *testing.T, err error) {
+				requireStatus(t, err, 404)
+				requireErrDataHas(t, err, resources.Team, "team-x")
+			},
+		},
+		{
+			name: "CreateViaGroup error has team resource ref=displayName",
+			setup: func(ctx context.Context, d *opsSUTDeps) {
+				d.teamAPI.EXPECT().
+					CreateViaGroup(ctx, "Disp", "nick", "private").
+					Return("", &snd.RequestError{Code: 404, Message: "bad"})
+			},
+			call: func(sut teamsOps, ctx context.Context) error {
+				_, err := sut.CreateViaGroup(ctx, "Disp", "nick", "private")
+				return err
+			},
+			check: func(t *testing.T, err error) {
+				requireStatus(t, err, 404)
+				requireErrDataHas(t, err, resources.Team, "Disp")
+			},
+		},
+		{
+			name: "CreateFromTemplate error has user resource refs=ownerIDs",
+			setup: func(ctx context.Context, d *opsSUTDeps) {
+				d.teamAPI.EXPECT().
+					CreateFromTemplate(ctx, "N", "D", []string{"o1", "o2"}, nil, "", false).
+					Return("id-partial", &snd.RequestError{Code: 404, Message: "conflict"})
+			},
+			call: func(sut teamsOps, ctx context.Context) error {
+				_, err := sut.CreateFromTemplate(ctx, "N", "D", []string{"o1", "o2"}, nil, "", false)
+				return err
+			},
+			check: func(t *testing.T, err error) {
+				requireStatus(t, err, 404)
+				requireErrDataHas(t, err, resources.User, "o1")
+				requireErrDataHas(t, err, resources.User, "o2")
+			},
+		},
+		{
+			name: "Archive error has team resource ref=teamID",
+			setup: func(ctx context.Context, d *opsSUTDeps) {
+				d.teamAPI.EXPECT().
+					Archive(ctx, "team-arch", &readOnly).
+					Return(&snd.RequestError{Code: 403, Message: "nope"})
+			},
+			call: func(sut teamsOps, ctx context.Context) error {
+				return sut.Archive(ctx, "team-arch", "ignored-ref", &readOnly)
+			},
+			check: func(t *testing.T, err error) {
+				requireStatus(t, err, 403)
+				requireErrDataHas(t, err, resources.Team, "team-arch")
+			},
+		},
+		{
+			name: "Unarchive error has team resource ref=teamID",
+			setup: func(ctx context.Context, d *opsSUTDeps) {
+				d.teamAPI.EXPECT().
+					Unarchive(ctx, "team-unarch").
+					Return(&snd.RequestError{Code: 404, Message: "x"})
+			},
+			call: func(sut teamsOps, ctx context.Context) error {
+				return sut.Unarchive(ctx, "team-unarch")
+			},
+			check: func(t *testing.T, err error) {
+				requireStatus(t, err, 404)
+				requireErrDataHas(t, err, resources.Team, "team-unarch")
+			},
+		},
+		{
+			name: "DeleteTeam error has team resource ref=teamID",
+			setup: func(ctx context.Context, d *opsSUTDeps) {
+				d.teamAPI.EXPECT().
+					Delete(ctx, "team-del").
+					Return(&snd.RequestError{Code: 404, Message: "missing"})
+			},
+			call: func(sut teamsOps, ctx context.Context) error {
+				return sut.DeleteTeam(ctx, "team-del", "ignored-ref")
+			},
+			check: func(t *testing.T, err error) {
+				requireStatus(t, err, 404)
+				requireErrDataHas(t, err, resources.Team, "team-del")
+			},
+		},
+		{
+			name: "AddMember error has team+user resource refs",
+			setup: func(ctx context.Context, d *opsSUTDeps) {
+				roles := util.MemberRole(true)
+				d.teamAPI.EXPECT().
+					AddMember(ctx, "t1", "u1", roles).
+					Return(nil, &snd.RequestError{Code: 404, Message: "bad"})
+			},
+			call: func(sut teamsOps, ctx context.Context) error {
+				_, err := sut.AddMember(ctx, "t1", "u1", true)
+				return err
+			},
+			check: func(t *testing.T, err error) {
+				requireStatus(t, err, 404)
+				requireErrDataHas(t, err, resources.Team, "t1")
+				requireErrDataHas(t, err, resources.User, "u1")
+			},
+		},
+		{
+			name: "UpdateMemberRoles error has team+user resource refs",
+			setup: func(ctx context.Context, d *opsSUTDeps) {
+				roles := util.MemberRole(false)
+				d.teamAPI.EXPECT().
+					UpdateMemberRoles(ctx, "t1", "m1", roles).
+					Return(nil, &snd.RequestError{Code: 404, Message: "conflict"})
+			},
+			call: func(sut teamsOps, ctx context.Context) error {
+				_, err := sut.UpdateMemberRoles(ctx, "t1", "m1", false)
+				return err
+			},
+			check: func(t *testing.T, err error) {
+				requireStatus(t, err, 404)
+				requireErrDataHas(t, err, resources.Team, "t1")
+				requireErrDataHas(t, err, resources.User, "m1")
+			},
+		},
+		{
+			name: "RemoveMember error has team+user resource refs (userRef, not memberID)",
+			setup: func(ctx context.Context, d *opsSUTDeps) {
+				d.teamAPI.EXPECT().
+					RemoveMember(ctx, "t1", "mem-1").
+					Return(&snd.RequestError{Code: 403, Message: "nope"})
+			},
+			call: func(sut teamsOps, ctx context.Context) error {
+				return sut.RemoveMember(ctx, "t1", "mem-1", "user@example.com")
+			},
+			check: func(t *testing.T, err error) {
+				requireStatus(t, err, 403)
+				requireErrDataHas(t, err, resources.Team, "t1")
+				requireErrDataHas(t, err, resources.User, "user@example.com")
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			sut, ctx := newOpsSUT(t, tc.setup)
+			err := tc.call(sut, ctx)
+			require.Error(t, err)
+			tc.check(t, err)
+		})
+	}
+}
