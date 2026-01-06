@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -17,7 +18,7 @@ import (
 )
 
 type TeamAPI interface {
-	CreateFromTemplate(ctx context.Context, displayName, description string, owners, members []string, visibility string) (string, *sender.RequestError)
+	CreateFromTemplate(ctx context.Context, displayName, description string, owners, members []string, visibility string, includeMe bool) (string, *sender.RequestError)
 	CreateViaGroup(ctx context.Context, displayName, mailNickname, visibility string) (string, *sender.RequestError)
 	Get(ctx context.Context, teamID string) (msmodels.Teamable, *sender.RequestError)
 	ListMyJoined(ctx context.Context) (msmodels.TeamCollectionResponseable, *sender.RequestError)
@@ -31,6 +32,7 @@ type TeamAPI interface {
 	AddMember(ctx context.Context, teamID, userRef string, roles []string) (msmodels.ConversationMemberable, *sender.RequestError)
 	RemoveMember(ctx context.Context, teamID, memberID string) *sender.RequestError
 	UpdateMemberRoles(ctx context.Context, teamID, memberID string, roles []string) (msmodels.ConversationMemberable, *sender.RequestError)
+	ListAllMessages(ctx context.Context, teamID string, startTime, endTime *time.Time, top *int32) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError)
 }
 
 type teamAPI struct {
@@ -42,9 +44,18 @@ func NewTeams(client *graph.GraphServiceClient, senderCfg *config.SenderConfig) 
 	return &teamAPI{client, senderCfg}
 }
 
-func (t *teamAPI) CreateFromTemplate(ctx context.Context, displayName, description string, owners, members []string, visibility string) (string, *sender.RequestError) {
+func (t *teamAPI) CreateFromTemplate(ctx context.Context, displayName, description string, owners, members []string, visibility string, includeMe bool) (string, *sender.RequestError) {
 	if strings.TrimSpace(displayName) == "" {
 		return "", &sender.RequestError{Code: http.StatusBadRequest, Message: "displayName cannot be empty"}
+	}
+	if includeMe {
+		me, err := getMe(ctx, t.client, t.senderCfg)
+		if err != nil {
+			return "", err
+		}
+		if me.GetId() != nil {
+			owners = append(owners, *me.GetId())
+		}
 	}
 	if len(owners) == 0 {
 		return "", &sender.RequestError{Code: http.StatusBadRequest, Message: "at least one owner is required"}
@@ -85,10 +96,15 @@ func (t *teamAPI) CreateFromTemplate(ctx context.Context, displayName, descripti
 		return nil, nil
 	}
 
-	postCtx := context.WithValue(ctx, abstractions.ResponseHandlerOptionKey, responseHandler)
+	handlerOpt := abstractions.NewRequestHandlerOption()
+	handlerOpt.SetResponseHandler(responseHandler)
+
+	reqCfg := &graphteams.TeamsRequestBuilderPostRequestConfiguration{
+		Options: []abstractions.RequestOption{handlerOpt},
+	}
 
 	call := func(_ context.Context) (sender.Response, error) {
-		return t.client.Teams().Post(postCtx, body, nil)
+		return t.client.Teams().Post(ctx, body, reqCfg)
 	}
 	if _, err := sender.SendRequest(ctx, call, t.senderCfg); err != nil {
 		return "", err
@@ -358,5 +374,45 @@ func (t *teamAPI) UpdateMemberRoles(ctx context.Context, teamID, memberID string
 	if !ok {
 		return nil, newTypeError("ConversationMemberable")
 	}
+	return out, nil
+}
+
+func (t *teamAPI) ListAllMessages(ctx context.Context, teamID string, startTime, endTime *time.Time, top *int32) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError) {
+	requestParameters := &graphteams.ItemChannelsGetAllMessagesRequestBuilderGetQueryParameters{
+		Top: top,
+	}
+
+	if startTime != nil && endTime != nil {
+		filter := fmt.Sprintf(
+			"lastModifiedDateTime gt %s and lastModifiedDateTime lt %s",
+			startTime.UTC().Format(time.RFC3339),
+			endTime.UTC().Format(time.RFC3339),
+		)
+		requestParameters.Filter = &filter
+	}
+
+	configuration := &graphteams.ItemChannelsGetAllMessagesRequestBuilderGetRequestConfiguration{
+		QueryParameters: requestParameters,
+	}
+
+	call := func(ctx context.Context) (sender.Response, error) {
+		return t.client.
+			Teams().
+			ByTeamId(teamID).
+			Channels().
+			GetAllMessages().
+			GetAsGetAllMessagesGetResponse(ctx, configuration)
+	}
+
+	resp, err := sender.SendRequest(ctx, call, t.senderCfg)
+	if err != nil {
+		return nil, err
+	}
+
+	out, ok := resp.(msmodels.ChatMessageCollectionResponseable)
+	if !ok {
+		return nil, newTypeError("ChatMessageCollectionResponseable")
+	}
+
 	return out, nil
 }

@@ -52,8 +52,8 @@ func (o *ops) CreateViaGroup(ctx context.Context, displayName, mailNickname, vis
 	return adapter.MapGraphTeam(t), nil
 }
 
-func (o *ops) CreateFromTemplate(ctx context.Context, displayName, description string, ownerIDs, membersIDs []string, visibility string) (string, error) {
-	id, err := o.teamAPI.CreateFromTemplate(ctx, displayName, description, ownerIDs, membersIDs, visibility)
+func (o *ops) CreateFromTemplate(ctx context.Context, displayName, description string, ownerIDs, membersIDs []string, visibility string, includeMe bool) (string, error) {
+	id, err := o.teamAPI.CreateFromTemplate(ctx, displayName, description, ownerIDs, membersIDs, visibility, includeMe)
 	if err != nil {
 		return id, snd.MapError(err, snd.WithResources(resources.User, ownerIDs))
 	}
