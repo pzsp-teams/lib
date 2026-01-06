@@ -690,3 +690,205 @@ func TestOpsWithCache_RemoveMember(t *testing.T) {
 		})
 	}
 }
+
+func TestOpsWithCache_UpdateTeam(t *testing.T) {
+	update := &models.TeamUpdate{}
+
+	tests := []struct {
+		name  string
+		setup func(d sutDepsWithCache)
+		call  func(sut teamsOps) (*models.Team, error)
+		check func(t *testing.T, got *models.Team, err error)
+	}{
+		{
+			name: "Error - clears cache",
+			setup: func(d sutDepsWithCache) {
+				e := testutil.ReqErr(http.StatusNotFound)
+				d.teamOps.EXPECT().
+					UpdateTeam(gomock.Any(), "tid", update, "TeamRef").
+					Return(nil, e)
+
+				testutil.ExpectRunNow(d.runner)
+				d.cacher.EXPECT().Clear().Return(nil)
+			},
+			call: func(sut teamsOps) (*models.Team, error) {
+				return sut.UpdateTeam(context.Background(), "tid", update, "TeamRef")
+			},
+			check: func(t *testing.T, got *models.Team, err error) {
+				require.Nil(t, got)
+				require.Error(t, err)
+				var re *snd.RequestError
+				require.ErrorAs(t, err, &re)
+				require.Equal(t, http.StatusNotFound, re.Code)
+			},
+		},
+		{
+			name: "Success - updated=nil => no cache ops",
+			setup: func(d sutDepsWithCache) {
+				d.teamOps.EXPECT().
+					UpdateTeam(gomock.Any(), "tid", update, "TeamRef").
+					Return(nil, nil)
+			},
+			call: func(sut teamsOps) (*models.Team, error) {
+				return sut.UpdateTeam(context.Background(), "tid", update, "TeamRef")
+			},
+			check: func(t *testing.T, got *models.Team, err error) {
+				require.NoError(t, err)
+				require.Nil(t, got)
+			},
+		},
+		{
+			name: "Success - teamRef matches updated.DisplayName => no cache ops",
+			setup: func(d sutDepsWithCache) {
+				d.teamOps.EXPECT().
+					UpdateTeam(gomock.Any(), "tid", update, "SameName").
+					Return(&models.Team{ID: "id-1", DisplayName: "SameName"}, nil)
+			},
+			call: func(sut teamsOps) (*models.Team, error) {
+				return sut.UpdateTeam(context.Background(), "tid", update, "SameName")
+			},
+			check: func(t *testing.T, got *models.Team, err error) {
+				require.NoError(t, err)
+				require.NotNil(t, got)
+				require.Equal(t, "id-1", got.ID)
+				require.Equal(t, "SameName", got.DisplayName)
+			},
+		},
+		{
+			name: "Success - teamRef matches updated.ID => no cache ops",
+			setup: func(d sutDepsWithCache) {
+				d.teamOps.EXPECT().
+					UpdateTeam(gomock.Any(), "tid", update, "id-1").
+					Return(&models.Team{ID: "id-1", DisplayName: "NewName"}, nil)
+			},
+			call: func(sut teamsOps) (*models.Team, error) {
+				return sut.UpdateTeam(context.Background(), "tid", update, "id-1")
+			},
+			check: func(t *testing.T, got *models.Team, err error) {
+				require.NoError(t, err)
+				require.NotNil(t, got)
+				require.Equal(t, "id-1", got.ID)
+				require.Equal(t, "NewName", got.DisplayName)
+			},
+		},
+		{
+			name: "Success - teamRef changed => invalidate old key + set new key",
+			setup: func(d sutDepsWithCache) {
+				d.teamOps.EXPECT().
+					UpdateTeam(gomock.Any(), "tid", update, "OldRef").
+					Return(&models.Team{ID: "id-2", DisplayName: "NewName"}, nil)
+
+				testutil.ExpectRunNow(d.runner)
+				gomock.InOrder(
+					d.cacher.EXPECT().Invalidate(cacher.NewTeamKey("OldRef")).Return(nil),
+					d.cacher.EXPECT().Set(cacher.NewTeamKey("NewName"), "id-2").Return(nil),
+				)
+			},
+			call: func(sut teamsOps) (*models.Team, error) {
+				return sut.UpdateTeam(context.Background(), "tid", update, "OldRef")
+			},
+			check: func(t *testing.T, got *models.Team, err error) {
+				require.NoError(t, err)
+				require.NotNil(t, got)
+				require.Equal(t, "id-2", got.ID)
+				require.Equal(t, "NewName", got.DisplayName)
+			},
+		},
+		{
+			name: "Success - teamRef changed but updated.DisplayName blank => only invalidate old key (no set)",
+			setup: func(d sutDepsWithCache) {
+				d.teamOps.EXPECT().
+					UpdateTeam(gomock.Any(), "tid", update, "OldRef").
+					Return(&models.Team{ID: "id-3", DisplayName: " "}, nil)
+
+				testutil.ExpectRunNow(d.runner)
+				d.cacher.EXPECT().Invalidate(cacher.NewTeamKey("OldRef")).Return(nil)
+			},
+			call: func(sut teamsOps) (*models.Team, error) {
+				return sut.UpdateTeam(context.Background(), "tid", update, "OldRef")
+			},
+			check: func(t *testing.T, got *models.Team, err error) {
+				require.NoError(t, err)
+				require.NotNil(t, got)
+				require.Equal(t, "id-3", got.ID)
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			sut, d := newSUTWithCache(t)
+			tc.setup(d)
+
+			got, err := tc.call(sut)
+			tc.check(t, got, err)
+		})
+	}
+}
+
+func TestOpsWithCache_Archive_Success_BlankTeamRef_NoInvalidate(t *testing.T) {
+	sut, d := newSUTWithCache(t)
+
+	d.teamOps.EXPECT().Archive(gomock.Any(), "tid", "", nil).Return(nil)
+	testutil.ExpectRunNow(d.runner)
+
+	require.NoError(t, sut.Archive(context.Background(), "tid", "", nil))
+}
+
+func TestOpsWithCache_DeleteTeam_Success_BlankTeamRef_NoInvalidate(t *testing.T) {
+	sut, d := newSUTWithCache(t)
+
+	d.teamOps.EXPECT().DeleteTeam(gomock.Any(), "tid", "").Return(nil)
+	testutil.ExpectRunNow(d.runner)
+
+	require.NoError(t, sut.DeleteTeam(context.Background(), "tid", ""))
+}
+
+func TestOpsWithCache_RemoveMember_Success_BlankUserRef_NoInvalidate(t *testing.T) {
+	sut, d := newSUTWithCache(t)
+
+	d.teamOps.EXPECT().RemoveMember(gomock.Any(), "tid", "mid", "").Return(nil)
+	testutil.ExpectRunNow(d.runner)
+
+	require.NoError(t, sut.RemoveMember(context.Background(), "tid", "mid", ""))
+}
+
+func TestOpsWithCache_GetTeamByID_Success_BlankDisplayName_NoSet(t *testing.T) {
+	sut, d := newSUTWithCache(t)
+
+	team := &models.Team{ID: "t1", DisplayName: " "}
+	d.teamOps.EXPECT().GetTeamByID(gomock.Any(), "id").Return(team, nil)
+
+	testutil.ExpectRunNow(d.runner)
+
+	got, err := sut.GetTeamByID(context.Background(), "id")
+	require.NoError(t, err)
+	require.Equal(t, team, got)
+}
+
+func TestOpsWithCache_CreateFromTemplate_Success_BlankDisplayName_NoSet(t *testing.T) {
+	sut, d := newSUTWithCache(t)
+
+	d.teamOps.EXPECT().
+		CreateFromTemplate(gomock.Any(), " ", "d", []string{"u1"}, nil, "", false).
+		Return("id", nil)
+
+	testutil.ExpectRunNow(d.runner)
+
+	id, err := sut.CreateFromTemplate(context.Background(), " ", "d", []string{"u1"}, nil, "", false)
+	require.NoError(t, err)
+	require.Equal(t, "id", id)
+}
+
+func TestOpsWithCache_ListMembers_Success_BlankTeamID_NoSet(t *testing.T) {
+	sut, d := newSUTWithCache(t)
+
+	members := []*models.Member{{ID: "m1", Email: "a@b.com"}}
+	d.teamOps.EXPECT().ListMembers(gomock.Any(), "").Return(members, nil)
+
+	testutil.ExpectRunNow(d.runner)
+
+	got, err := sut.ListMembers(context.Background(), "")
+	require.NoError(t, err)
+	require.Equal(t, members, got)
+}
