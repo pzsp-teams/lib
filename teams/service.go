@@ -241,3 +241,21 @@ func (s *service) UpdateMemberRoles(ctx context.Context, teamRef, userRef string
 	}
 	return updated, nil
 }
+
+func (s *service) UpdateTeam(ctx context.Context, teamRef string, update *models.TeamUpdate) (*models.Team, error) {
+	teamID, err := s.teamResolver.ResolveTeamRefToID(ctx, teamRef)
+	if err != nil {
+		return nil, sender.Wrap("UpdateTeam", err,
+			sender.NewParam(resources.TeamRef, teamRef),
+		)
+	}
+
+	updated, err := s.teamOps.UpdateTeam(ctx, teamID, update, teamRef)
+	if err != nil {
+		return nil, sender.Wrap("UpdateTeam", err,
+			sender.NewParam(resources.TeamRef, teamRef),
+		)
+	}
+
+	return updated, nil
+}
