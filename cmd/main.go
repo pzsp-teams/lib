@@ -523,7 +523,7 @@ func handleCreateTeamFromTemplate(client *lib.Client, args []string) {
 	}
 
 	ctx := context.TODO()
-	id, err := client.Teams.CreateFromTemplate(ctx, displayName, description, []string{"ddsouza@pzsp2z1teams.onmicrosoft.com"},[]string{"msuski@pzsp2z1teams.onmicrosoft.com"} , "private", true)
+	id, err := client.Teams.CreateFromTemplate(ctx, displayName, description, nil, nil, "public", true)
 	if err != nil {
 		fmt.Printf("Error creating team from template: %v\n", err)
 		os.Exit(1)
