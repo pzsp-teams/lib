@@ -8,7 +8,9 @@ import (
 	"strings"
 	"time"
 
+	abstractions "github.com/microsoft/kiota-abstractions-go"
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
+	graphteams "github.com/microsoftgraph/msgraph-sdk-go/teams"
 	"github.com/pzsp-teams/lib/internal/sender"
 )
 
@@ -203,4 +205,147 @@ func (t *teamAPI) addOwnerWithRetry(ctx context.Context, teamID, ownerID string)
 			}
 		}
 	}
+}
+
+func buildTeamFromTemplateBody(displayName, description, visibility, primaryOwner string) msmodels.Teamable {
+	body := msmodels.NewTeam()
+	body.SetDisplayName(&displayName)
+
+	if description != "" {
+		body.SetDescription(&description)
+	}
+
+	teamVisibility := msmodels.PUBLIC_TEAMVISIBILITYTYPE
+	if strings.EqualFold(strings.TrimSpace(visibility), "private") {
+		teamVisibility = msmodels.PRIVATE_TEAMVISIBILITYTYPE
+	}
+	body.SetVisibility(&teamVisibility)
+
+	first := "General"
+	body.SetFirstChannelName(&first)
+	body.SetAdditionalData(map[string]any{
+		templateBindKey: templateBindValue,
+	})
+
+	var convMembers []msmodels.ConversationMemberable
+	addToMembers(&convMembers, []string{primaryOwner}, []string{roleOwner})
+	body.SetMembers(convMembers)
+
+	return body
+}
+
+func (t *teamAPI) normalizeOwners(ctx context.Context, owners []string, includeMe bool) ([]string, *sender.RequestError) {
+	owners = filterTrimNonEmpty(owners)
+
+	if includeMe {
+		me, err := getMe(ctx, t.client, t.senderCfg)
+		if err != nil {
+			return nil, err
+		}
+		if me.GetId() != nil && strings.TrimSpace(*me.GetId()) != "" {
+			owners = append(owners, *me.GetId())
+		}
+	}
+
+	if len(owners) == 0 {
+		return nil, &sender.RequestError{Code: http.StatusBadRequest, Message: "at least one owner is required"}
+	}
+
+	return owners, nil
+}
+
+func validateCreateFromTemplate(displayName string) *sender.RequestError {
+	if displayName == "" {
+		return &sender.RequestError{Code: http.StatusBadRequest, Message: "displayName cannot be empty"}
+	}
+	return nil
+}
+
+func (t *teamAPI) postTeamAndExtractID(ctx context.Context, body msmodels.Teamable) (string, *sender.RequestError) {
+	var loc, contentLoc string
+
+	responseHandler := func(resp any, _ abstractions.ErrorMappings) (any, error) {
+		httpResp, ok := resp.(*http.Response)
+		if !ok || httpResp == nil {
+			return nil, nil
+		}
+		loc = httpResp.Header.Get("Location")
+		contentLoc = httpResp.Header.Get("Content-Location")
+		return nil, nil
+	}
+
+	handlerOpt := abstractions.NewRequestHandlerOption()
+	handlerOpt.SetResponseHandler(responseHandler)
+
+	reqCfg := &graphteams.TeamsRequestBuilderPostRequestConfiguration{
+		Options: []abstractions.RequestOption{handlerOpt},
+	}
+
+	call := func(_ context.Context) (sender.Response, error) {
+		return t.client.Teams().Post(ctx, body, reqCfg)
+	}
+	if _, err := sender.SendRequest(ctx, call, t.senderCfg); err != nil {
+		return "", err
+	}
+
+	teamID, ok := parseTeamIDFromHeaders(contentLoc, loc)
+	if !ok || strings.TrimSpace(teamID) == "" {
+		return "", &sender.RequestError{
+			Code:    http.StatusInternalServerError,
+			Message: "unable to parse team ID from response headers",
+		}
+	}
+
+	return teamID, nil
+}
+
+func (t *teamAPI) addPostCreateMembersAndOwners(ctx context.Context, teamID string, members, remainingOwners []string) *sender.RequestError {
+	members = filterTrimNonEmpty(members)
+	remainingOwners = filterTrimNonEmpty(remainingOwners)
+
+	if err := t.addMembersInBulk(ctx, teamID, members); err != nil {
+		return err
+	}
+
+	for _, ownerID := range remainingOwners {
+		if err := t.addOwnerWithRetry(ctx, teamID, ownerID); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func filterTrimNonEmpty(in []string) []string {
+	out := make([]string, 0, len(in))
+	for _, s := range in {
+		s = strings.TrimSpace(s)
+		if s == "" {
+			continue
+		}
+		out = append(out, s)
+	}
+	return out
+}
+
+func (t *teamAPI) addMembersInBulk(ctx context.Context, teamID string, members []string) *sender.RequestError {
+	if len(members) == 0 {
+		return nil
+	}
+	requestBody := graphteams.NewItemMembersAddPostRequestBody()
+	var membersToAdd []msmodels.ConversationMemberable
+	addToMembers(&membersToAdd, members, []string{})
+	requestBody.SetValues(membersToAdd)
+	addMembersCall := func(ctx context.Context) (sender.Response, error) {
+		return t.client.
+			Teams().
+			ByTeamId(teamID).
+			Members().
+			Add().
+			PostAsAddPostResponse(ctx, requestBody, nil)
+	}
+	if _, err := sender.SendRequest(ctx, addMembersCall, t.senderCfg); err != nil {
+		return err
+	}
+	return nil
 }
