@@ -168,3 +168,40 @@ func (t *teamAPI) waitTeamReady(ctx context.Context, teamID string, timeout time
 		}
 	}
 }
+
+func (t *teamAPI) addOwnerWithRetry(ctx context.Context, teamID, ownerID string) *sender.RequestError {
+	const (
+		totalTimeout = 90 * time.Second
+		maxBackoff   = 8 * time.Second
+	)
+	deadline := time.Now().Add(totalTimeout)
+	backoff := 500 * time.Millisecond
+
+	for {
+		_, err := t.AddMember(ctx, teamID, ownerID, []string{roleOwner})
+		if err == nil {
+			return nil
+		}
+		retryable := err.Code == http.StatusNotFound ||
+			err.Code == http.StatusTooManyRequests ||
+			err.Code == http.StatusServiceUnavailable
+
+		if !retryable || time.Now().After(deadline) {
+			return err
+		}
+
+		select {
+		case <-time.After(backoff):
+		case <-ctx.Done():
+			return &sender.RequestError{Code: http.StatusRequestTimeout, Message: ctx.Err().Error()}
+		}
+
+		if backoff < maxBackoff {
+			backoff *= 2
+			if backoff > maxBackoff {
+				backoff = maxBackoff
+			}
+		}
+	}
+}
+

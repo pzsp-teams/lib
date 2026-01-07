@@ -119,11 +119,13 @@ func (t *teamAPI) CreateFromTemplate(ctx context.Context, displayName, descripti
 	if len(remainingOwners) == 0 && len(members) == 0 {
 		return teamID, nil
 	}
+
 	if err := t.addMembersInBulk(ctx, teamID, members); err != nil {
 		return "", err
 	}
+	time.Sleep(5 * time.Second)
 	for _, ownerID := range remainingOwners {
-		if _, err := t.AddMember(ctx, teamID, ownerID, []string{roleOwner}); err != nil {
+		if err := t.addOwnerWithRetry(ctx, teamID, ownerID); err != nil {
 			return "", err
 		}
 	}
