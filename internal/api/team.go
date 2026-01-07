@@ -119,17 +119,20 @@ func (t *teamAPI) CreateFromTemplate(ctx context.Context, displayName, descripti
 	if len(remainingOwners) == 0 && len(members) == 0 {
 		return teamID, nil
 	}
-	if err := t.addMembersInBulk(ctx, teamID, members, remainingOwners); err != nil {
+	if err := t.addMembersInBulk(ctx, teamID, members); err != nil {
 		return "", err
 	}
-
+	for _, ownerID := range remainingOwners {
+		if _, err := t.AddMember(ctx, teamID, ownerID, []string{roleOwner}); err != nil {
+			return "", err
+		}
+	}
 	return teamID, nil
 }
 
-func (t *teamAPI) addMembersInBulk(ctx context.Context, teamID string, members, owners []string) *sender.RequestError {
+func (t *teamAPI) addMembersInBulk(ctx context.Context, teamID string, members []string) *sender.RequestError {
 	requestBody := graphteams.NewItemMembersAddPostRequestBody()
 	var membersToAdd []msmodels.ConversationMemberable
-	addToMembers(&membersToAdd, owners, []string{roleOwner})
 	addToMembers(&membersToAdd, members, []string{})
 	requestBody.SetValues(membersToAdd)
 	addMembersCall := func(ctx context.Context) (sender.Response, error) {
