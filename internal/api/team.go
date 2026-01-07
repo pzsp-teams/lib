@@ -131,6 +131,9 @@ func (t *teamAPI) CreateFromTemplate(ctx context.Context, displayName, descripti
 }
 
 func (t *teamAPI) addMembersInBulk(ctx context.Context, teamID string, members []string) *sender.RequestError {
+	if len(members) == 0 {
+		return nil
+	}
 	requestBody := graphteams.NewItemMembersAddPostRequestBody()
 	var membersToAdd []msmodels.ConversationMemberable
 	addToMembers(&membersToAdd, members, []string{})
