@@ -204,4 +204,3 @@ func (t *teamAPI) addOwnerWithRetry(ctx context.Context, teamID, ownerID string)
 		}
 	}
 }
-
