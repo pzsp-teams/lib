@@ -7,6 +7,7 @@ import (
 
 	sender "github.com/pzsp-teams/lib/internal/sender"
 	"github.com/pzsp-teams/lib/internal/testutil"
+	"github.com/pzsp-teams/lib/internal/util"
 	"github.com/pzsp-teams/lib/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -1300,4 +1301,113 @@ func TestService_Delete_OpsGenericError_IsWrapped(t *testing.T) {
 
 	err := svc.Delete(ctx, "T1")
 	_ = testutil.RequireWrapped(t, err)
+}
+
+func TestService_UpdateTeam(t *testing.T) {
+	type testCase struct {
+		name        string
+		teamRef     string
+		update      *models.TeamUpdate
+		setupMocks  func(d sutDeps)
+		wantID      string
+		wantReqCode int
+		wantAnyErr  bool
+	}
+
+	upd := &models.TeamUpdate{
+		DisplayName: util.Ptr("NewName"),
+	}
+
+	testCases := []testCase{
+		{
+			name:    "success resolves team id and returns updated team",
+			teamRef: "TeamX",
+			update:  upd,
+			setupMocks: func(d sutDeps) {
+				d.resolver.EXPECT().
+					ResolveTeamRefToID(gomock.Any(), "TeamX").
+					Return("team-id", nil).
+					Times(1)
+
+				d.ops.EXPECT().
+					UpdateTeam(gomock.Any(), "team-id", upd, "TeamX").
+					Return(&models.Team{ID: "team-id", DisplayName: "NewName"}, nil).
+					Times(1)
+			},
+			wantID: "team-id",
+		},
+		{
+			name:    "resolver error is wrapped (ops not called)",
+			teamRef: "TeamX",
+			update:  upd,
+			setupMocks: func(d sutDeps) {
+				d.resolver.EXPECT().
+					ResolveTeamRefToID(gomock.Any(), "TeamX").
+					Return("", errors.New("resolver boom")).
+					Times(1)
+
+				d.ops.EXPECT().
+					UpdateTeam(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+					Times(0)
+			},
+			wantAnyErr: true,
+		},
+		{
+			name:    "wraps ops request error (403)",
+			teamRef: "TeamX",
+			update:  upd,
+			setupMocks: func(d sutDeps) {
+				d.resolver.EXPECT().
+					ResolveTeamRefToID(gomock.Any(), "TeamX").
+					Return("team-id", nil).
+					Times(1)
+
+				d.ops.EXPECT().
+					UpdateTeam(gomock.Any(), "team-id", upd, "TeamX").
+					Return(nil, &sender.RequestError{Code: 403, Message: "nope"}).
+					Times(1)
+			},
+			wantReqCode: 403,
+		},
+		{
+			name:    "wraps ops generic error",
+			teamRef: "TeamX",
+			update:  upd,
+			setupMocks: func(d sutDeps) {
+				d.resolver.EXPECT().
+					ResolveTeamRefToID(gomock.Any(), "TeamX").
+					Return("team-id", nil).
+					Times(1)
+
+				d.ops.EXPECT().
+					UpdateTeam(gomock.Any(), "team-id", upd, "TeamX").
+					Return(nil, errors.New("ops boom")).
+					Times(1)
+			},
+			wantAnyErr: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			svc, ctx := newSUT(t, tc.setupMocks)
+
+			got, err := svc.UpdateTeam(ctx, tc.teamRef, tc.update)
+
+			if tc.wantReqCode != 0 {
+				require.Nil(t, got)
+				testutil.RequireReqErrCode(t, err, tc.wantReqCode)
+				return
+			}
+			if tc.wantAnyErr {
+				require.Nil(t, got)
+				_ = testutil.RequireWrapped(t, err)
+				return
+			}
+
+			require.NoError(t, err)
+			require.NotNil(t, got)
+			assert.Equal(t, tc.wantID, got.ID)
+		})
+	}
 }
