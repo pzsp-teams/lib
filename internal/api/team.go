@@ -116,9 +116,20 @@ func (t *teamAPI) CreateFromTemplate(ctx context.Context, displayName, descripti
 	if err := t.waitTeamReady(ctx, teamID, 30*time.Second); err != nil {
 		return "", err
 	}
+	if len(remainingOwners) == 0 && len(members) == 0 {
+		return teamID, nil
+	}
+	if err := t.addMembersInBulk(ctx, teamID, members, remainingOwners); err != nil {
+		return "", err
+	}
+
+	return teamID, nil
+}
+
+func (t *teamAPI) addMembersInBulk(ctx context.Context, teamID string, members, owners []string) *sender.RequestError {
 	requestBody := graphteams.NewItemMembersAddPostRequestBody()
 	var membersToAdd []msmodels.ConversationMemberable
-	addToMembers(&membersToAdd, remainingOwners, []string{roleOwner})
+	addToMembers(&membersToAdd, owners, []string{roleOwner})
 	addToMembers(&membersToAdd, members, []string{})
 	requestBody.SetValues(membersToAdd)
 	addMembersCall := func(ctx context.Context) (sender.Response, error) {
@@ -130,9 +141,9 @@ func (t *teamAPI) CreateFromTemplate(ctx context.Context, displayName, descripti
 			PostAsAddPostResponse(ctx, requestBody, nil)
 	}
 	if _, err := sender.SendRequest(ctx, addMembersCall, t.senderCfg); err != nil {
-		return "", err
+		return err
 	}
-	return teamID, nil
+	return nil
 }
 
 func (t *teamAPI) CreateViaGroup(ctx context.Context, displayName, mailNickname, visibility string) (string, *sender.RequestError) {
