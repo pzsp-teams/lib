@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"net/http"
 	"testing"
 
@@ -435,4 +436,170 @@ func TestParseTeamIDFromHeaders(t *testing.T) {
 			require.Equal(t, tt.wantID, got)
 		})
 	}
+}
+
+func TestFilterTrimNonEmpty(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		in   []string
+		want []string
+	}{
+		{
+			name: "nil -> empty slice",
+			in:   nil,
+			want: []string{},
+		},
+		{
+			name: "filters blanks and trims",
+			in:   []string{" a ", "", "   ", "\t", "b", "  c  "},
+			want: []string{"a", "b", "c"},
+		},
+		{
+			name: "all blanks -> empty",
+			in:   []string{"", " ", "\n", "\t"},
+			want: []string{},
+		},
+		{
+			name: "keeps order",
+			in:   []string{" z ", " y", "x "},
+			want: []string{"z", "y", "x"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := filterTrimNonEmpty(tt.in)
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestValidateCreateFromTemplate(t *testing.T) {
+	t.Parallel()
+
+	t.Run("empty -> bad request", func(t *testing.T) {
+		t.Parallel()
+
+		err := validateCreateFromTemplate("")
+		require.NotNil(t, err)
+		require.Equal(t, http.StatusBadRequest, err.Code)
+		require.Equal(t, "displayName cannot be empty", err.Message)
+	})
+
+	t.Run("non-empty -> ok", func(t *testing.T) {
+		t.Parallel()
+
+		err := validateCreateFromTemplate("Team A")
+		require.Nil(t, err)
+	})
+
+	t.Run("spaces only -> ok (current behavior)", func(t *testing.T) {
+		t.Parallel()
+
+		err := validateCreateFromTemplate("   ")
+		require.Nil(t, err)
+	})
+}
+
+func TestBuildTeamFromTemplateBody(t *testing.T) {
+	t.Parallel()
+
+	t.Run("private + description -> sets expected fields and primary owner", func(t *testing.T) {
+		t.Parallel()
+
+		body := buildTeamFromTemplateBody("Team A", "Desc", "private", "owner-id-1")
+		require.NotNil(t, body)
+
+		require.NotNil(t, body.GetDisplayName())
+		require.Equal(t, "Team A", *body.GetDisplayName())
+
+		require.NotNil(t, body.GetDescription())
+		require.Equal(t, "Desc", *body.GetDescription())
+
+		require.NotNil(t, body.GetVisibility())
+		require.Equal(t, msmodels.PRIVATE_TEAMVISIBILITYTYPE, *body.GetVisibility())
+
+		require.NotNil(t, body.GetFirstChannelName())
+		require.Equal(t, "General", *body.GetFirstChannelName())
+
+		ad := body.GetAdditionalData()
+		require.NotNil(t, ad)
+		require.Equal(t, templateBindValue, ad[templateBindKey])
+
+		members := body.GetMembers()
+		require.NotNil(t, members)
+		require.Len(t, members, 1)
+
+		m := members[0]
+		require.NotNil(t, m)
+		require.Equal(t, []string{roleOwner}, m.GetRoles())
+
+		mad := m.GetAdditionalData()
+		require.NotNil(t, mad)
+		require.Equal(t, "https://graph.microsoft.com/v1.0/users('owner-id-1')", mad[graphUserBindKey])
+	})
+
+	t.Run("public default + empty description -> description not set", func(t *testing.T) {
+		t.Parallel()
+
+		body := buildTeamFromTemplateBody("Team A", "", "PUBLIC", "owner-id-1")
+		require.NotNil(t, body)
+
+		require.NotNil(t, body.GetVisibility())
+		require.Equal(t, msmodels.PUBLIC_TEAMVISIBILITYTYPE, *body.GetVisibility())
+
+		require.Nil(t, body.GetDescription())
+	})
+}
+
+func TestTeamAPI_NormalizeOwners_WithoutIncludeMe(t *testing.T) {
+	t.Parallel()
+
+	t.Run("filters blanks and returns owners", func(t *testing.T) {
+		t.Parallel()
+
+		tapi := &teamAPI{}
+		got, err := tapi.normalizeOwners(context.Background(), []string{" a ", "", "  ", "b"}, false)
+
+		require.Nil(t, err)
+		require.Equal(t, []string{"a", "b"}, got)
+	})
+
+	t.Run("no owners -> bad request", func(t *testing.T) {
+		t.Parallel()
+
+		tapi := &teamAPI{}
+		got, err := tapi.normalizeOwners(context.Background(), []string{"", "   "}, false)
+
+		require.Nil(t, got)
+		require.NotNil(t, err)
+		require.Equal(t, http.StatusBadRequest, err.Code)
+		require.Equal(t, "at least one owner is required", err.Message)
+	})
+}
+
+func TestTeamAPI_AddMembersInBulk_Empty_NoOps(t *testing.T) {
+	t.Parallel()
+
+	tapi := &teamAPI{}
+	err := tapi.addMembersInBulk(context.Background(), "team-id", nil)
+	require.Nil(t, err)
+
+	err = tapi.addMembersInBulk(context.Background(), "team-id", []string{})
+	require.Nil(t, err)
+}
+
+func TestTeamAPI_AddPostCreateMembersAndOwners_NoOps(t *testing.T) {
+	t.Parallel()
+
+	tapi := &teamAPI{}
+	err := tapi.addPostCreateMembersAndOwners(context.Background(), "team-id", nil, nil)
+	require.Nil(t, err)
+
+	err = tapi.addPostCreateMembersAndOwners(context.Background(), "team-id", []string{"  "}, []string{"\t"})
+	require.Nil(t, err)
 }
