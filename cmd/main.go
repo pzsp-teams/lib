@@ -212,11 +212,42 @@ func main() {
 	case "print-all-channels":
 		handlePrintAllChannels(client)
 
+	case "search-messages":
+		if len(os.Args) < 5 {
+			fmt.Println("Usage: teams search-messages <team-name> <channel-name> <query> [top]")
+			os.Exit(1)
+		}
+		handleSearchMessages(client, os.Args[2:])
+
 	default:
 		fmt.Println("Unknown command:", cmd)
 		fmt.Println()
 		printUsage()
 		os.Exit(1)
+	}
+}
+
+func handleSearchMessages(client *lib.Client, args []string) {
+	teamName := args[0]
+	channelName := args[1]
+	query := args[2]
+	opts := &models.SearchMessagesOptions{
+		Query: query,
+	}
+	messages, err := client.Channels.SearchMessages(context.TODO(), teamName, channelName, opts)
+	if err != nil {
+		fmt.Printf("Error searching messages: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Printf("Search results in channel '%s':\n", channelName)
+	for _, msg := range messages {
+		fmt.Printf("\nID: %s\n", msg.ID)
+		fmt.Printf("From: %s\n", getMessageFrom(msg))
+		fmt.Printf("Created: %s\n", msg.CreatedDateTime.Format("2006-01-02 15:04:05"))
+		fmt.Printf("Content: %s\n", msg.Content)
+		if msg.ReplyCount > 0 {
+			fmt.Printf("Replies: %d\n", msg.ReplyCount)
+		}	
 	}
 }
 
@@ -492,7 +523,7 @@ func handleCreateTeamFromTemplate(client *lib.Client, args []string) {
 	}
 
 	ctx := context.TODO()
-	id, err := client.Teams.CreateFromTemplate(ctx, displayName, description, nil, nil, "private", true)
+	id, err := client.Teams.CreateFromTemplate(ctx, displayName, description, []string{"kmarsza@pzsp2z1teams.onmicrosoft.com"}, []string{"ddsouza@pzsp2z1teams.onmicrosoft.com"}, "public", true)
 	if err != nil {
 		fmt.Printf("Error creating team from template: %v\n", err)
 		os.Exit(1)
