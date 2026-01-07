@@ -44,31 +44,82 @@ func NewTeams(client *graph.GraphServiceClient, senderCfg *config.SenderConfig) 
 	return &teamAPI{client, senderCfg}
 }
 
-func (t *teamAPI) CreateFromTemplate(ctx context.Context, displayName, description string, owners, members []string, visibility string, includeMe bool) (string, *sender.RequestError) {
-	if strings.TrimSpace(displayName) == "" {
-		return "", &sender.RequestError{Code: http.StatusBadRequest, Message: "displayName cannot be empty"}
+func (t *teamAPI) CreateFromTemplate(
+	ctx context.Context,
+	displayName, description string,
+	owners, members []string,
+	visibility string,
+	includeMe bool,
+) (string, *sender.RequestError) {
+	displayName = strings.TrimSpace(displayName)
+	description = strings.TrimSpace(description)
+	visibility = strings.TrimSpace(visibility)
+
+	if err := validateCreateFromTemplate(displayName); err != nil {
+		return "", err
 	}
+
+	owners, err := t.normalizeOwners(ctx, owners, includeMe)
+	if err != nil {
+		return "", err
+	}
+
+	primaryOwner, remainingOwners := owners[0], owners[1:]
+	body := buildTeamFromTemplateBody(displayName, description, visibility, primaryOwner)
+
+	teamID, err := t.postTeamAndExtractID(ctx, body)
+	if err != nil {
+		return "", err
+	}
+
+	if err := t.waitTeamReady(ctx, teamID, 30*time.Second); err != nil {
+		return "", err
+	}
+
+	if err := t.addPostCreateMembersAndOwners(ctx, teamID, members, remainingOwners); err != nil {
+		return "", err
+	}
+
+	return teamID, nil
+}
+
+func validateCreateFromTemplate(displayName string) *sender.RequestError {
+	if displayName == "" {
+		return &sender.RequestError{Code: http.StatusBadRequest, Message: "displayName cannot be empty"}
+	}
+	return nil
+}
+
+func (t *teamAPI) normalizeOwners(ctx context.Context, owners []string, includeMe bool) ([]string, *sender.RequestError) {
+	owners = filterTrimNonEmpty(owners)
+
 	if includeMe {
 		me, err := getMe(ctx, t.client, t.senderCfg)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
-		if me.GetId() != nil {
+		if me.GetId() != nil && strings.TrimSpace(*me.GetId()) != "" {
 			owners = append(owners, *me.GetId())
 		}
 	}
+
 	if len(owners) == 0 {
-		return "", &sender.RequestError{Code: http.StatusBadRequest, Message: "at least one owner is required"}
+		return nil, &sender.RequestError{Code: http.StatusBadRequest, Message: "at least one owner is required"}
 	}
 
+	return owners, nil
+}
+
+func buildTeamFromTemplateBody(displayName, description, visibility, primaryOwner string) msmodels.Teamable {
 	body := msmodels.NewTeam()
 	body.SetDisplayName(&displayName)
-	if strings.TrimSpace(description) != "" {
+
+	if description != "" {
 		body.SetDescription(&description)
 	}
 
 	teamVisibility := msmodels.PUBLIC_TEAMVISIBILITYTYPE
-	if strings.ToLower(strings.TrimSpace(visibility)) == "private" {
+	if strings.EqualFold(strings.TrimSpace(visibility), "private") {
 		teamVisibility = msmodels.PRIVATE_TEAMVISIBILITYTYPE
 	}
 	body.SetVisibility(&teamVisibility)
@@ -79,13 +130,16 @@ func (t *teamAPI) CreateFromTemplate(ctx context.Context, displayName, descripti
 		templateBindKey: templateBindValue,
 	})
 
-	primaryOwner := owners[0]
-	remainingOwners := owners[1:]
 	var convMembers []msmodels.ConversationMemberable
 	addToMembers(&convMembers, []string{primaryOwner}, []string{roleOwner})
 	body.SetMembers(convMembers)
 
+	return body
+}
+
+func (t *teamAPI) postTeamAndExtractID(ctx context.Context, body msmodels.Teamable) (string, *sender.RequestError) {
 	var loc, contentLoc string
+
 	responseHandler := func(resp any, _ abstractions.ErrorMappings) (any, error) {
 		httpResp, ok := resp.(*http.Response)
 		if !ok || httpResp == nil {
@@ -109,27 +163,45 @@ func (t *teamAPI) CreateFromTemplate(ctx context.Context, displayName, descripti
 	if _, err := sender.SendRequest(ctx, call, t.senderCfg); err != nil {
 		return "", err
 	}
-	teamID, ok := parseTeamIDFromHeaders(contentLoc, loc)
-	if !ok || teamID == "" {
-		return "", &sender.RequestError{Code: http.StatusInternalServerError, Message: "unable to parse team ID from response headers"}
-	}
-	if err := t.waitTeamReady(ctx, teamID, 30*time.Second); err != nil {
-		return "", err
-	}
-	if len(remainingOwners) == 0 && len(members) == 0 {
-		return teamID, nil
-	}
 
-	if err := t.addMembersInBulk(ctx, teamID, members); err != nil {
-		return "", err
-	}
-	time.Sleep(5 * time.Second)
-	for _, ownerID := range remainingOwners {
-		if err := t.addOwnerWithRetry(ctx, teamID, ownerID); err != nil {
-			return "", err
+	teamID, ok := parseTeamIDFromHeaders(contentLoc, loc)
+	if !ok || strings.TrimSpace(teamID) == "" {
+		return "", &sender.RequestError{
+			Code:    http.StatusInternalServerError,
+			Message: "unable to parse team ID from response headers",
 		}
 	}
+
 	return teamID, nil
+}
+
+func (t *teamAPI) addPostCreateMembersAndOwners(ctx context.Context, teamID string, members, remainingOwners []string) *sender.RequestError {
+	members = filterTrimNonEmpty(members)
+	remainingOwners = filterTrimNonEmpty(remainingOwners)
+
+	if err := t.addMembersInBulk(ctx, teamID, members); err != nil {
+		return err
+	}
+
+	for _, ownerID := range remainingOwners {
+		if err := t.addOwnerWithRetry(ctx, teamID, ownerID); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func filterTrimNonEmpty(in []string) []string {
+	out := make([]string, 0, len(in))
+	for _, s := range in {
+		s = strings.TrimSpace(s)
+		if s == "" {
+			continue
+		}
+		out = append(out, s)
+	}
+	return out
 }
 
 func (t *teamAPI) addMembersInBulk(ctx context.Context, teamID string, members []string) *sender.RequestError {
