@@ -61,4 +61,7 @@ type Service interface {
 
 	// UpdateMemberRoles updates the roles of a team member (e.g., promote to owner or demote to member).
 	UpdateMemberRoles(ctx context.Context, teamRef, userRef string, isOwner bool) (*models.Member, error)
+
+	// UpdateTeam applies updates to a team using the provided TeamUpdate object.
+	UpdateTeam(ctx context.Context, teamRef string, update *models.TeamUpdate) (*models.Team, error)
 }
