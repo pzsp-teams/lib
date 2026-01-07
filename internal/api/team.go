@@ -79,12 +79,12 @@ func (t *teamAPI) CreateFromTemplate(ctx context.Context, displayName, descripti
 		templateBindKey: templateBindValue,
 	})
 
+	primaryOwner := owners[0]
+	remainingOwners := owners[1:]
 	var convMembers []msmodels.ConversationMemberable
-	addToMembers(&convMembers, owners, []string{roleOwner})
-	addToMembers(&convMembers, members, []string{})
-	if len(convMembers) > 0 {
-		body.SetMembers(convMembers)
-	}
+	addToMembers(&convMembers, []string{primaryOwner}, []string{roleOwner})
+	body.SetMembers(convMembers)
+
 	var loc, contentLoc string
 	responseHandler := func(resp any, _ abstractions.ErrorMappings) (any, error) {
 		httpResp, ok := resp.(*http.Response)
@@ -114,6 +114,22 @@ func (t *teamAPI) CreateFromTemplate(ctx context.Context, displayName, descripti
 		return "", &sender.RequestError{Code: http.StatusInternalServerError, Message: "unable to parse team ID from response headers"}
 	}
 	if err := t.waitTeamReady(ctx, teamID, 30*time.Second); err != nil {
+		return "", err
+	}
+	requestBody := graphteams.NewItemMembersAddPostRequestBody()
+	var membersToAdd []msmodels.ConversationMemberable
+	addToMembers(&membersToAdd, remainingOwners, []string{roleOwner})
+	addToMembers(&membersToAdd, members, []string{})
+	requestBody.SetValues(membersToAdd)
+	addMembersCall := func(ctx context.Context) (sender.Response, error) {
+		return t.client.
+			Teams().
+			ByTeamId(teamID).
+			Members().
+			Add().
+			PostAsAddPostResponse(ctx, requestBody, nil)
+	}
+	if _, err := sender.SendRequest(ctx, addMembersCall, t.senderCfg); err != nil {
 		return "", err
 	}
 	return teamID, nil
