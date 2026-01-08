@@ -115,6 +115,12 @@ Because the cache might run background goroutines to keep data fresh, you **must
 defer lib.Close()
 ```
 
+## 📚 Documentation
+
+Full API reference, architecture details, and configuration guides are available here:
+
+👉 [Read the Documentation](https://pzsp-teams.github.io/lib/)
+
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
