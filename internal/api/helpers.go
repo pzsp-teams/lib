@@ -263,6 +263,7 @@ func validateCreateFromTemplate(displayName string) *sender.RequestError {
 	return nil
 }
 
+
 func (t *teamAPI) postTeamAndExtractID(ctx context.Context, body msmodels.Teamable) (string, *sender.RequestError) {
 	hdrOpt := nethttplibrary.NewHeadersInspectionOptions()
 	hdrOpt.InspectResponseHeaders = true
