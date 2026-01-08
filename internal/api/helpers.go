@@ -262,45 +262,48 @@ func validateCreateFromTemplate(displayName string) *sender.RequestError {
 	return nil
 }
 
-
 func (t *teamAPI) postTeamAndExtractID(ctx context.Context, body msmodels.Teamable) (string, *sender.RequestError) {
-    hdrOpt := nethttplibrary.NewHeadersInspectionOptions()
-    hdrOpt.InspectResponseHeaders = true
+	hdrOpt := nethttplibrary.NewHeadersInspectionOptions()
+	hdrOpt.InspectResponseHeaders = true
 
-    reqCfg := &graphteams.TeamsRequestBuilderPostRequestConfiguration{
-        Options: []abstractions.RequestOption{hdrOpt},
-    }
+	reqCfg := &graphteams.TeamsRequestBuilderPostRequestConfiguration{
+		Options: []abstractions.RequestOption{hdrOpt},
+	}
 
-    call := func(ctx context.Context) (sender.Response, error) {
-        return t.client.Teams().Post(ctx, body, reqCfg)
-    }
+	call := func(ctx context.Context) (sender.Response, error) {
+		return t.client.Teams().Post(ctx, body, reqCfg)
+	}
 
-    if _, err := sender.SendRequest(ctx, call, t.senderCfg); err != nil {
-        return "", err
-    }
+	if _, err := sender.SendRequest(ctx, call, t.senderCfg); err != nil {
+		return "", err
+	}
 
-    loc := getHeaderValue(hdrOpt.GetResponseHeaders(), "location")
-    contentLoc := getHeaderValue(hdrOpt.GetResponseHeaders(), "content-location")
+	loc := getHeaderValue(hdrOpt.GetResponseHeaders(), "location")
+	contentLoc := getHeaderValue(hdrOpt.GetResponseHeaders(), "content-location")
 
-    teamID, ok := parseTeamIDFromHeaders(contentLoc, loc)
-    if !ok || strings.TrimSpace(teamID) == "" {
-        return "", &sender.RequestError{
-            Code:    http.StatusInternalServerError,
-            Message: "unable to parse team ID from response headers",
-        }
-    }
-    return teamID, nil
+	teamID, ok := parseTeamIDFromHeaders(contentLoc, loc)
+	if !ok || strings.TrimSpace(teamID) == "" {
+		return "", &sender.RequestError{
+			Code:    http.StatusInternalServerError,
+			Message: "unable to parse team ID from response headers",
+		}
+	}
+	return teamID, nil
 }
 
 func getHeaderValue(h any, key string) string {
-    if h == nil {
-        return ""
-    }
+	if h == nil {
+		return ""
+	}
 	headers, ok := h.(*abstractions.ResponseHeaders)
 	if !ok || headers == nil {
 		return ""
 	}
-	return headers.Get(key)[0]
+	vals := headers.Get(key)
+	if len(vals) == 0 {
+		return ""
+	}
+	return vals[0]
 }
 
 func (t *teamAPI) addPostCreateMembersAndOwners(ctx context.Context, teamID string, members, remainingOwners []string) *sender.RequestError {
