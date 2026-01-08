@@ -15,6 +15,7 @@ import (
 
 	search "github.com/microsoftgraph/msgraph-sdk-go/search"
 	sender "github.com/pzsp-teams/lib/internal/sender"
+	models "github.com/pzsp-teams/lib/models"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -43,16 +44,16 @@ func (m *MockSearchAPI) EXPECT() *MockSearchAPIMockRecorder {
 }
 
 // SearchChatMessages mocks base method.
-func (m *MockSearchAPI) SearchChatMessages(ctx context.Context, queryString string, from, size *int32) (search.QueryPostResponseable, *sender.RequestError) {
+func (m *MockSearchAPI) SearchChatMessages(ctx context.Context, searchRequest *models.SearchMessagesOptions) (search.QueryPostResponseable, *sender.RequestError) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SearchChatMessages", ctx, queryString, from, size)
+	ret := m.ctrl.Call(m, "SearchChatMessages", ctx, searchRequest)
 	ret0, _ := ret[0].(search.QueryPostResponseable)
 	ret1, _ := ret[1].(*sender.RequestError)
 	return ret0, ret1
 }
 
 // SearchChatMessages indicates an expected call of SearchChatMessages.
-func (mr *MockSearchAPIMockRecorder) SearchChatMessages(ctx, queryString, from, size any) *gomock.Call {
+func (mr *MockSearchAPIMockRecorder) SearchChatMessages(ctx, searchRequest any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SearchChatMessages", reflect.TypeOf((*MockSearchAPI)(nil).SearchChatMessages), ctx, queryString, from, size)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SearchChatMessages", reflect.TypeOf((*MockSearchAPI)(nil).SearchChatMessages), ctx, searchRequest)
 }
