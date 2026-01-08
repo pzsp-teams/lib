@@ -3,13 +3,13 @@ package api
 import (
 	"context"
 	"fmt"
-	"io"
 	"net/http"
 	"regexp"
 	"strings"
 	"time"
 
 	abstractions "github.com/microsoft/kiota-abstractions-go"
+	nethttplibrary "github.com/microsoft/kiota-http-go"
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
 	graphteams "github.com/microsoftgraph/msgraph-sdk-go/teams"
 	"github.com/pzsp-teams/lib/internal/sender"
@@ -262,56 +262,45 @@ func validateCreateFromTemplate(displayName string) *sender.RequestError {
 	return nil
 }
 
+
 func (t *teamAPI) postTeamAndExtractID(ctx context.Context, body msmodels.Teamable) (string, *sender.RequestError) {
-	var loc, contentLoc string
+    hdrOpt := nethttplibrary.NewHeadersInspectionOptions()
+    hdrOpt.InspectResponseHeaders = true
 
-	responseHandler := func(resp any, _ abstractions.ErrorMappings) (any, error) {
-		httpResp, ok := resp.(*http.Response)
-		if !ok || httpResp == nil {
-			return nil, nil
-		}
-		if httpResp.StatusCode >= 400 {
-			msg := httpResp.Status
-			if httpResp.Body != nil {
-				b, _ := io.ReadAll(httpResp.Body)
-				_ = httpResp.Body.Close()
-				if s := strings.TrimSpace(string(b)); s != "" {
-					msg = s
-				}
-			}
-			return nil, &sender.RequestError{
-				Code:    httpResp.StatusCode,
-				Message: msg,
-			}
-		}
-		loc = httpResp.Header.Get("Location")
-		contentLoc = httpResp.Header.Get("Content-Location")
-		return nil, nil
+    reqCfg := &graphteams.TeamsRequestBuilderPostRequestConfiguration{
+        Options: []abstractions.RequestOption{hdrOpt},
+    }
+
+    call := func(ctx context.Context) (sender.Response, error) {
+        return t.client.Teams().Post(ctx, body, reqCfg)
+    }
+
+    if _, err := sender.SendRequest(ctx, call, t.senderCfg); err != nil {
+        return "", err
+    }
+
+    loc := getHeaderValue(hdrOpt.GetResponseHeaders(), "location")
+    contentLoc := getHeaderValue(hdrOpt.GetResponseHeaders(), "content-location")
+
+    teamID, ok := parseTeamIDFromHeaders(contentLoc, loc)
+    if !ok || strings.TrimSpace(teamID) == "" {
+        return "", &sender.RequestError{
+            Code:    http.StatusInternalServerError,
+            Message: "unable to parse team ID from response headers",
+        }
+    }
+    return teamID, nil
+}
+
+func getHeaderValue(h any, key string) string {
+    if h == nil {
+        return ""
+    }
+	headers, ok := h.(*abstractions.ResponseHeaders)
+	if !ok || headers == nil {
+		return ""
 	}
-
-	handlerOpt := abstractions.NewRequestHandlerOption()
-	handlerOpt.SetResponseHandler(responseHandler)
-
-	reqCfg := &graphteams.TeamsRequestBuilderPostRequestConfiguration{
-		Options: []abstractions.RequestOption{handlerOpt},
-	}
-
-	call := func(_ context.Context) (sender.Response, error) {
-		return t.client.Teams().Post(ctx, body, reqCfg)
-	}
-	if _, err := sender.SendRequest(ctx, call, t.senderCfg); err != nil {
-		return "", err
-	}
-
-	teamID, ok := parseTeamIDFromHeaders(contentLoc, loc)
-	if !ok || strings.TrimSpace(teamID) == "" {
-		return "", &sender.RequestError{
-			Code:    http.StatusInternalServerError,
-			Message: "unable to parse team ID from response headers",
-		}
-	}
-
-	return teamID, nil
+	return headers.Get(key)[0]
 }
 
 func (t *teamAPI) addPostCreateMembersAndOwners(ctx context.Context, teamID string, members, remainingOwners []string) *sender.RequestError {
