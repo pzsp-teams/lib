@@ -47,11 +47,6 @@ func printUsage() {
 }
 
 func main() {
-	if len(os.Args) < 2 {
-		printUsage()
-		os.Exit(1)
-	}
-	cmd := os.Args[1]
 	authConfig := loadAuthConfig()
 	senderConfig := newSenderConfig()
 	cacheConfig := config.CacheConfig{
@@ -64,167 +59,169 @@ func main() {
 		os.Exit(1)
 	}
 	defer lib.Close()
-	switch cmd {
-	case "create-channel":
-		if len(os.Args) < 4 {
-			fmt.Println("Usage: teams create-channel <team-name> <channel-name>")
-			os.Exit(1)
-		}
-		handleCreateChannel(client, os.Args[2:])
+	// switch cmd {
+	// case "create-channel":
+	// 	if len(os.Args) < 4 {
+	// 		fmt.Println("Usage: teams create-channel <team-name> <channel-name>")
+	// 		os.Exit(1)
+	// 	}
+	// 	handleCreateChannel(client, os.Args[2:])
 
-	case "create-private-channel":
-		if len(os.Args) < 5 {
-			fmt.Println("Usage: teams create-private-channel <team-name> <channel-name> <members> [owners]")
-			fmt.Println("       members / owners: comma-separated user ids or emails")
-			os.Exit(1)
-		}
-		handleCreatePrivateChannel(client, os.Args[2:])
+	// case "create-private-channel":
+	// 	if len(os.Args) < 5 {
+	// 		fmt.Println("Usage: teams create-private-channel <team-name> <channel-name> <members> [owners]")
+	// 		fmt.Println("       members / owners: comma-separated user ids or emails")
+	// 		os.Exit(1)
+	// 	}
+	// 	handleCreatePrivateChannel(client, os.Args[2:])
 
-	case "list-channels":
-		if len(os.Args) < 3 {
-			fmt.Println("Usage: teams list-channels <team-name>")
-			os.Exit(1)
-		}
-		handleListChannels(client, os.Args[2:])
+	// case "list-channels":
+	// 	if len(os.Args) < 3 {
+	// 		fmt.Println("Usage: teams list-channels <team-name>")
+	// 		os.Exit(1)
+	// 	}
+	// 	handleListChannels(client, os.Args[2:])
 
-	case "get-channel":
-		if len(os.Args) < 4 {
-			fmt.Println("Usage: teams get-channel <team-name> <channel-name>")
-			os.Exit(1)
-		}
-		handleGetChannel(client, os.Args[2:])
+	// case "get-channel":
+	// 	if len(os.Args) < 4 {
+	// 		fmt.Println("Usage: teams get-channel <team-name> <channel-name>")
+	// 		os.Exit(1)
+	// 	}
+	// 	handleGetChannel(client, os.Args[2:])
 
-	case "delete-channel":
-		if len(os.Args) < 4 {
-			fmt.Println("Usage: teams delete-channel <team-name> <channel-name>")
-			os.Exit(1)
-		}
-		handleDeleteChannel(client, os.Args[2:])
+	// case "delete-channel":
+	// 	if len(os.Args) < 4 {
+	// 		fmt.Println("Usage: teams delete-channel <team-name> <channel-name>")
+	// 		os.Exit(1)
+	// 	}
+	// 	handleDeleteChannel(client, os.Args[2:])
 
-	case "send-message":
-		if len(os.Args) < 5 {
-			fmt.Println("Usage: teams send-message <team-name> <channel-name> <message> [content-type=text|html default=html]")
-			os.Exit(1)
-		}
-		handleSendMessage(client, os.Args[2:])
+	// case "send-message":
+	// 	if len(os.Args) < 5 {
+	// 		fmt.Println("Usage: teams send-message <team-name> <channel-name> <message> [content-type=text|html default=html]")
+	// 		os.Exit(1)
+	// 	}
+	// 	handleSendMessage(client, os.Args[2:])
 
-	case "list-messages":
-		if len(os.Args) < 4 {
-			fmt.Println("Usage: teams list-messages <team-name> <channel-name> [top]")
-			os.Exit(1)
-		}
-		handleListMessages(client, os.Args[2:])
+	// case "list-messages":
+	// 	if len(os.Args) < 4 {
+	// 		fmt.Println("Usage: teams list-messages <team-name> <channel-name> [top]")
+	// 		os.Exit(1)
+	// 	}
+	// 	handleListMessages(client, os.Args[2:])
 
-	case "list-replies":
-		if len(os.Args) < 5 {
-			fmt.Println("Usage: teams list-replies <team-name> <channel-name> <message-id> [top]")
-			os.Exit(1)
-		}
-		handleListReplies(client, os.Args[2:])
+	// case "list-replies":
+	// 	if len(os.Args) < 5 {
+	// 		fmt.Println("Usage: teams list-replies <team-name> <channel-name> <message-id> [top]")
+	// 		os.Exit(1)
+	// 	}
+	// 	handleListReplies(client, os.Args[2:])
 
-	case "list-my-teams":
-		handleListMyTeams(client)
+	// case "list-my-teams":
+	// 	handleListMyTeams(client)
 
-	case "get-team":
-		if len(os.Args) < 3 {
-			fmt.Println("Usage: teams get-team <team-name>")
-			os.Exit(1)
-		}
-		handleGetTeam(client, os.Args[2:])
+	// case "get-team":
+	// 	if len(os.Args) < 3 {
+	// 		fmt.Println("Usage: teams get-team <team-name>")
+	// 		os.Exit(1)
+	// 	}
+	// 	handleGetTeam(client, os.Args[2:])
 
-	case "create-team":
-		if len(os.Args) < 3 {
-			fmt.Println("Usage: teams create-team <display-name>")
-			os.Exit(1)
-		}
-		handleCreateTeam(client, os.Args[2:])
+	// case "create-team":
+	// 	if len(os.Args) < 3 {
+	// 		fmt.Println("Usage: teams create-team <display-name>")
+	// 		os.Exit(1)
+	// 	}
+	// 	handleCreateTeam(client, os.Args[2:])
 
-	case "create-team-from-template":
-		if len(os.Args) < 3 {
-			fmt.Println("Usage: teams create-team-from-template <display-name> <description...>")
-			os.Exit(1)
-		}
-		handleCreateTeamFromTemplate(client, os.Args[2:])
+	// case "create-team-from-template":
+	// 	if len(os.Args) < 3 {
+	// 		fmt.Println("Usage: teams create-team-from-template <display-name> <description...>")
+	// 		os.Exit(1)
+	// 	}
+	// 	handleCreateTeamFromTemplate(client, os.Args[2:])
 
-	case "archive-team":
-		if len(os.Args) < 3 {
-			fmt.Println("Usage: teams archive-team <team-name> [spo-readonly=true|false]")
-			os.Exit(1)
-		}
-		handleArchiveTeam(client, os.Args[2:])
+	// case "archive-team":
+	// 	if len(os.Args) < 3 {
+	// 		fmt.Println("Usage: teams archive-team <team-name> [spo-readonly=true|false]")
+	// 		os.Exit(1)
+	// 	}
+	// 	handleArchiveTeam(client, os.Args[2:])
 
-	case "unarchive-team":
-		if len(os.Args) < 3 {
-			fmt.Println("Usage: teams unarchive-team <team-name>")
-			os.Exit(1)
-		}
-		handleUnarchiveTeam(client, os.Args[2:])
+	// case "unarchive-team":
+	// 	if len(os.Args) < 3 {
+	// 		fmt.Println("Usage: teams unarchive-team <team-name>")
+	// 		os.Exit(1)
+	// 	}
+	// 	handleUnarchiveTeam(client, os.Args[2:])
 
-	case "delete-team":
-		if len(os.Args) < 3 {
-			fmt.Println("Usage: teams delete-team <team-name>")
-			os.Exit(1)
-		}
-		handleDeleteTeam(client, os.Args[2:])
+	// case "delete-team":
+	// 	if len(os.Args) < 3 {
+	// 		fmt.Println("Usage: teams delete-team <team-name>")
+	// 		os.Exit(1)
+	// 	}
+	// 	handleDeleteTeam(client, os.Args[2:])
 
-	case "restore-team":
-		if len(os.Args) < 3 {
-			fmt.Println("Usage: teams restore-team <deleted-group-id>")
-			os.Exit(1)
-		}
-		handleRestoreTeam(client, os.Args[2:])
+	// case "restore-team":
+	// 	if len(os.Args) < 3 {
+	// 		fmt.Println("Usage: teams restore-team <deleted-group-id>")
+	// 		os.Exit(1)
+	// 	}
+	// 	handleRestoreTeam(client, os.Args[2:])
 
-	case "list-all-messages":
-		if len(os.Args) < 3 {
-			fmt.Println("Usage: teams list-all-messages <team-name> [start-time] [end-time] [top]")
-			os.Exit(1)
-		}
-		handleListAllMessages(client, os.Args[2:])
+	// case "list-all-messages":
+	// 	if len(os.Args) < 3 {
+	// 		fmt.Println("Usage: teams list-all-messages <team-name> [start-time] [end-time] [top]")
+	// 		os.Exit(1)
+	// 	}
+	// 	handleListAllMessages(client, os.Args[2:])
 
-	case "list-members":
-		if len(os.Args) < 4 {
-			fmt.Println("Usage: teams list-members <team-name> <channel-name>")
-			os.Exit(1)
-		}
-		handleListMembers(client, os.Args[2:])
+	// case "list-members":
+	// 	if len(os.Args) < 4 {
+	// 		fmt.Println("Usage: teams list-members <team-name> <channel-name>")
+	// 		os.Exit(1)
+	// 	}
+	// 	handleListMembers(client, os.Args[2:])
 
-	case "add-member":
-		if len(os.Args) < 5 {
-			fmt.Println("Usage: teams add-member <team-name> <channel-name> <user-ref> [owner=true|false]")
-			os.Exit(1)
-		}
-		handleAddMember(client, os.Args[2:])
+	// case "add-member":
+	// 	if len(os.Args) < 5 {
+	// 		fmt.Println("Usage: teams add-member <team-name> <channel-name> <user-ref> [owner=true|false]")
+	// 		os.Exit(1)
+	// 	}
+	// 	handleAddMember(client, os.Args[2:])
 
-	case "update-member-role":
-		if len(os.Args) < 6 {
-			fmt.Println("Usage: teams update-member-role <team-name> <channel-name> <user-ref> <owner=true|false>")
-			os.Exit(1)
-		}
-		handleUpdateMemberRole(client, os.Args[2:])
+	// case "update-member-role":
+	// 	if len(os.Args) < 6 {
+	// 		fmt.Println("Usage: teams update-member-role <team-name> <channel-name> <user-ref> <owner=true|false>")
+	// 		os.Exit(1)
+	// 	}
+	// 	handleUpdateMemberRole(client, os.Args[2:])
 
-	case "remove-member":
-		if len(os.Args) < 5 {
-			fmt.Println("Usage: teams remove-member <team-name> <channel-name> <user-ref>")
-			os.Exit(1)
-		}
-		handleRemoveMember(client, os.Args[2:])
+	// case "remove-member":
+	// 	if len(os.Args) < 5 {
+	// 		fmt.Println("Usage: teams remove-member <team-name> <channel-name> <user-ref>")
+	// 		os.Exit(1)
+	// 	}
+	// 	handleRemoveMember(client, os.Args[2:])
 
-	case "print-all-channels":
-		handlePrintAllChannels(client)
+	// case "print-all-channels":
+	// 	handlePrintAllChannels(client)
 
-	case "search-messages":
-		if len(os.Args) < 5 {
-			fmt.Println("Usage: teams search-messages <team-name> <channel-name> <query> [top]")
-			os.Exit(1)
-		}
-		handleSearchMessages(client, os.Args[2:])
+	// case "search-messages":
+	// 	if len(os.Args) < 5 {
+	// 		fmt.Println("Usage: teams search-messages <team-name> <channel-name> <query> [top]")
+	// 		os.Exit(1)
+	// 	}
+	// 	handleSearchMessages(client, os.Args[2:])
 
-	default:
-		fmt.Println("Unknown command:", cmd)
-		fmt.Println()
-		printUsage()
-		os.Exit(1)
-	}
+	// default:
+	// 	fmt.Println("Unknown command:", cmd)
+	// 	fmt.Println()
+	// 	printUsage()
+	// 	os.Exit(1)
+	// }
+	args := []string{"pzsp2z1teams", "General", `from:"kmarsza@pzsp2z1teams.onmicrosoft.com"`}
+	handleSearchMessages(client, args)
 }
 
 func handleSearchMessages(client *lib.Client, args []string) {
@@ -233,6 +230,7 @@ func handleSearchMessages(client *lib.Client, args []string) {
 	query := args[2]
 	opts := &models.SearchMessagesOptions{
 		Query: query,
+		// From: util.Ptr("ddsouza@pzsp2z1teams.onmicrosoft.com"),
 	}
 	messages, err := client.Channels.SearchMessages(context.TODO(), teamName, channelName, opts)
 	if err != nil {

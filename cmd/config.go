@@ -13,7 +13,7 @@ func newSenderConfig() *config.SenderConfig {
 	return &config.SenderConfig{
 		MaxRetries:     3,
 		NextRetryDelay: 2,
-		Timeout:        10,
+		Timeout:        120,
 	}
 }
 
