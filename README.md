@@ -124,3 +124,7 @@ Full API reference, architecture details, and configuration guides are available
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Ports
+
+This library is also available in [Python](https://github.com/pzsp-teams/lib-python)
