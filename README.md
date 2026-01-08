@@ -41,7 +41,7 @@ Many methods accept a `_Ref` argument. This allows you to pass:
 Full example usage is showcased [HERE](https://github.com/pzsp-teams/lib/tree/example-cmd-usage/cmd)
 Here is a simple example of how to initialize the client and list the current user's teams.
 
-### Client init
+### 1. Client init
 
 ```go
 import (
