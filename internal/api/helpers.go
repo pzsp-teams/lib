@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"regexp"
 	"strings"
@@ -268,6 +269,20 @@ func (t *teamAPI) postTeamAndExtractID(ctx context.Context, body msmodels.Teamab
 		httpResp, ok := resp.(*http.Response)
 		if !ok || httpResp == nil {
 			return nil, nil
+		}
+		if httpResp.StatusCode >= 400 {
+			msg := httpResp.Status
+			if httpResp.Body != nil {
+				b, _ := io.ReadAll(httpResp.Body)
+				_ = httpResp.Body.Close()
+				if s := strings.TrimSpace(string(b)); s != "" {
+					msg = s
+				}
+			}
+			return nil, &sender.RequestError{
+				Code:    httpResp.StatusCode,
+				Message: msg,
+			}
 		}
 		loc = httpResp.Header.Get("Location")
 		contentLoc = httpResp.Header.Get("Content-Location")
