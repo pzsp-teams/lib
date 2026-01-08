@@ -1,8 +1,6 @@
 package channels
 
 import (
-	"strings"
-
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
 	graphsearch "github.com/microsoftgraph/msgraph-sdk-go/search"
 )
@@ -23,10 +21,11 @@ func extractChatMessages(resp graphsearch.QueryPostResponseable) []msmodels.Chat
 				continue
 			}
 			for _, hit := range hc.GetHits() {
-				if hit == nil || hit.GetResource() == nil {
+				resource := hit.GetResource()
+				if hit == nil || resource == nil {
 					continue
 				}
-				if msg, ok := hit.GetResource().(msmodels.ChatMessageable); ok {
+				if msg, ok := resource.(msmodels.ChatMessageable); ok {
 					out = append(out, msg)
 				}
 			}
@@ -34,35 +33,4 @@ func extractChatMessages(resp graphsearch.QueryPostResponseable) []msmodels.Chat
 	}
 
 	return out
-}
-
-func isFromChannel(msg msmodels.ChatMessageable, teamID, channelID string) bool {
-	if msg == nil {
-		return false
-	}
-	ci := msg.GetChannelIdentity()
-	if ci == nil {
-		return false
-	}
-	tid := ci.GetTeamId()
-	cid := ci.GetChannelId()
-	return tid != nil && cid != nil && *tid == teamID && *cid == channelID
-}
-
-func isAuthoredBy(msg msmodels.ChatMessageable, userID string) bool {
-	if msg == nil {
-		return false
-	}
-	from := msg.GetFrom()
-	if from == nil || from.GetUser() == nil || from.GetUser().GetId() == nil {
-		return false
-	}
-	return *from.GetUser().GetId() == userID
-}
-
-func isSystemEvent(msg msmodels.ChatMessageable) bool {
-	if msg == nil || msg.GetMessageType() == nil {
-		return false
-	}
-	return strings.EqualFold(strings.TrimSpace((msg.GetMessageType()).String()), "systemEventMessage")
 }

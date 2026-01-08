@@ -271,11 +271,11 @@ func (o *ops) SearchMessagesInChannel(ctx context.Context, teamID, channelID str
 	if o.searchAPI == nil {
 		return nil, errors.New("SearchAPI is not configured")
 	}
-	if opts == nil || opts.Query == "" {
+	if opts == nil {
 		return nil, errors.New("missing opts.Query")
 	}
 
-	resp, requestErr := o.searchAPI.SearchChatMessages(ctx, opts.Query, opts.From, opts.Size)
+	resp, requestErr := o.searchAPI.SearchChatMessages(ctx, opts)
 	if requestErr != nil {
 		return nil, snd.MapError(requestErr,
 			snd.WithResource(resources.Team, teamID),
@@ -284,19 +284,5 @@ func (o *ops) SearchMessagesInChannel(ctx context.Context, teamID, channelID str
 	}
 
 	raw := extractChatMessages(resp)
-	filtered := make([]msmodels.ChatMessageable, 0, len(raw))
-	for _, m := range raw {
-		if !isFromChannel(m, teamID, channelID) {
-			continue
-		}
-		if !opts.IncludeSystem && isSystemEvent(m) {
-			continue
-		}
-		if opts.ExcludeAuthorID != nil && isAuthoredBy(m, *opts.ExcludeAuthorID) {
-			continue
-		}
-		filtered = append(filtered, m)
-	}
-
-	return util.MapSlices(filtered, adapter.MapGraphMessage), nil
+	return util.MapSlices(raw, adapter.MapGraphMessage), nil
 }

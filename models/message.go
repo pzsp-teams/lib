@@ -52,15 +52,53 @@ type MessageCollection struct {
 	NextLink *string
 }
 
+
+type SearchPage struct {
+	From *int32
+	Size *int32
+}
+
 // SearchMessagesOptions contains options for searching messages.
 type SearchMessagesOptions struct {
 	Query           string
-	From            *int32
-	To              *int32
-	Size            *int32
-	ExcludeAuthorID *string
-	IncludeSystem   bool
+	SearchPage	 	*SearchPage
+	From            *string
 	IsRead          *bool
-	StartDateTime   *time.Time
-	EndDateTime     *time.Time
+	IsMentioned     *bool
+	To              *string
+	StartTime       *time.Time
+	EndTime         *time.Time
+}
+
+func (s *SearchMessagesOptions) ParseQuery() string {
+	query := s.Query
+
+	if s.From != nil {
+		query += " from:" + *s.From
+	}
+	if s.IsRead != nil {
+		if *s.IsRead {
+			query += " IsRead:true"
+		} else {
+			query += " IsRead:false"
+		}
+	}
+	if s.IsMentioned != nil {
+		if *s.IsMentioned {
+			query += " IsMentioned:true"
+		} else {
+			query += " IsMentioned:false"
+		}
+	}
+	if s.To != nil {
+		query += " to:" + *s.To
+	}
+	if s.StartTime != nil {
+		query += " sent>=" + s.StartTime.Format(time.RFC3339)
+	}
+	if s.EndTime != nil {
+		query += " sent<=" + s.EndTime.Format(time.RFC3339)
+	}
+
+	return query
 }
