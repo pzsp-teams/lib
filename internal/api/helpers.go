@@ -278,8 +278,8 @@ func (t *teamAPI) postTeamAndExtractID(ctx context.Context, body msmodels.Teamab
 		return "", err
 	}
 
-	loc := getHeaderValue(hdrOpt.GetResponseHeaders(), "location")
-	contentLoc := getHeaderValue(hdrOpt.GetResponseHeaders(), "content-location")
+	loc := getHeaderValue(hdrOpt.GetResponseHeaders(), "Location")
+	contentLoc := getHeaderValue(hdrOpt.GetResponseHeaders(), "Content-Location")
 
 	teamID, ok := parseTeamIDFromHeaders(contentLoc, loc)
 	if !ok || strings.TrimSpace(teamID) == "" {
@@ -299,7 +299,7 @@ func getHeaderValue(h any, key string) string {
 	if !ok || headers == nil {
 		return ""
 	}
-	vals := headers.Get(key)
+	vals := headers.Get(strings.ToLower(key))
 	if len(vals) == 0 {
 		return ""
 	}
