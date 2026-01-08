@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"testing"
 
+	abstractions "github.com/microsoft/kiota-abstractions-go"
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
 	"github.com/stretchr/testify/require"
 )
@@ -602,4 +603,57 @@ func TestTeamAPI_AddPostCreateMembersAndOwners_NoOps(t *testing.T) {
 
 	err = tapi.addPostCreateMembersAndOwners(context.Background(), "team-id", []string{"  "}, []string{"\t"})
 	require.Nil(t, err)
+}
+
+func TestGetHeaderValue(t *testing.T) {
+	t.Parallel()
+
+	t.Run("nil headers -> empty", func(t *testing.T) {
+		t.Parallel()
+		require.Equal(t, "", getHeaderValue(nil, "location"))
+	})
+
+	t.Run("wrong type -> empty", func(t *testing.T) {
+		t.Parallel()
+		require.Equal(t, "", getHeaderValue(struct{}{}, "location"))
+	})
+
+	t.Run("nil *ResponseHeaders -> empty", func(t *testing.T) {
+		t.Parallel()
+		var rh *abstractions.ResponseHeaders
+		require.Equal(t, "", getHeaderValue(rh, "location"))
+	})
+
+	t.Run("missing key -> empty (no panic)", func(t *testing.T) {
+		t.Parallel()
+
+		rh := abstractions.NewResponseHeaders()
+		rh.Add("some-other-header", "x")
+
+		require.NotPanics(t, func() {
+			_ = getHeaderValue(rh, "location")
+		})
+		require.Equal(t, "", getHeaderValue(rh, "location"))
+	})
+
+	t.Run("present key -> returns first value", func(t *testing.T) {
+		t.Parallel()
+
+		rh := abstractions.NewResponseHeaders()
+		rh.Add("location", "LOC-1", "LOC-2")
+		rh.Add("content-location", "CL-1")
+
+		require.Contains(t, []string{"LOC-1", "LOC-2"}, getHeaderValue(rh, "location"))
+		require.Equal(t, "CL-1", getHeaderValue(rh, "content-location"))
+	})
+
+	t.Run("key is normalized to lower-case", func(t *testing.T) {
+		t.Parallel()
+
+		rh := abstractions.NewResponseHeaders()
+		rh.Add("Location", "LOC-1")
+
+		require.Equal(t, "LOC-1", getHeaderValue(rh, "LOCATION"))
+		require.Equal(t, "LOC-1", getHeaderValue(rh, "location"))
+	})
 }
