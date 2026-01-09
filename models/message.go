@@ -85,34 +85,34 @@ func (s *SearchMessagesOptions) ParseQuery() string {
 	query := s.Query
 
 	if s.From != nil {
-		query += " from:" + *s.From
+		query += ` from:"` + *s.From + `"`
 	}
 	if s.IsRead != nil {
 		if *s.IsRead {
-			query += " IsRead:true"
+			query += ` IsRead:true`
 		} else {
-			query += " IsRead:false"
+			query += ` IsRead:false`
 		}
 	}
 	if s.IsMentioned != nil {
 		if *s.IsMentioned {
-			query += " IsMentioned:true"
+			query += ` IsMentioned:true`
 		} else {
-			query += " IsMentioned:false"
+			query += ` IsMentioned:false`
 		}
 	}
 	if s.To != nil {
-		query += " to:" + *s.To
+		query += ` to:"` + *s.To + `"`
 	}
 	if s.StartTime != nil && s.EndTime != nil {
-		query += " sent:" + s.StartTime.Format(time.RFC3339) + ".." + s.EndTime.Format(time.RFC3339)
+		query += ` sent:` + s.StartTime.Format(time.RFC3339) + `..` + s.EndTime.Format(time.RFC3339)
 		return query
 	}
 	if s.StartTime != nil {
-		query += " sent>=" + s.StartTime.Format(time.RFC3339)
+		query += ` sent>=` + s.StartTime.Format(time.RFC3339)
 	}
 	if s.EndTime != nil {
-		query += " sent<=" + s.EndTime.Format(time.RFC3339)
+		query += ` sent<=` + s.EndTime.Format(time.RFC3339)
 	}
 
 	return query
