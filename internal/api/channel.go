@@ -520,7 +520,7 @@ func (c *channelAPI) SearchChannelMessages(ctx context.Context, teamID, channelI
 		}
 		msg, err := c.GetMessage(ctx, *e.TeamID, *e.ChannelID, *e.MessageID)
 		if err != nil {
-			return nil, err, nil
+			continue
 		}
 		results = append(results, &SearchMessage{
 			Message:   msg,
