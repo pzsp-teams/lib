@@ -33,7 +33,7 @@ func (s *searchAPI) SearchChatMessages(ctx context.Context, searchRequest *model
 
 		req := msmodels.NewSearchRequest()
 		req.SetEntityTypes([]msmodels.EntityType{msmodels.CHATMESSAGE_ENTITYTYPE})
-		req.SetFields([]string{"body", "chatId", "channelIdentity", "id", "messageType", "summary", })
+		// req.SetFields([]string{"body", "chatId", "channelIdentity", "id", "messageType", "summary", })
 
 		q := msmodels.NewSearchQuery()
 		queryString := strings.TrimSpace(searchRequest.ParseQuery())
