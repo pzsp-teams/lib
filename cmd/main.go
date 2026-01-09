@@ -231,10 +231,10 @@ func handleSearchMessages(client *lib.Client, args []string) {
 	query := args[2]
 	opts := &models.SearchMessagesOptions{
 		Query: query,
-		From: util.Ptr("Kamil"),
+		// From: util.Ptr("Kamil"),
 		// IsRead: util.Ptr(false),
-		// To: util.Ptr("Kamil"),
-		StartTime: util.Ptr(time.Date(2025, time.December, 24, 0, 0, 0, 0, time.UTC)), 
+		To: util.Ptr("Kamil"),
+		StartTime: util.Ptr(time.Date(2026, time.January, 9, 0, 0, 0, 0, time.UTC)), 
 		EndTime: util.Ptr(time.Date(2026, time.January, 10, 23, 59, 59, 0, time.UTC)),
 		// SearchPage: &models.SearchPage{
 		// 	From: util.Ptr(int32(24)),
@@ -242,7 +242,7 @@ func handleSearchMessages(client *lib.Client, args []string) {
 		// },
 		// IsMentioned: util.Ptr(true),
 	}
-	messages, err := client.Channels.SearchMessages(context.TODO(), nil, nil, opts)
+	messages, err := client.Chats.SearchMessages(context.TODO(), nil, opts)
 	if err != nil {
 		fmt.Printf("Error searching messages: %v\n", err)
 		os.Exit(1)
