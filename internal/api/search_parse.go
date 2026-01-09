@@ -26,6 +26,12 @@ func extractChatMessages(resp graphsearch.QueryPostResponseable) []SearchEntity 
 				}
 				channelIdentity, ok := resource.GetAdditionalData()["channelIdentity"]
 				if ok {
+					if channelID, ok := channelIdentity.(map[string]interface{})["channelId"]; !ok || channelID == nil {
+						continue
+					}
+					if teamID, ok := channelIdentity.(map[string]interface{})["teamId"]; !ok || teamID == nil {
+						continue
+					}
 					out = append(out, SearchEntity{
 						ChannelID: channelIdentity.(map[string]interface{})["channelId"].(*string),
 						TeamID:    channelIdentity.(map[string]interface{})["teamId"].(*string),
