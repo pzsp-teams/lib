@@ -89,16 +89,16 @@ func (s *SearchMessagesOptions) ParseQuery() string {
 	}
 	if s.IsRead != nil {
 		if *s.IsRead {
-			query += ` IsRead:true`
+			query += ` IsRead:"true"`
 		} else {
-			query += ` IsRead:false`
+			query += ` IsRead:"false"`
 		}
 	}
 	if s.IsMentioned != nil {
 		if *s.IsMentioned {
-			query += ` IsMentioned:true`
+			query += ` IsMentioned:"true"`
 		} else {
-			query += ` IsMentioned:false`
+			query += ` IsMentioned:"false"`
 		}
 	}
 	if s.To != nil {
