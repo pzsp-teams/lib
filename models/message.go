@@ -93,6 +93,10 @@ func (s *SearchMessagesOptions) ParseQuery() string {
 	if s.To != nil {
 		query += " to:" + *s.To
 	}
+	if s.StartTime != nil && s.EndTime != nil {
+		query += " sent:" + s.StartTime.Format(time.RFC3339) + ".." + s.EndTime.Format(time.RFC3339)
+		return query
+	}
 	if s.StartTime != nil {
 		query += " sent>=" + s.StartTime.Format(time.RFC3339)
 	}
