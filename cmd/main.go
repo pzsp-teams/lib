@@ -10,6 +10,7 @@ import (
 
 	lib "github.com/pzsp-teams/lib"
 	"github.com/pzsp-teams/lib/config"
+	"github.com/pzsp-teams/lib/internal/util"
 	"github.com/pzsp-teams/lib/models"
 )
 
@@ -220,7 +221,7 @@ func main() {
 	// 	printUsage()
 	// 	os.Exit(1)
 	// }
-	args := []string{"pzsp2z1teams", "General", `from:"kmarsza@pzsp2z1teams.onmicrosoft.com"`}
+	args := []string{"pzsp2z1teams", "General", `from:Kamil from:"Michał Szwejk"`}
 	handleSearchMessages(client, args)
 }
 
@@ -231,6 +232,15 @@ func handleSearchMessages(client *lib.Client, args []string) {
 	opts := &models.SearchMessagesOptions{
 		Query: query,
 		// From: util.Ptr("ddsouza@pzsp2z1teams.onmicrosoft.com"),
+		// IsRead: util.Ptr(false),
+		// To: util.Ptr("kmarsza@pzsp2z1teams.onmicrosoft.com"),
+		StartTime: util.Ptr(time.Date(2025, 12, 24, 0, 0, 0, 0, time.UTC)), // last 14 days
+		EndTime: util.Ptr(time.Date(2026, 1, 5, 23, 59, 59, 0, time.UTC)),
+		// SearchPage: &models.SearchPage{
+		// 	From: util.Ptr(int32(24)),
+		// 	Size: util.Ptr(int32(50)),
+		// },
+		// IsMentioned: util.Ptr(true),
 	}
 	messages, err := client.Channels.SearchMessages(context.TODO(), teamName, channelName, opts)
 	if err != nil {
