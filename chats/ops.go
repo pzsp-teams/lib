@@ -2,6 +2,7 @@ package chats
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -190,5 +191,31 @@ func (o *ops) ListMessagesNext(ctx context.Context, chatID, nextLink string, inc
 	return &models.MessageCollection{
 		Messages: util.MapSlices(resp.GetValue(), adapter.MapGraphMessage),
 		NextLink: resp.GetOdataNextLink(),
+	}, nil
+}
+
+func (o *ops) SearchChatMessages(ctx context.Context, chatID *string, opts *models.SearchMessagesOptions) (*models.SearchResults, error) {
+	if opts == nil {
+		return nil, errors.New("missing opts.Query")
+	}
+	resp, requestErr, nextFrom := o.chatAPI.SearchChatMessages(ctx, chatID, opts)
+	if requestErr != nil {
+		if chatID == nil {
+			return nil, snd.MapError(requestErr)
+		}
+		return nil, snd.MapError(requestErr, snd.WithResource(resources.Chat, *chatID))
+	}
+	var results []*models.SearchResult
+	for _, msg := range resp {
+		results = append(results, &models.SearchResult{
+			Message:   adapter.MapGraphMessage(msg.Message),
+			ChatID:    msg.ChatID,
+			TeamID:    msg.TeamID,
+			ChannelID: msg.ChannelID,
+		})
+	}
+	return &models.SearchResults{
+		Messages: results,
+		NextFrom: nextFrom,
 	}, nil
 }

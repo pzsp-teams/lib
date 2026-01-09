@@ -15,7 +15,9 @@ import (
 	time "time"
 
 	models "github.com/microsoftgraph/msgraph-sdk-go/models"
+	api "github.com/pzsp-teams/lib/internal/api"
 	sender "github.com/pzsp-teams/lib/internal/sender"
+	models0 "github.com/pzsp-teams/lib/models"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -370,6 +372,22 @@ func (m *MockChatAPI) RemoveMemberFromGroupChat(ctx context.Context, chatID, mem
 func (mr *MockChatAPIMockRecorder) RemoveMemberFromGroupChat(ctx, chatID, memberID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveMemberFromGroupChat", reflect.TypeOf((*MockChatAPI)(nil).RemoveMemberFromGroupChat), ctx, chatID, memberID)
+}
+
+// SearchChatMessages mocks base method.
+func (m *MockChatAPI) SearchChatMessages(ctx context.Context, chatID *string, opts *models0.SearchMessagesOptions) ([]*api.SearchMessage, *sender.RequestError, *int32) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SearchChatMessages", ctx, chatID, opts)
+	ret0, _ := ret[0].([]*api.SearchMessage)
+	ret1, _ := ret[1].(*sender.RequestError)
+	ret2, _ := ret[2].(*int32)
+	return ret0, ret1, ret2
+}
+
+// SearchChatMessages indicates an expected call of SearchChatMessages.
+func (mr *MockChatAPIMockRecorder) SearchChatMessages(ctx, chatID, opts any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SearchChatMessages", reflect.TypeOf((*MockChatAPI)(nil).SearchChatMessages), ctx, chatID, opts)
 }
 
 // SendMessage mocks base method.

@@ -10,6 +10,8 @@ import (
 	graphusers "github.com/microsoftgraph/msgraph-sdk-go/users"
 	"github.com/pzsp-teams/lib/config"
 	"github.com/pzsp-teams/lib/internal/sender"
+	"github.com/pzsp-teams/lib/internal/util"
+	"github.com/pzsp-teams/lib/models"
 )
 
 type OneOnOneChatAPI interface {
@@ -37,15 +39,17 @@ type ChatAPI interface {
 	PinMessage(ctx context.Context, chatID, messageID string) *sender.RequestError
 	UnpinMessage(ctx context.Context, chatID, pinnedID string) *sender.RequestError
 	ListMessagesNext(ctx context.Context, chatID, nextLink string, includeSystem bool) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError)
+	SearchChatMessages(ctx context.Context, chatID *string, opts *models.SearchMessagesOptions) ([]*SearchMessage, *sender.RequestError, *int32)
 }
 
 type chatsAPI struct {
 	client    *graph.GraphServiceClient
 	senderCfg *config.SenderConfig
+	searchAPI SearchAPI
 }
 
-func NewChat(client *graph.GraphServiceClient, senderCfg *config.SenderConfig) ChatAPI {
-	return &chatsAPI{client, senderCfg}
+func NewChat(client *graph.GraphServiceClient, senderCfg *config.SenderConfig, searchAPI SearchAPI) ChatAPI {
+	return &chatsAPI{client, senderCfg, searchAPI}
 }
 
 func (c *chatsAPI) CreateOneOnOneChat(ctx context.Context, userRef string) (msmodels.Chatable, *sender.RequestError) {
@@ -415,4 +419,37 @@ func (c *chatsAPI) ListMessagesNext(ctx context.Context, chatID, nextLink string
 		out.SetValue(filtered)
 	}
 	return out, nil
+}
+
+func (c *chatsAPI) SearchChatMessages(ctx context.Context, chatID *string, opts *models.SearchMessagesOptions) ([]*SearchMessage, *sender.RequestError, *int32) {
+	if opts == nil {
+		opts = &models.SearchMessagesOptions{}
+	}
+	resp, err := c.searchAPI.SearchMessages(ctx, opts)
+	if err != nil {
+		return nil, err, nil
+	}
+
+	entities := extractMessages(resp)
+	results := make([]*SearchMessage, 0, len(entities))
+	for _, e := range entities {
+		if e.ChatID == nil {
+			continue
+		}
+		if chatID != nil && *e.ChatID != *chatID {
+			continue
+		}
+		msg, err := c.GetMessage(ctx, *e.ChatID, *e.MessageID)
+		if err != nil {
+			continue
+		}
+		results = append(results, &SearchMessage{
+			Message:   msg,
+			ChannelID: e.ChannelID,
+			TeamID:    e.TeamID,
+			ChatID:    e.ChatID,
+		})
+	}
+
+	return results, nil, util.Ptr(int32(len(entities)))
 }

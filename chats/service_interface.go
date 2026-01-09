@@ -82,4 +82,6 @@ type Service interface {
 	//   - Everyone (for group chats)
 	//   - User IDs
 	GetMentions(ctx context.Context, chatRef ChatRef, rawMentions []string) ([]models.Mention, error)
+
+	SearchMessages(ctx context.Context, chatRef ChatRef, opts *models.SearchMessagesOptions) (*models.SearchResults, error)
 }

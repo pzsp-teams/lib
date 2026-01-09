@@ -302,6 +302,32 @@ func (s *service) GetMentions(ctx context.Context, chatRef ChatRef, rawMentions 
 	return resp, nil
 }
 
+func (s *service) SearchMessages(ctx context.Context, chatRef ChatRef, opts *models.SearchMessagesOptions) (*models.SearchResults, error) {
+	var chatID *string
+	var err error
+	if chatRef != nil {
+		id, resolveErr := s.resolveChatIDFromRef(ctx, chatRef)
+		if resolveErr != nil {
+			return nil, snd.Wrap("SearchMessages", resolveErr,
+				snd.NewParam(resources.ChatRef, chatRef.get()),
+			)
+		}
+		chatID = &id
+	}
+
+	resp, err := s.chatOps.SearchChatMessages(ctx, chatID, opts)
+	if err != nil {
+		if chatRef == nil {
+			return nil, snd.Wrap("SearchMessages", err)
+		}
+		return nil, snd.Wrap("SearchMessages", err,
+			snd.NewParam(resources.ChatRef, chatRef.get()),
+		)
+	}
+
+	return resp, nil
+}
+
 func (s *service) resolveChatIDFromRef(ctx context.Context, chatRef ChatRef) (string, error) {
 	switch ref := chatRef.(type) {
 	case GroupChatRef:

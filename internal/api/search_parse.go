@@ -4,7 +4,7 @@ import (
 	graphsearch "github.com/microsoftgraph/msgraph-sdk-go/search"
 )
 
-func extractChatMessages(resp graphsearch.QueryPostResponseable) []SearchEntity {
+func extractMessages(resp graphsearch.QueryPostResponseable) []SearchEntity {
 	if resp == nil || resp.GetValue() == nil {
 		return nil
 	}

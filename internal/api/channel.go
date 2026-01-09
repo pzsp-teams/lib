@@ -506,16 +506,16 @@ func (c *channelAPI) SearchChannelMessages(ctx context.Context, teamID, channelI
 		return nil, err, nil
 	}
 
-	entities := extractChatMessages(resp)
+	entities := extractMessages(resp)
 	results := make([]*SearchMessage, 0, len(entities))
 	for _, e := range entities {
-		if e.TeamID == nil && e.ChannelID == nil {
+		if e.TeamID == nil || e.ChannelID == nil {
 			continue
 		}
-		if teamID != nil && (e.TeamID == nil || *e.TeamID != *teamID) {
+		if teamID != nil && *e.TeamID != *teamID {
 			continue
 		}
-		if channelID != nil && (e.ChannelID == nil || *e.ChannelID != *channelID) {
+		if channelID != nil && *e.ChannelID != *channelID {
 			continue
 		}
 		msg, err := c.GetMessage(ctx, *e.TeamID, *e.ChannelID, *e.MessageID)
