@@ -20,9 +20,9 @@ func GetChannelAPI(c *graph.GraphServiceClient, sCfg *config.SenderConfig, searc
 	return channelSingleton
 }
 
-func GetChatAPI(c *graph.GraphServiceClient, sCfg *config.SenderConfig) ChatAPI {
+func GetChatAPI(c *graph.GraphServiceClient, sCfg *config.SenderConfig, searchAPI SearchAPI) ChatAPI {
 	if chatSingleton == nil {
-		chatSingleton = NewChat(c, sCfg)
+		chatSingleton = NewChat(c, sCfg, searchAPI)
 	}
 	return chatSingleton
 }

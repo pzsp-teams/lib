@@ -52,7 +52,7 @@ func NewClientFromGraphClient(graphClient *graph.GraphServiceClient, senderCfg *
 	teamsAPI := api.GetTeamAPI(graphClient, senderCfg)
 	searchAPI := api.GetSearchAPI(graphClient, senderCfg)
 	channelAPI := api.GetChannelAPI(graphClient, senderCfg, searchAPI)
-	chatAPI := api.GetChatAPI(graphClient, senderCfg)
+	chatAPI := api.GetChatAPI(graphClient, senderCfg, searchAPI)
 	userAPI := api.GetUserAPI(graphClient, senderCfg)
 
 	cacheHandler := cacher.GetCacheHandler(cacheCfg)
@@ -129,7 +129,8 @@ func NewChatServiceFromGraphClient(ctx context.Context, authCfg *config.AuthConf
 	if err != nil {
 		return nil, err
 	}
-	chatAPI := api.GetChatAPI(cl, senderCfg)
+	searchAPI := api.GetSearchAPI(cl, senderCfg)
+	chatAPI := api.GetChatAPI(cl, senderCfg, searchAPI)
 	userAPI := api.GetUserAPI(cl, senderCfg)
 
 	cacheHandler := cacher.GetCacheHandler(cacheCfg)

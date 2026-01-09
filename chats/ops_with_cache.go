@@ -228,3 +228,9 @@ func (o *opsWithCache) removeMemberFromCache(chatID, userRef string) {
 	key := cacher.NewGroupChatMemberKey(chatID, userRef, nil)
 	_ = o.cacheHandler.Cacher.Invalidate(key)
 }
+
+func (o *opsWithCache) SearchChatMessages(ctx context.Context, chatID *string, opts *models.SearchMessagesOptions) (*models.SearchResults, error) {
+	return cacher.WithErrorClear(func() (*models.SearchResults, error) {
+		return o.chatOps.SearchChatMessages(ctx, chatID, opts)
+	}, o.cacheHandler)
+}

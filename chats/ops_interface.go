@@ -25,4 +25,5 @@ type chatOps interface {
 	UnpinMessage(ctx context.Context, chatID, messageID string) error
 	GetMentions(ctx context.Context, chatID string, isGroup bool, rawMentions []string) ([]models.Mention, error)
 	ListMessagesNext(ctx context.Context, chatID, nextLink string, includeSystem bool) (*models.MessageCollection, error)
+	SearchChatMessages(ctx context.Context, chatID *string, opts *models.SearchMessagesOptions) (*models.SearchResults, error)
 }
