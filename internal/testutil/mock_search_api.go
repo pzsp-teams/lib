@@ -43,17 +43,17 @@ func (m *MockSearchAPI) EXPECT() *MockSearchAPIMockRecorder {
 	return m.recorder
 }
 
-// SearchChatMessages mocks base method.
-func (m *MockSearchAPI) SearchChatMessages(ctx context.Context, searchRequest *models.SearchMessagesOptions) (search.QueryPostResponseable, *sender.RequestError) {
+// SearchMessages mocks base method.
+func (m *MockSearchAPI) SearchMessages(ctx context.Context, searchRequest *models.SearchMessagesOptions) (search.QueryPostResponseable, *sender.RequestError) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SearchChatMessages", ctx, searchRequest)
+	ret := m.ctrl.Call(m, "SearchMessages", ctx, searchRequest)
 	ret0, _ := ret[0].(search.QueryPostResponseable)
 	ret1, _ := ret[1].(*sender.RequestError)
 	return ret0, ret1
 }
 
-// SearchChatMessages indicates an expected call of SearchChatMessages.
-func (mr *MockSearchAPIMockRecorder) SearchChatMessages(ctx, searchRequest any) *gomock.Call {
+// SearchMessages indicates an expected call of SearchMessages.
+func (mr *MockSearchAPIMockRecorder) SearchMessages(ctx, searchRequest any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SearchChatMessages", reflect.TypeOf((*MockSearchAPI)(nil).SearchChatMessages), ctx, searchRequest)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SearchMessages", reflect.TypeOf((*MockSearchAPI)(nil).SearchMessages), ctx, searchRequest)
 }

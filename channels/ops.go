@@ -20,14 +20,12 @@ import (
 type ops struct {
 	userAPI    api.UserAPI
 	channelAPI api.ChannelAPI
-	searchAPI  api.SearchAPI
 }
 
 func NewOps(channelAPI api.ChannelAPI, userAPI api.UserAPI, searchAPI api.SearchAPI) channelOps {
 	return &ops{
 		channelAPI: channelAPI,
 		userAPI:    userAPI,
-		searchAPI:  searchAPI,
 	}
 }
 
@@ -267,22 +265,32 @@ func (o *ops) GetMentions(ctx context.Context, teamID, teamRef, channelRef, chan
 	return out, nil
 }
 
-func (o *ops) SearchMessagesInChannel(ctx context.Context, teamID, channelID string, opts *models.SearchMessagesOptions) ([]*models.Message, error) {
-	if o.searchAPI == nil {
-		return nil, errors.New("SearchAPI is not configured")
-	}
+func (o *ops) SearchChannelMessages(ctx context.Context, teamID, channelID *string, opts *models.SearchMessagesOptions) (*models.SearchResults, error) {
 	if opts == nil {
 		return nil, errors.New("missing opts.Query")
 	}
 
-	resp, requestErr := o.searchAPI.SearchChatMessages(ctx, opts)
+	resp, requestErr, nextFrom := o.channelAPI.SearchChannelMessages(ctx, teamID, channelID, opts)
 	if requestErr != nil {
+		if teamID == nil || channelID == nil {
+			return nil, snd.MapError(requestErr)
+		}
 		return nil, snd.MapError(requestErr,
-			snd.WithResource(resources.Team, teamID),
-			snd.WithResource(resources.Channel, channelID),
+			snd.WithResource(resources.Team, *teamID),
+			snd.WithResource(resources.Channel, *channelID),
 		)
 	}
-
-	raw := extractChatMessages(resp)
-	return util.MapSlices(raw, adapter.MapGraphMessage), nil
+	var results []*models.SearchResult
+	for _, msg := range resp {
+		results = append(results, &models.SearchResult{
+			Message:   adapter.MapGraphMessage(msg.Message),
+			ChannelID: msg.ChannelID,
+			TeamID:    msg.TeamID,
+			ChatID:    msg.ChatID,
+		})
+	}
+	return &models.SearchResults{
+		Messages: results,
+		NextFrom: nextFrom,
+	}, nil
 }

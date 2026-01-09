@@ -25,5 +25,5 @@ type channelOps interface {
 	GetMentions(ctx context.Context, teamID, teamRef, channelRef, channelID string, rawMentions []string) ([]models.Mention, error)
 	ListMessagesNext(ctx context.Context, teamID, channelID, nextLink string, includeSystem bool) (*models.MessageCollection, error)
 	ListRepliesNext(ctx context.Context, teamID, channelID, messageID, nextLink string, includeSystem bool) (*models.MessageCollection, error)
-	SearchMessagesInChannel(ctx context.Context, teamID, channelID string, opts *models.SearchMessagesOptions) ([]*models.Message, error)
+	SearchChannelMessages(ctx context.Context, teamID, channelID *string, opts *models.SearchMessagesOptions) (*models.SearchResults, error)
 }
