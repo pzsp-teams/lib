@@ -231,11 +231,11 @@ func handleSearchMessages(client *lib.Client, args []string) {
 	query := args[2]
 	opts := &models.SearchMessagesOptions{
 		Query: query,
-		From: util.Ptr("Damian"),
+		From: util.Ptr("Kamil"),
 		// IsRead: util.Ptr(false),
 		// To: util.Ptr("Kamil"),
 		StartTime: util.Ptr(time.Date(2025, time.December, 24, 0, 0, 0, 0, time.UTC)), 
-		EndTime: util.Ptr(time.Date(2026, time.January, 5, 23, 59, 59, 0, time.UTC)),
+		EndTime: util.Ptr(time.Date(2026, time.January, 10, 23, 59, 59, 0, time.UTC)),
 		// SearchPage: &models.SearchPage{
 		// 	From: util.Ptr(int32(24)),
 		// 	Size: util.Ptr(int32(50)),
