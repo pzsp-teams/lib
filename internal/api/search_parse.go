@@ -35,9 +35,9 @@ func extractMessages(resp graphsearch.QueryPostResponseable) []SearchEntity {
 					} else {
 						if chatID, ok := resource.GetAdditionalData()["chatId"]; ok {
 							out = append(out, SearchEntity{
-							ChatID:    chatID.(*string),
-							MessageID: resource.GetId(),
-						})
+								ChatID:    chatID.(*string),
+								MessageID: resource.GetId(),
+							})
 						}
 					}
 				}
