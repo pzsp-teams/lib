@@ -50,10 +50,10 @@ func NewClient(ctx context.Context, authCfg *config.AuthConfig, senderCfg *confi
 
 func NewClientFromGraphClient(graphClient *graph.GraphServiceClient, senderCfg *config.SenderConfig, cacheCfg *config.CacheConfig) (*Client, error) {
 	teamsAPI := api.GetTeamAPI(graphClient, senderCfg)
-	channelAPI := api.GetChannelAPI(graphClient, senderCfg)
+	searchAPI := api.GetSearchAPI(graphClient, senderCfg)
+	channelAPI := api.GetChannelAPI(graphClient, senderCfg, searchAPI)
 	chatAPI := api.GetChatAPI(graphClient, senderCfg)
 	userAPI := api.GetUserAPI(graphClient, senderCfg)
-	searchAPI := api.GetSearchAPI(graphClient, senderCfg)
 
 	cacheHandler := cacher.GetCacheHandler(cacheCfg)
 
@@ -87,10 +87,10 @@ func NewChannelServiceFromGraphClient(ctx context.Context, authCfg *config.AuthC
 	if err != nil {
 		return nil, err
 	}
-	channelAPI := api.GetChannelAPI(cl, senderCfg)
+	searchAPI := api.GetSearchAPI(cl, senderCfg)
+	channelAPI := api.GetChannelAPI(cl, senderCfg, searchAPI)
 	userAPI := api.GetUserAPI(cl, senderCfg)
 	teamAPI := api.GetTeamAPI(cl, senderCfg)
-	searchAPI := api.GetSearchAPI(cl, senderCfg)
 
 	cacheHandler := cacher.GetCacheHandler(cacheCfg)
 	teamResolver := resolver.GetTeamResolver(teamAPI, cacheHandler)

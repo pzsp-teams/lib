@@ -52,7 +52,6 @@ type MessageCollection struct {
 	NextLink *string
 }
 
-
 type SearchPage struct {
 	From *int32
 	Size *int32
@@ -60,14 +59,26 @@ type SearchPage struct {
 
 // SearchMessagesOptions contains options for searching messages.
 type SearchMessagesOptions struct {
-	Query           string
-	SearchPage	 	*SearchPage
-	From            *string
-	IsRead          *bool
-	IsMentioned     *bool
-	To              *string
-	StartTime       *time.Time
-	EndTime         *time.Time
+	Query       string
+	SearchPage  *SearchPage
+	From        *string
+	IsRead      *bool
+	IsMentioned *bool
+	To          *string
+	StartTime   *time.Time
+	EndTime     *time.Time
+}
+
+type SearchResult struct {
+	Message   *Message
+	ChannelID *string
+	TeamID    *string
+	ChatID    *string
+}
+
+type SearchResults struct {
+	Messages []*SearchResult
+	NextFrom *int32
 }
 
 func (s *SearchMessagesOptions) ParseQuery() string {

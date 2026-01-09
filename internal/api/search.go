@@ -13,9 +13,23 @@ import (
 	"github.com/pzsp-teams/lib/models"
 )
 
+type SearchEntity struct {
+	ChannelID *string
+	TeamID    *string
+	MessageID *string
+	ChatID    *string
+}
+
+type SearchMessage struct {
+	Message   msmodels.ChatMessageable
+	ChannelID *string
+	TeamID    *string
+	ChatID    *string
+}
+
 type SearchAPI interface {
-	// SearchChatMessages runs POST /search/query with entityTypes=["chatMessage"].
-	SearchChatMessages(ctx context.Context, searchRequest *models.SearchMessagesOptions) (graphsearch.QueryPostResponseable, *sender.RequestError)
+	// SearchMessages runs POST /search/query with entityTypes=["chatMessage"].
+	SearchMessages(ctx context.Context, searchRequest *models.SearchMessagesOptions) (graphsearch.QueryPostResponseable, *sender.RequestError)
 }
 
 type searchAPI struct {
@@ -27,13 +41,12 @@ func NewSearch(client *graph.GraphServiceClient, senderCfg *config.SenderConfig)
 	return &searchAPI{client: client, senderCfg: senderCfg}
 }
 
-func (s *searchAPI) SearchChatMessages(ctx context.Context, searchRequest *models.SearchMessagesOptions) (graphsearch.QueryPostResponseable, *sender.RequestError) {
+func (s *searchAPI) SearchMessages(ctx context.Context, searchRequest *models.SearchMessagesOptions) (graphsearch.QueryPostResponseable, *sender.RequestError) {
 	call := func(ctx context.Context) (sender.Response, error) {
 		body := graphsearch.NewQueryPostRequestBody()
 
 		req := msmodels.NewSearchRequest()
 		req.SetEntityTypes([]msmodels.EntityType{msmodels.CHATMESSAGE_ENTITYTYPE})
-		// req.SetFields([]string{"body", "chatId", "channelIdentity", "id", "messageType", "summary", })
 
 		q := msmodels.NewSearchQuery()
 		queryString := strings.TrimSpace(searchRequest.ParseQuery())

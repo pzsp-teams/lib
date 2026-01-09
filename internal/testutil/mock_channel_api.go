@@ -14,7 +14,9 @@ import (
 	reflect "reflect"
 
 	models "github.com/microsoftgraph/msgraph-sdk-go/models"
+	api "github.com/pzsp-teams/lib/internal/api"
 	sender "github.com/pzsp-teams/lib/internal/sender"
+	models0 "github.com/pzsp-teams/lib/models"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -248,6 +250,22 @@ func (m *MockChannelAPI) RemoveMember(ctx context.Context, teamID, channelID, me
 func (mr *MockChannelAPIMockRecorder) RemoveMember(ctx, teamID, channelID, memberID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveMember", reflect.TypeOf((*MockChannelAPI)(nil).RemoveMember), ctx, teamID, channelID, memberID)
+}
+
+// SearchChannelMessages mocks base method.
+func (m *MockChannelAPI) SearchChannelMessages(ctx context.Context, teamID, channelID *string, opts *models0.SearchMessagesOptions) ([]*api.SearchMessage, *sender.RequestError, *int32) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SearchChannelMessages", ctx, teamID, channelID, opts)
+	ret0, _ := ret[0].([]*api.SearchMessage)
+	ret1, _ := ret[1].(*sender.RequestError)
+	ret2, _ := ret[2].(*int32)
+	return ret0, ret1, ret2
+}
+
+// SearchChannelMessages indicates an expected call of SearchChannelMessages.
+func (mr *MockChannelAPIMockRecorder) SearchChannelMessages(ctx, teamID, channelID, opts any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SearchChannelMessages", reflect.TypeOf((*MockChannelAPI)(nil).SearchChannelMessages), ctx, teamID, channelID, opts)
 }
 
 // SendMessage mocks base method.

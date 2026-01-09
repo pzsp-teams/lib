@@ -13,6 +13,8 @@ import (
 
 	"github.com/pzsp-teams/lib/config"
 	"github.com/pzsp-teams/lib/internal/sender"
+	"github.com/pzsp-teams/lib/internal/util"
+	"github.com/pzsp-teams/lib/models"
 )
 
 type ChannelAPI interface {
@@ -33,15 +35,17 @@ type ChannelAPI interface {
 	RemoveMember(ctx context.Context, teamID, channelID, memberID string) *sender.RequestError
 	ListMessagesNext(ctx context.Context, teamID, channelID, nextLink string, includeSystem bool) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError)
 	ListRepliesNext(ctx context.Context, teamID, channelID, messageID, nextLink string, includeSystem bool) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError)
+	SearchChannelMessages(ctx context.Context, teamID, channelID *string, opts *models.SearchMessagesOptions) ([]*SearchMessage, *sender.RequestError, *int32)
 }
 
 type channelAPI struct {
 	client    *graph.GraphServiceClient
 	senderCfg *config.SenderConfig
+	searchAPI SearchAPI
 }
 
-func NewChannels(client *graph.GraphServiceClient, senderCfg *config.SenderConfig) ChannelAPI {
-	return &channelAPI{client, senderCfg}
+func NewChannels(client *graph.GraphServiceClient, senderCfg *config.SenderConfig, searchAPI SearchAPI) ChannelAPI {
+	return &channelAPI{client, senderCfg, searchAPI}
 }
 
 func (c *channelAPI) ListChannels(ctx context.Context, teamID string) (msmodels.ChannelCollectionResponseable, *sender.RequestError) {
@@ -491,4 +495,40 @@ func (c *channelAPI) ListRepliesNext(ctx context.Context, teamID, channelID, mes
 	}
 
 	return out, nil
+}
+
+func (c *channelAPI) SearchChannelMessages(ctx context.Context, teamID, channelID *string, opts *models.SearchMessagesOptions) ([]*SearchMessage, *sender.RequestError, *int32) {
+	if opts == nil {
+		opts = &models.SearchMessagesOptions{}
+	}
+	resp, err := c.searchAPI.SearchMessages(ctx, opts)
+	if err != nil {
+		return nil, err, nil
+	}
+
+	entities := extractChatMessages(resp)
+	results := make([]*SearchMessage, 0, len(entities))
+	for _, e := range entities {
+		if e.TeamID == nil && e.ChannelID == nil {
+			continue
+		}
+		if teamID != nil && (e.TeamID == nil || *e.TeamID != *teamID) {
+			continue
+		}
+		if channelID != nil && (e.ChannelID == nil || *e.ChannelID != *channelID) {
+			continue
+		}
+		msg, err := c.GetMessage(ctx, *e.TeamID, *e.ChannelID, *e.MessageID)
+		if err != nil {
+			return nil, err, nil
+		}
+		results = append(results, &SearchMessage{
+			Message:   msg,
+			ChannelID: e.ChannelID,
+			TeamID:    e.TeamID,
+			ChatID:    e.ChatID,
+		})
+	}
+
+	return results, nil, util.Ptr(int32(len(entities)))
 }

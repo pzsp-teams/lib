@@ -13,9 +13,9 @@ var (
 	searchSingleton  SearchAPI
 )
 
-func GetChannelAPI(c *graph.GraphServiceClient, sCfg *config.SenderConfig) ChannelAPI {
+func GetChannelAPI(c *graph.GraphServiceClient, sCfg *config.SenderConfig, searchAPI SearchAPI) ChannelAPI {
 	if channelSingleton == nil {
-		channelSingleton = NewChannels(c, sCfg)
+		channelSingleton = NewChannels(c, sCfg, searchAPI)
 	}
 	return channelSingleton
 }
