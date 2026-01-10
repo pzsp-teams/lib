@@ -230,8 +230,8 @@ func (o *opsWithCache) removeMemberFromCache(chatID, userRef string) {
 	_ = o.cacheHandler.Cacher.Invalidate(key)
 }
 
-func (o *opsWithCache) SearchChatMessages(ctx context.Context, chatID *string, opts *search.SearchMessagesOptions) (*search.SearchResults, error) {
+func (o *opsWithCache) SearchChatMessages(ctx context.Context, chatID *string, opts *search.SearchMessagesOptions, searchConfig *search.SearchConfig) (*search.SearchResults, error) {
 	return cacher.WithErrorClear(func() (*search.SearchResults, error) {
-		return o.chatOps.SearchChatMessages(ctx, chatID, opts)
+		return o.chatOps.SearchChatMessages(ctx, chatID, opts, searchConfig)
 	}, o.cacheHandler)
 }

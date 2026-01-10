@@ -375,9 +375,9 @@ func (mr *MockChatAPIMockRecorder) RemoveMemberFromGroupChat(ctx, chatID, member
 }
 
 // SearchChatMessages mocks base method.
-func (m *MockChatAPI) SearchChatMessages(ctx context.Context, chatID *string, opts *search.SearchMessagesOptions) ([]*api.SearchMessage, *sender.RequestError, *int32) {
+func (m *MockChatAPI) SearchChatMessages(ctx context.Context, chatID *string, opts *search.SearchMessagesOptions, searchConfig *search.SearchConfig) ([]*api.SearchMessage, *sender.RequestError, *int32) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SearchChatMessages", ctx, chatID, opts)
+	ret := m.ctrl.Call(m, "SearchChatMessages", ctx, chatID, opts, searchConfig)
 	ret0, _ := ret[0].([]*api.SearchMessage)
 	ret1, _ := ret[1].(*sender.RequestError)
 	ret2, _ := ret[2].(*int32)
@@ -385,9 +385,9 @@ func (m *MockChatAPI) SearchChatMessages(ctx context.Context, chatID *string, op
 }
 
 // SearchChatMessages indicates an expected call of SearchChatMessages.
-func (mr *MockChatAPIMockRecorder) SearchChatMessages(ctx, chatID, opts any) *gomock.Call {
+func (mr *MockChatAPIMockRecorder) SearchChatMessages(ctx, chatID, opts, searchConfig any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SearchChatMessages", reflect.TypeOf((*MockChatAPI)(nil).SearchChatMessages), ctx, chatID, opts)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SearchChatMessages", reflect.TypeOf((*MockChatAPI)(nil).SearchChatMessages), ctx, chatID, opts, searchConfig)
 }
 
 // SendMessage mocks base method.

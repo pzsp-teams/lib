@@ -1041,11 +1041,11 @@ func TestOps_SearchChannelMessages(t *testing.T) {
 	t.Run("opts nil -> returns error and does not call api", func(t *testing.T) {
 		op, ctx := newOpsSUT(t, func(d opsSUTDeps) {
 			d.channelAPI.EXPECT().
-				SearchChannelMessages(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+				SearchChannelMessages(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 				Times(0)
 		})
 
-		got, err := op.SearchChannelMessages(ctx, util.Ptr("team-1"), util.Ptr("chan-1"), nil)
+		got, err := op.SearchChannelMessages(ctx, util.Ptr("team-1"), util.Ptr("chan-1"), nil, nil)
 		require.Nil(t, got)
 		require.Error(t, err)
 		require.Equal(t, "missing opts", err.Error())
@@ -1054,13 +1054,13 @@ func TestOps_SearchChannelMessages(t *testing.T) {
 	t.Run("maps request error without resources when teamID/channelID are nil", func(t *testing.T) {
 		op, ctx := newOpsSUT(t, func(d opsSUTDeps) {
 			d.channelAPI.EXPECT().
-				SearchChannelMessages(gomock.Any(), nil, nil, gomock.Any()).
+				SearchChannelMessages(gomock.Any(), nil, nil, gomock.Any(), gomock.Any()).
 				Return(nil, &snd.RequestError{Code: 403, Message: "nope"}, nil).
 				Times(1)
 		})
 
 		opts := &search.SearchMessagesOptions{}
-		got, err := op.SearchChannelMessages(ctx, nil, nil, opts)
+		got, err := op.SearchChannelMessages(ctx, nil, nil, opts, nil)
 		require.Nil(t, got)
 		require.Error(t, err)
 
@@ -1075,13 +1075,13 @@ func TestOps_SearchChannelMessages(t *testing.T) {
 
 		op, ctx := newOpsSUT(t, func(d opsSUTDeps) {
 			d.channelAPI.EXPECT().
-				SearchChannelMessages(gomock.Any(), teamID, channelID, gomock.Any()).
+				SearchChannelMessages(gomock.Any(), teamID, channelID, gomock.Any(), gomock.Any()).
 				Return(nil, &snd.RequestError{Code: 404, Message: "missing"}, nil).
 				Times(1)
 		})
 
 		opts := &search.SearchMessagesOptions{}
-		got, err := op.SearchChannelMessages(ctx, teamID, channelID, opts)
+		got, err := op.SearchChannelMessages(ctx, teamID, channelID, opts, nil)
 		require.Nil(t, got)
 		require.Error(t, err)
 
@@ -1122,13 +1122,13 @@ func TestOps_SearchChannelMessages(t *testing.T) {
 
 		op, ctx := newOpsSUT(t, func(d opsSUTDeps) {
 			d.channelAPI.EXPECT().
-				SearchChannelMessages(gomock.Any(), teamID, channelID, gomock.Any()).
+				SearchChannelMessages(gomock.Any(), teamID, channelID, gomock.Any(), gomock.Any()).
 				Return(apiResp, nil, &next).
 				Times(1)
 		})
 
 		opts := &search.SearchMessagesOptions{Query: util.Ptr("q")}
-		got, err := op.SearchChannelMessages(ctx, teamID, channelID, opts)
+		got, err := op.SearchChannelMessages(ctx, teamID, channelID, opts, nil)
 		require.NoError(t, err)
 		require.NotNil(t, got)
 
@@ -1168,14 +1168,14 @@ func TestOps_SearchChannelMessages(t *testing.T) {
 		}
 
 		op, ctx := newOpsSUT(t, func(d opsSUTDeps) {
-			d.channelAPI.EXPECT().
-				SearchChannelMessages(gomock.Any(), teamID, channelID, gomock.Any()).
+			d.channelAPI.EXPECT().	
+				SearchChannelMessages(gomock.Any(), teamID, channelID, gomock.Any(), gomock.Any()).
 				Return(apiResp, nil, nil).
 				Times(1)
 		})
 
 		opts := &search.SearchMessagesOptions{}
-		got, err := op.SearchChannelMessages(ctx, teamID, channelID, opts)
+		got, err := op.SearchChannelMessages(ctx, teamID, channelID, opts, nil)
 		require.NoError(t, err)
 		require.NotNil(t, got)
 		require.Nil(t, got.NextFrom)
@@ -1199,7 +1199,7 @@ func TestOpsWithCache_SearchChannelMessages(t *testing.T) {
 
 		sut, ctx := newOpsWithCacheSUT(t, func(_ context.Context, d opsWithCacheSUTDeps) {
 			d.chanOps.EXPECT().
-				SearchChannelMessages(gomock.Any(), teamID, channelID, opts).
+				SearchChannelMessages(gomock.Any(), teamID, channelID, opts, nil).
 				Return(want, nil).
 				Times(1)
 
@@ -1209,7 +1209,7 @@ func TestOpsWithCache_SearchChannelMessages(t *testing.T) {
 			d.cacher.EXPECT().Invalidate(gomock.Any()).Times(0)
 		})
 
-		got, err := sut.SearchChannelMessages(ctx, teamID, channelID, opts)
+			got, err := sut.SearchChannelMessages(ctx, teamID, channelID, opts, nil)
 		require.NoError(t, err)
 		require.Equal(t, want, got)
 	})
@@ -1219,14 +1219,14 @@ func TestOpsWithCache_SearchChannelMessages(t *testing.T) {
 
 		sut, ctx := newOpsWithCacheSUT(t, func(_ context.Context, d opsWithCacheSUTDeps) {
 			d.chanOps.EXPECT().
-				SearchChannelMessages(gomock.Any(), teamID, channelID, opts).
+				SearchChannelMessages(gomock.Any(), teamID, channelID, opts, nil).
 				Return(nil, err400).
 				Times(1)
 
 			expectClearNow(d)
 		})
 
-		got, err := sut.SearchChannelMessages(ctx, teamID, channelID, opts)
+		got, err := sut.SearchChannelMessages(ctx, teamID, channelID, opts, nil)
 		require.Nil(t, got)
 		require.Error(t, err)
 		require.True(t, err == err400)

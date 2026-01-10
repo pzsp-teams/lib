@@ -266,18 +266,18 @@ func (mr *MockchannelOpsMockRecorder) RemoveMember(ctx, teamID, channelID, membe
 }
 
 // SearchChannelMessages mocks base method.
-func (m *MockchannelOps) SearchChannelMessages(ctx context.Context, teamID, channelID *string, opts *search.SearchMessagesOptions) (*search.SearchResults, error) {
+func (m *MockchannelOps) SearchChannelMessages(ctx context.Context, teamID, channelID *string, opts *search.SearchMessagesOptions, searchConfig *search.SearchConfig) (*search.SearchResults, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SearchChannelMessages", ctx, teamID, channelID, opts)
+	ret := m.ctrl.Call(m, "SearchChannelMessages", ctx, teamID, channelID, opts, searchConfig)
 	ret0, _ := ret[0].(*search.SearchResults)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // SearchChannelMessages indicates an expected call of SearchChannelMessages.
-func (mr *MockchannelOpsMockRecorder) SearchChannelMessages(ctx, teamID, channelID, opts any) *gomock.Call {
+func (mr *MockchannelOpsMockRecorder) SearchChannelMessages(ctx, teamID, channelID, opts, searchConfig any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SearchChannelMessages", reflect.TypeOf((*MockchannelOps)(nil).SearchChannelMessages), ctx, teamID, channelID, opts)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SearchChannelMessages", reflect.TypeOf((*MockchannelOps)(nil).SearchChannelMessages), ctx, teamID, channelID, opts, searchConfig)
 }
 
 // SendMessage mocks base method.
