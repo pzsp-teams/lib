@@ -63,14 +63,15 @@ type SearchPage struct {
 type TimeInterval string
 
 const (
-	Today	   TimeInterval = "today"
-	Yesterday  TimeInterval = "yesterday"
-	ThisWeek   TimeInterval = "this week"
-	ThisMonth  TimeInterval = "this month"
-	LastMonth  TimeInterval = "last month"
-	ThisYear   TimeInterval = "this year"
-	LastYear   TimeInterval = "last year"
+	Today     TimeInterval = "today"
+	Yesterday TimeInterval = "yesterday"
+	ThisWeek  TimeInterval = "this week"
+	ThisMonth TimeInterval = "this month"
+	LastMonth TimeInterval = "last month"
+	ThisYear  TimeInterval = "this year"
+	LastYear  TimeInterval = "last year"
 )
+
 // SearchMessagesOptions contains options for searching messages.
 type SearchMessagesOptions struct {
 	Query       *string
