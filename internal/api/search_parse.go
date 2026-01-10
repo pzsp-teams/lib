@@ -26,10 +26,10 @@ func extractMessages(resp graphsearch.QueryPostResponseable) []SearchEntity {
 				}
 				channelIdentity, ok := resource.GetAdditionalData()["channelIdentity"]
 				if ok {
-					if teamID, ok := channelIdentity.(map[string]interface{})["teamId"]; ok && teamID != nil {
+					if teamID, ok := channelIdentity.(map[string]any)["teamId"]; ok && teamID != nil {
 						out = append(out, SearchEntity{
-							ChannelID: channelIdentity.(map[string]interface{})["channelId"].(*string),
-							TeamID:    channelIdentity.(map[string]interface{})["teamId"].(*string),
+							ChannelID: channelIdentity.(map[string]any)["channelId"].(*string),
+							TeamID:    channelIdentity.(map[string]any)["teamId"].(*string),
 							MessageID: resource.GetId(),
 						})
 					} else {
