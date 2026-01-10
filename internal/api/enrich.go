@@ -33,12 +33,6 @@ func cloneSearchOpts(in *search.SearchMessagesOptions) *search.SearchMessagesOpt
 	return &out
 }
 
-type enrichResult struct {
-	idx int
-	e   SearchEntity
-	msg msmodels.ChatMessageable
-}
-
 type task struct {
 	idx int
 	e   SearchEntity
@@ -70,17 +64,14 @@ func enrichMessages(
 		return []*SearchMessage{}, nil, nextFrom
 	}
 
-	const maxConcurrent = 16
-	sem := make(chan struct{}, maxConcurrent)
+	const maxConcurrent = -1
 
 	g, gctx := errgroup.WithContext(ctx)
-	outCh := make(chan enrichResult, len(tasks))
+	g.SetLimit(maxConcurrent)
+	results := make([]*SearchMessage, len(entities))
 
 	for _, t := range tasks {
 		g.Go(func() error {
-			sem <- struct{}{}
-			defer func() { <-sem }()
-
 			msg, err := fetch(gctx, t.e)
 			if err != nil {
 				if err.StatusCode() == 404 {
@@ -88,24 +79,14 @@ func enrichMessages(
 				}
 				return err
 			}
-
-			select {
-			case outCh <- enrichResult{idx: t.idx, e: t.e, msg: msg}:
-				return nil
-			case <-gctx.Done():
-				return gctx.Err()
+			results[t.idx] = &SearchMessage{
+				Message:   msg,
+				ChannelID: t.e.ChannelID,
+				TeamID:    t.e.TeamID,
+				ChatID:    t.e.ChatID,
 			}
+			return nil
 		})
-	}
-
-	go func() {
-		_ = g.Wait()
-		close(outCh)
-	}()
-
-	byIdx := make(map[int]enrichResult, len(tasks))
-	for r := range outCh {
-		byIdx[r.idx] = r
 	}
 
 	if err := g.Wait(); err != nil {
@@ -115,27 +96,8 @@ func enrichMessages(
 		return nil, &sender.RequestError{Message: err.Error()}, nil
 	}
 
-	results := aggregateResults(entities, byIdx)
-
 	nextFrom := calcNextSearchFrom(localOpts, len(entities))
 	return results, nil, nextFrom
-}
-
-func aggregateResults(entities []SearchEntity, byIdx map[int]enrichResult) []*SearchMessage {
-	results := make([]*SearchMessage, 0, len(byIdx))
-	for i := range entities {
-		r, ok := byIdx[i]
-		if !ok {
-			continue
-		}
-		results = append(results, &SearchMessage{
-			Message:   r.msg,
-			ChannelID: r.e.ChannelID,
-			TeamID:    r.e.TeamID,
-			ChatID:    r.e.ChatID,
-		})
-	}
-	return results
 }
 
 func prepareTasks(entities []SearchEntity, keep entityFilter) []task {
