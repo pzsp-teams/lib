@@ -1,10 +1,11 @@
-package search
+package api
 
 import (
 	"testing"
 	"time"
 
 	"github.com/pzsp-teams/lib/internal/util"
+	"github.com/pzsp-teams/lib/search"
 	"github.com/stretchr/testify/require"
 )
 
@@ -23,73 +24,73 @@ func TestSearchMessagesOptions_ParseQuery_TableDriven(t *testing.T) {
 
 	tests := []struct {
 		name string
-		in   SearchMessagesOptions
+		in   search.SearchMessagesOptions
 		want string
 	}{
 		{
 			name: "nil query no filters -> empty",
-			in:   SearchMessagesOptions{},
+			in:   search.SearchMessagesOptions{},
 			want: "",
 		},
 		{
 			name: "plain query only",
-			in: SearchMessagesOptions{
+			in: search.SearchMessagesOptions{
 				Query: util.Ptr("hello world"),
 			},
 			want: "hello world",
 		},
 		{
 			name: "from single",
-			in: SearchMessagesOptions{
+			in: search.SearchMessagesOptions{
 				From: []string{"a@x.com"},
 			},
 			want: ` from:("a@x.com")`,
 		},
 		{
 			name: "from multiple",
-			in: SearchMessagesOptions{
+			in: search.SearchMessagesOptions{
 				From: []string{"a@x.com", "b@x.com"},
 			},
 			want: ` from:("a@x.com" OR "b@x.com")`,
 		},
 		{
 			name: "not from multiple",
-			in: SearchMessagesOptions{
+			in: search.SearchMessagesOptions{
 				NotFrom: []string{"a@x.com", "b@x.com"},
 			},
 			want: ` NOT from:("a@x.com" OR "b@x.com")`,
 		},
 		{
 			name: "isread true",
-			in: SearchMessagesOptions{
+			in: search.SearchMessagesOptions{
 				IsRead: util.Ptr(true),
 			},
 			want: ` IsRead:"true"`,
 		},
 		{
 			name: "isread false",
-			in: SearchMessagesOptions{
+			in: search.SearchMessagesOptions{
 				IsRead: util.Ptr(false),
 			},
 			want: ` IsRead:"false"`,
 		},
 		{
 			name: "ismentioned true",
-			in: SearchMessagesOptions{
+			in: search.SearchMessagesOptions{
 				IsMentioned: util.Ptr(true),
 			},
 			want: ` IsMentioned:"true"`,
 		},
 		{
 			name: "ismentioned false",
-			in: SearchMessagesOptions{
+			in: search.SearchMessagesOptions{
 				IsMentioned: util.Ptr(false),
 			},
 			want: ` IsMentioned:"false"`,
 		},
 		{
 			name: "to + notto",
-			in: SearchMessagesOptions{
+			in: search.SearchMessagesOptions{
 				To:    []string{"x@x.com"},
 				NotTo: []string{"y@y.com", "z@z.com"},
 			},
@@ -97,10 +98,10 @@ func TestSearchMessagesOptions_ParseQuery_TableDriven(t *testing.T) {
 		},
 		{
 			name: "interval has priority and returns immediately",
-			in: SearchMessagesOptions{
+			in: search.SearchMessagesOptions{
 				Query:     util.Ptr("foo"),
 				From:      []string{"a@x.com"},
-				Interval:  util.Ptr(Today),
+				Interval:  util.Ptr(search.Today),
 				StartTime: &start,
 				EndTime:   &end,
 			},
@@ -108,7 +109,7 @@ func TestSearchMessagesOptions_ParseQuery_TableDriven(t *testing.T) {
 		},
 		{
 			name: "start and end -> sent range and returns immediately",
-			in: SearchMessagesOptions{
+			in: search.SearchMessagesOptions{
 				Query:     util.Ptr("foo"),
 				StartTime: &start,
 				EndTime:   &end,
@@ -117,7 +118,7 @@ func TestSearchMessagesOptions_ParseQuery_TableDriven(t *testing.T) {
 		},
 		{
 			name: "only start -> sent>=",
-			in: SearchMessagesOptions{
+			in: search.SearchMessagesOptions{
 				Query:     util.Ptr("foo"),
 				StartTime: &start,
 			},
@@ -125,7 +126,7 @@ func TestSearchMessagesOptions_ParseQuery_TableDriven(t *testing.T) {
 		},
 		{
 			name: "only end -> sent<=",
-			in: SearchMessagesOptions{
+			in: search.SearchMessagesOptions{
 				Query:   util.Ptr("foo"),
 				EndTime: &end,
 			},
@@ -133,7 +134,7 @@ func TestSearchMessagesOptions_ParseQuery_TableDriven(t *testing.T) {
 		},
 		{
 			name: "composition order is stable",
-			in: SearchMessagesOptions{
+			in: search.SearchMessagesOptions{
 				Query:       util.Ptr("foo"),
 				From:        []string{"a@x.com", "b@x.com"},
 				NotFrom:     []string{"c@x.com"},
@@ -151,7 +152,7 @@ func TestSearchMessagesOptions_ParseQuery_TableDriven(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			got := tt.in.ParseQuery()
+			got := ParseQuery(&tt.in)
 			require.Equal(t, tt.want, got)
 		})
 	}

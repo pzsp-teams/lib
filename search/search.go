@@ -1,18 +1,27 @@
 package search
 
 import (
-	"strings"
 	"time"
 
-	"github.com/pzsp-teams/lib/internal/util"
 	"github.com/pzsp-teams/lib/models"
 )
 
+// SearchPage contains pagination options for searching messages.
 type SearchPage struct {
 	From *int32
 	Size *int32
 }
 
+// TimeInterval represents a predefined time interval for message searches.
+//
+// Possible values include:
+//   - Today
+//   - Yesterday
+//   - ThisWeek
+//   - ThisMonth
+//   - LastMonth
+//   - ThisYear
+//   - LastYear
 type TimeInterval string
 
 const (
@@ -26,6 +35,29 @@ const (
 )
 
 // SearchMessagesOptions contains options for searching messages.
+//
+// Fields:
+//   - Query: The search query string.
+//   - SearchPage: Pagination options.
+//   - From: List of sender email addresses to include.
+//   - NotFrom: List of sender email addresses to exclude.
+//   - IsRead: Filter by read status (true for read, false for unread).
+//   - IsMentioned: Filter by mention status (true for mentioned, false for not mentioned).
+//   - To: List of recipient email addresses to include.
+//   - NotTo: List of recipient email addresses to exclude.
+//   - StartTime: Start time for the sent time range filter.
+//   - EndTime: End time for the sent time range filter.
+//   - Interval: Predefined time interval for the sent time filter.
+//   - NotFromMe: Exclude messages sent by the current user.
+//   - NotToMe: Exclude messages sent to the current user.
+//   - FromMe: Include only messages sent by the current user.
+//   - ToMe: Include only messages sent to the current user.
+//
+// Note: If Interval is set, it takes precedence over StartTime and EndTime.
+//
+// Note: Using `to` clauses works only in chats, not in team channels.
+//
+// Note: Currently, the queries for IsRead may not function as expected due to API limitations.
 type SearchMessagesOptions struct {
 	Query       *string
 	SearchPage  *SearchPage
@@ -44,6 +76,13 @@ type SearchMessagesOptions struct {
 	ToMe        bool
 }
 
+// SearchResult represents a single search result containing a message and its context.
+//
+// Fields:
+//   - Message: The chat message.
+//   - ChannelID: The ID of the channel where the message was found (if applicable).
+//   - TeamID: The ID of the team where the message was found (if applicable).
+//   - ChatID: The ID of the chat where the message was found (if applicable).
 type SearchResult struct {
 	Message   *models.Message
 	ChannelID *string
@@ -51,54 +90,12 @@ type SearchResult struct {
 	ChatID    *string
 }
 
+// SearchResults represents the results of a message search.
+//
+// Fields:
+//   - Messages: A list of search results.
+//   - NextFrom: The pagination token for the next page of results (if applicable).
 type SearchResults struct {
 	Messages []*SearchResult
 	NextFrom *int32
-}
-
-func (s *SearchMessagesOptions) ParseQuery() string {
-	query := util.Deref(s.Query)
-
-	if len(s.From) > 0 {
-		query += ` from:("` + strings.Join(s.From, `" OR "`) + `")`
-	}
-	if len(s.NotFrom) > 0 {
-		query += ` NOT from:("` + strings.Join(s.NotFrom, `" OR "`) + `")`
-	}
-	if s.IsRead != nil {
-		if *s.IsRead {
-			query += ` IsRead:"true"`
-		} else {
-			query += ` IsRead:"false"`
-		}
-	}
-	if s.IsMentioned != nil {
-		if *s.IsMentioned {
-			query += ` IsMentioned:"true"`
-		} else {
-			query += ` IsMentioned:"false"`
-		}
-	}
-	if len(s.To) > 0 {
-		query += ` to:("` + strings.Join(s.To, `" OR "`) + `")`
-	}
-	if len(s.NotTo) > 0 {
-		query += ` NOT to:("` + strings.Join(s.NotTo, `" OR "`) + `")`
-	}
-	if s.Interval != nil {
-		query += ` sent:` + `"` + string(*s.Interval) + `"`
-		return query
-	}
-	if s.StartTime != nil && s.EndTime != nil {
-		query += ` sent:` + `"` + s.StartTime.Format(time.RFC3339) + `..` + s.EndTime.Format(time.RFC3339) + `"`
-		return query
-	}
-	if s.StartTime != nil {
-		query += ` sent>=` + `"` + s.StartTime.Format(time.RFC3339) + `"`
-	}
-	if s.EndTime != nil {
-		query += ` sent<=` + `"` + s.EndTime.Format(time.RFC3339) + `"`
-	}
-
-	return query
 }
