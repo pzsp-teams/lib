@@ -1,6 +1,8 @@
 package api
 
 import (
+	"strings"
+
 	graphsearch "github.com/microsoftgraph/msgraph-sdk-go/search"
 )
 
@@ -9,7 +11,7 @@ func extractMessages(resp graphsearch.QueryPostResponseable) []SearchEntity {
 		return nil
 	}
 
-	out := make([]SearchEntity, 0, len(resp.GetValue()))
+	out := make([]SearchEntity, 0, 25)
 
 	for _, sr := range resp.GetValue() {
 		if sr == nil || sr.GetHitsContainers() == nil {
@@ -20,30 +22,64 @@ func extractMessages(resp graphsearch.QueryPostResponseable) []SearchEntity {
 				continue
 			}
 			for _, hit := range hc.GetHits() {
+				if hit == nil {
+					continue
+				}
 				resource := hit.GetResource()
 				if resource == nil {
 					continue
 				}
-				channelIdentity, ok := resource.GetAdditionalData()["channelIdentity"]
-				if ok {
-					if teamID, ok := channelIdentity.(map[string]any)["teamId"]; ok && teamID != nil {
-						out = append(out, SearchEntity{
-							ChannelID: channelIdentity.(map[string]any)["channelId"].(*string),
-							TeamID:    channelIdentity.(map[string]any)["teamId"].(*string),
-							MessageID: resource.GetId(),
-						})
-					} else {
-						if chatID, ok := resource.GetAdditionalData()["chatId"]; ok {
-							out = append(out, SearchEntity{
-								ChatID:    chatID.(*string),
-								MessageID: resource.GetId(),
-							})
+				msgID := resource.GetId()
+				if msgID == nil || strings.TrimSpace(*msgID) == "" {
+					continue
+				}
+
+				var teamID, channelID, chatID *string
+				if ad := resource.GetAdditionalData(); ad != nil {
+					if ciRaw, ok := ad["channelIdentity"]; ok {
+						if ciMap, ok := ciRaw.(map[string]any); ok {
+							teamID = asStringPtr(ciMap["teamId"])
+							channelID = asStringPtr(ciMap["channelId"])
 						}
 					}
+					if chatIDRaw, ok := ad["chatId"]; ok {
+						chatID = asStringPtr(chatIDRaw)
+					}
 				}
+
+				out = append(out, SearchEntity{
+					MessageID: msgID,
+					TeamID:    teamID,
+					ChannelID: channelID,
+					ChatID:    chatID,
+				})
 			}
 		}
 	}
 
 	return out
+}
+
+func asStringPtr(v any) *string {
+	switch t := v.(type) {
+	case nil:
+		return nil
+	case *string:
+		if t == nil {
+			return nil
+		}
+		s := strings.TrimSpace(*t)
+		if s == "" {
+			return nil
+		}
+		return &s
+	case string:
+		s := strings.TrimSpace(t)
+		if s == "" {
+			return nil
+		}
+		return &s
+	default:
+		return nil
+	}
 }
