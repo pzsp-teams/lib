@@ -69,13 +69,13 @@ func (s *searchAPI) SearchMessages(ctx context.Context, searchRequest *search.Se
 			return nil, err
 		}
 		if searchRequest.NotFromMe {
-			if me != nil && me.GetDisplayName() != nil {
-				searchRequest.NotFrom = append(searchRequest.NotFrom, strings.TrimSpace(*me.GetDisplayName()))
+			if me != nil && me.GetUserPrincipalName() != nil {
+				searchRequest.NotFrom = append(searchRequest.NotFrom, strings.TrimSpace(*me.GetUserPrincipalName()))
 			}
 		}
 		if searchRequest.NotToMe {
-			if me != nil && me.GetDisplayName() != nil {
-				searchRequest.NotTo = append(searchRequest.NotTo, strings.TrimSpace(*me.GetDisplayName()))
+			if me != nil && me.GetUserPrincipalName() != nil {
+				searchRequest.NotTo = append(searchRequest.NotTo, strings.TrimSpace(*me.GetUserPrincipalName()))
 			}
 		}
 	}
