@@ -7,6 +7,8 @@ import (
 
 	abstractions "github.com/microsoft/kiota-abstractions-go"
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
+	"github.com/pzsp-teams/lib/internal/util"
+	"github.com/pzsp-teams/lib/search"
 	"github.com/stretchr/testify/require"
 )
 
@@ -656,4 +658,151 @@ func TestGetHeaderValue(t *testing.T) {
 		require.Equal(t, "LOC-1", getHeaderValue(rh, "LOCATION"))
 		require.Equal(t, "LOC-1", getHeaderValue(rh, "location"))
 	})
+}
+
+func TestCalcNextSearchFrom(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		opts     *search.SearchMessagesOptions
+		returned int
+		want     int32
+	}{
+		{
+			name:     "nil opts -> from=0",
+			opts:     nil,
+			returned: 0,
+			want:     0,
+		},
+		{
+			name:     "nil opts + returned -> increments from 0",
+			opts:     nil,
+			returned: 7,
+			want:     7,
+		},
+		{
+			name: "nil SearchPage -> from=0",
+			opts: &search.SearchMessagesOptions{
+				SearchPage: nil,
+			},
+			returned: 3,
+			want:     3,
+		},
+		{
+			name: "SearchPage but nil From -> from=0",
+			opts: &search.SearchMessagesOptions{
+				SearchPage: &search.SearchPage{From: nil},
+			},
+			returned: 5,
+			want:     5,
+		},
+		{
+			name: "From set + returned 0",
+			opts: &search.SearchMessagesOptions{
+				SearchPage: &search.SearchPage{From: util.Ptr[int32](10)},
+			},
+			returned: 0,
+			want:     10,
+		},
+		{
+			name: "From set + returned adds",
+			opts: &search.SearchMessagesOptions{
+				SearchPage: &search.SearchPage{From: util.Ptr[int32](10)},
+			},
+			returned: 6,
+			want:     16,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := calcNextSearchFrom(tt.opts, tt.returned)
+			require.NotNil(t, got)
+			require.Equal(t, tt.want, *got)
+		})
+	}
+}
+
+func TestParseTeamIDFromHeaders_ExtraCases(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name            string
+		contentLocation string
+		location        string
+		wantID          string
+		wantOK          bool
+	}{
+		{
+			name:            "full URL quoted format",
+			contentLocation: "https://graph.microsoft.com/v1.0/teams('TEAM-ID-1')",
+			location:        "",
+			wantID:          "TEAM-ID-1",
+			wantOK:          true,
+		},
+		{
+			name:            "full URL slash format",
+			contentLocation: "https://graph.microsoft.com/v1.0/teams/TEAM-ID-2",
+			location:        "",
+			wantID:          "TEAM-ID-2",
+			wantOK:          true,
+		},
+		{
+			name:            "full URL with operations quoted format",
+			contentLocation: "https://graph.microsoft.com/v1.0/teams('TEAM-ID-3')/operations('OP')",
+			location:        "",
+			wantID:          "TEAM-ID-3",
+			wantOK:          true,
+		},
+		{
+			name:            "full URL with operations slash format",
+			contentLocation: "https://graph.microsoft.com/v1.0/teams/TEAM-ID-4/operations/OP",
+			location:        "",
+			wantID:          "TEAM-ID-4",
+			wantOK:          true,
+		},
+		{
+			name:            "unknown header content -> false",
+			contentLocation: "https://graph.microsoft.com/v1.0/groups('G1')",
+			location:        "",
+			wantID:          "",
+			wantOK:          false,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got, ok := parseTeamIDFromHeaders(tt.contentLocation, tt.location)
+			require.Equal(t, tt.wantOK, ok)
+			require.Equal(t, tt.wantID, got)
+		})
+	}
+}
+
+func TestFilterOutSystemEvents_EmptySliceValue(t *testing.T) {
+	t.Parallel()
+
+	resp := msmodels.NewChatMessageCollectionResponse()
+	resp.SetValue([]msmodels.ChatMessageable{})
+
+	got := filterOutSystemEvents(resp)
+	require.NotNil(t, got)
+	require.Len(t, got, 0)
+}
+
+func TestMessageToGraph_ContentTypeIsCaseSensitive(t *testing.T) {
+	t.Parallel()
+
+	body := messageToGraph("<b>hi</b>", "HTML") 
+	require.NotNil(t, body)
+
+	require.NotNil(t, body.GetContentType())
+	require.Equal(t, msmodels.TEXT_BODYTYPE, *body.GetContentType())
 }
