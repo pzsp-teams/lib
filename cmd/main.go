@@ -12,6 +12,7 @@ import (
 	"github.com/pzsp-teams/lib/config"
 	"github.com/pzsp-teams/lib/internal/util"
 	"github.com/pzsp-teams/lib/models"
+	"github.com/pzsp-teams/lib/search"
 )
 
 func printUsage() {
@@ -229,13 +230,13 @@ func handleSearchMessages(client *lib.Client, args []string) {
 	// teamName := args[0]
 	// channelName := args[1]
 	query := args[2]
-	opts := &models.SearchMessagesOptions{
+	opts := &search.SearchMessagesOptions{
 		Query: &query,
 		// From: []string{"Kamil", "Damian"},
 		// NotFrom: []string{"Kamil", "Michał Szwejk", "Michał Suski"},
 		// IsRead: util.Ptr(false),
 		// To: []string{"Damian", "Kamil"},
-		NotTo: []string{"Kamil", "Damian"},
+		// NotTo: []string{"Kamil", "Damian"},
 		StartTime: util.Ptr(time.Date(2026, time.January, 9, 0, 0, 0, 0, time.UTC)), 
 		EndTime: util.Ptr(time.Date(2026, time.January, 10, 23, 59, 59, 0, time.UTC)),
 		// SearchPage: &models.SearchPage{
@@ -243,6 +244,7 @@ func handleSearchMessages(client *lib.Client, args []string) {
 		// 	Size: util.Ptr(int32(50)),
 		// },
 		// IsMentioned: util.Ptr(true),
+		NotToMe: true,
 	}
 	fmt.Println(opts.ParseQuery())
 	messages, err := client.Chats.SearchMessages(context.TODO(), nil, opts)
