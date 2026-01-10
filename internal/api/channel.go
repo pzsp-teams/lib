@@ -520,10 +520,8 @@ func (c *channelAPI) SearchChannelMessages(ctx context.Context, teamID, channelI
 		}
 		msg, err := c.GetMessage(ctx, *e.TeamID, *e.ChannelID, *e.MessageID)
 		if err != nil {
-			msg, err = c.GetReply(ctx, *e.TeamID, *e.ChannelID, *e.MessageID, *e.MessageID)
-			if err != nil {
-				panic(err)
-			}
+			// We skip replies here as they are not directly searchable via this method
+			continue
 		}
 		results = append(results, &SearchMessage{
 			Message:   msg,
