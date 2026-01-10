@@ -1,7 +1,10 @@
 package models
 
 import (
+	"strings"
 	"time"
+
+	"github.com/pzsp-teams/lib/internal/util"
 )
 
 /*
@@ -57,16 +60,30 @@ type SearchPage struct {
 	Size *int32
 }
 
+type TimeInterval string
+
+const (
+	Today	   TimeInterval = "today"
+	Yesterday  TimeInterval = "yesterday"
+	ThisWeek   TimeInterval = "this week"
+	ThisMonth  TimeInterval = "this month"
+	LastMonth  TimeInterval = "last month"
+	ThisYear   TimeInterval = "this year"
+	LastYear   TimeInterval = "last year"
+)
 // SearchMessagesOptions contains options for searching messages.
 type SearchMessagesOptions struct {
-	Query       string
+	Query       *string
 	SearchPage  *SearchPage
-	From        *string
+	From        []string
+	NotFrom     []string
 	IsRead      *bool
 	IsMentioned *bool
-	To          *string
+	To          []string
+	NotTo       []string
 	StartTime   *time.Time
 	EndTime     *time.Time
+	Interval    *TimeInterval
 }
 
 type SearchResult struct {
@@ -82,10 +99,13 @@ type SearchResults struct {
 }
 
 func (s *SearchMessagesOptions) ParseQuery() string {
-	query := s.Query
+	query := util.Deref(s.Query)
 
 	if s.From != nil {
-		query += ` from:"` + *s.From + `"`
+		query += ` from:("` + strings.Join(s.From, `" OR "`) + `")`
+	}
+	if s.NotFrom != nil {
+		query += ` NOT from:("` + strings.Join(s.NotFrom, `" OR "`) + `")`
 	}
 	if s.IsRead != nil {
 		if *s.IsRead {
@@ -102,7 +122,14 @@ func (s *SearchMessagesOptions) ParseQuery() string {
 		}
 	}
 	if s.To != nil {
-		query += ` to:"` + *s.To + `"`
+		query += ` to:("` + strings.Join(s.To, `" OR "`) + `")`
+	}
+	if s.NotTo != nil {
+		query += ` NOT to:("` + strings.Join(s.NotTo, `" OR "`) + `")`
+	}
+	if s.Interval != nil {
+		query += ` sent:` + `"` + string(*s.Interval) + `"`
+		return query
 	}
 	if s.StartTime != nil && s.EndTime != nil {
 		query += ` sent:` + `"` + s.StartTime.Format(time.RFC3339) + `..` + s.EndTime.Format(time.RFC3339) + `"`
