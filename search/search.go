@@ -7,6 +7,12 @@ import (
 )
 
 // SearchPage contains pagination options for searching messages.
+// Fields:
+//   - From: The starting index of the search results.
+//   - Size: The number of results to return.
+//
+// Note: If not set, default pagination values will be used. From is zero-based.
+// Default Size is typically 25
 type SearchPage struct {
 	From *int32
 	Size *int32
