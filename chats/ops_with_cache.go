@@ -35,7 +35,6 @@ func (o *opsWithCache) CreateOneOnOne(ctx context.Context, userID string) (*mode
 		o.cacheHandler.OnError(err)
 		return nil, err
 	}
-
 	local := *chat
 	o.cacheHandler.Runner.Run(func() {
 		o.addChatsToCache(cacheChat{&userID, local})
@@ -210,12 +209,12 @@ func (o *opsWithCache) addChatsToCache(chats ...cacheChat) {
 }
 
 func (o *opsWithCache) addMembersToCache(chatID string, members ...models.Member) {
+	if util.AnyBlank(chatID) {
+		return
+	}
 	for _, member := range members {
-		if util.AnyBlank(chatID) {
-			return
-		}
 		if util.AnyBlank(member.Email) {
-			return
+			continue
 		}
 		key := cacher.NewGroupChatMemberKey(chatID, member.Email, nil)
 		_ = o.cacheHandler.Cacher.Set(key, member.ID)
