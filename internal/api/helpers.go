@@ -13,6 +13,7 @@ import (
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
 	graphteams "github.com/microsoftgraph/msgraph-sdk-go/teams"
 	"github.com/pzsp-teams/lib/internal/sender"
+	"github.com/pzsp-teams/lib/search"
 )
 
 const (
@@ -355,4 +356,13 @@ func (t *teamAPI) addMembersInBulk(ctx context.Context, teamID string, members [
 		return err
 	}
 	return nil
+}
+
+func calcNextSearchFrom(opts *search.SearchMessagesOptions, returned int) *int32 {
+	var from int32
+	if opts != nil && opts.SearchPage != nil && opts.SearchPage.From != nil {
+		from = *opts.SearchPage.From
+	}
+	nextFrom := from + int32(returned)
+	return &nextFrom
 }

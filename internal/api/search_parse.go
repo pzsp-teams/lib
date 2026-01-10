@@ -3,6 +3,7 @@ package api
 import (
 	"strings"
 
+	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
 	graphsearch "github.com/microsoftgraph/msgraph-sdk-go/search"
 )
 
@@ -26,25 +27,9 @@ func extractMessages(resp graphsearch.QueryPostResponseable) []SearchEntity {
 					continue
 				}
 				resource := hit.GetResource()
-				if resource == nil {
+				teamID, channelID, chatID, msgID := prepareIDs(resource)
+				if msgID == nil {
 					continue
-				}
-				msgID := resource.GetId()
-				if msgID == nil || strings.TrimSpace(*msgID) == "" {
-					continue
-				}
-
-				var teamID, channelID, chatID *string
-				if ad := resource.GetAdditionalData(); ad != nil {
-					if ciRaw, ok := ad["channelIdentity"]; ok {
-						if ciMap, ok := ciRaw.(map[string]any); ok {
-							teamID = asStringPtr(ciMap["teamId"])
-							channelID = asStringPtr(ciMap["channelId"])
-						}
-					}
-					if chatIDRaw, ok := ad["chatId"]; ok {
-						chatID = asStringPtr(chatIDRaw)
-					}
 				}
 
 				out = append(out, SearchEntity{
@@ -82,4 +67,27 @@ func asStringPtr(v any) *string {
 	default:
 		return nil
 	}
+}
+
+func prepareIDs(resource msmodels.Entityable) (teamID, channelID, chatID, msgID *string) {
+	if resource == nil {
+		return nil, nil, nil, nil
+	}
+	msgID = resource.GetId()
+	if msgID == nil || strings.TrimSpace(*msgID) == "" {
+		return nil, nil, nil, nil
+	}
+
+	if ad := resource.GetAdditionalData(); ad != nil {
+		if ciRaw, ok := ad["channelIdentity"]; ok {
+			if ciMap, ok := ciRaw.(map[string]any); ok {
+				teamID = asStringPtr(ciMap["teamId"])
+				channelID = asStringPtr(ciMap["channelId"])
+			}
+		}
+		if chatIDRaw, ok := ad["chatId"]; ok {
+			chatID = asStringPtr(chatIDRaw)
+		}
+	}
+	return teamID, channelID, chatID, msgID
 }

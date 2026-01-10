@@ -420,45 +420,27 @@ func (c *chatsAPI) ListMessagesNext(ctx context.Context, chatID, nextLink string
 	return out, nil
 }
 
-func (c *chatsAPI) SearchChatMessages(ctx context.Context, chatID *string, opts *search.SearchMessagesOptions) ([]*SearchMessage, *sender.RequestError, *int32) {
-	if opts == nil {
-		opts = &search.SearchMessagesOptions{}
-	}
-	resp, err := c.searchAPI.SearchMessages(ctx, opts)
-	if err != nil {
-		return nil, err, nil
-	}
-
-	entities := extractMessages(resp)
-	if len(entities) == 0 {
-		return []*SearchMessage{}, nil, nil
-	}
-	results := make([]*SearchMessage, 0, len(entities))
-	for _, e := range entities {
-		if e.ChatID == nil || e.TeamID != nil {
-			continue
+func (c *chatsAPI) SearchChatMessages(
+	ctx context.Context,
+	chatID *string,
+	opts *search.SearchMessagesOptions,
+) ([]*SearchMessage, *sender.RequestError, *int32) {
+	keep := func(e SearchEntity) bool {
+		if e.ChatID == nil {
+			return false
+		}
+		if e.TeamID != nil {
+			return false
 		}
 		if chatID != nil && *e.ChatID != *chatID {
-			continue
+			return false
 		}
-		msg, err := c.GetMessage(ctx, *e.ChatID, *e.MessageID)
-		if err != nil {
-			if err.StatusCode() == 404 {
-				continue
-			}
-			return nil, err, nil
-		}
-		results = append(results, &SearchMessage{
-			Message:   msg,
-			ChannelID: e.ChannelID,
-			TeamID:    e.TeamID,
-			ChatID:    e.ChatID,
-		})
+		return true
 	}
-	var from int32
-	if opts != nil && opts.SearchPage != nil && opts.SearchPage.From != nil {
-		from = *opts.SearchPage.From
+
+	fetch := func(ctx context.Context, e SearchEntity) (msmodels.ChatMessageable, *sender.RequestError) {
+		return c.GetMessage(ctx, *e.ChatID, *e.MessageID)
 	}
-	nextFrom := from + int32(len(entities))
-	return results, nil, &nextFrom
+
+	return searchAndHydrate(ctx, c.searchAPI, opts, keep, fetch)
 }
