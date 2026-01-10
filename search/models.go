@@ -40,6 +40,8 @@ type SearchMessagesOptions struct {
 	Interval    *TimeInterval
 	NotFromMe   bool
 	NotToMe     bool
+	FromMe      bool
+	ToMe        bool
 }
 
 type SearchResult struct {

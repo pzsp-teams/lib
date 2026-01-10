@@ -63,20 +63,10 @@ func (s *searchAPI) SearchMessages(ctx context.Context, searchRequest *search.Se
 		body.SetRequests([]msmodels.SearchRequestable{req})
 		return s.client.Search().Query().PostAsQueryPostResponse(ctx, body, nil)
 	}
-	if searchRequest.NotFromMe || searchRequest.NotToMe {
-		me, err := GetMe(ctx, s.client, s.senderCfg)
+	if searchRequest.NotFromMe || searchRequest.NotToMe || searchRequest.FromMe || searchRequest.ToMe {
+		err := s.addMeToOpts(ctx, searchRequest)
 		if err != nil {
 			return nil, err
-		}
-		if searchRequest.NotFromMe {
-			if me != nil && me.GetUserPrincipalName() != nil {
-				searchRequest.NotFrom = append(searchRequest.NotFrom, strings.TrimSpace(*me.GetUserPrincipalName()))
-			}
-		}
-		if searchRequest.NotToMe {
-			if me != nil && me.GetUserPrincipalName() != nil {
-				searchRequest.NotTo = append(searchRequest.NotTo, strings.TrimSpace(*me.GetUserPrincipalName()))
-			}
 		}
 	}
 
@@ -90,4 +80,32 @@ func (s *searchAPI) SearchMessages(ctx context.Context, searchRequest *search.Se
 		return nil, newTypeError("QueryPostResponseable")
 	}
 	return out, nil
+}
+
+func (s *searchAPI) addMeToOpts(ctx context.Context, opts *search.SearchMessagesOptions) *sender.RequestError {
+	me, err := GetMe(ctx, s.client, s.senderCfg)
+	if err != nil {
+		return err
+	}
+	if opts.NotFromMe {
+		if me != nil && me.GetUserPrincipalName() != nil {
+			opts.NotFrom = append(opts.NotFrom, strings.TrimSpace(*me.GetUserPrincipalName()))
+		}
+	}
+	if opts.NotToMe {
+		if me != nil && me.GetUserPrincipalName() != nil {
+			opts.NotTo = append(opts.NotTo, strings.TrimSpace(*me.GetUserPrincipalName()))
+		}
+	}
+	if opts.FromMe {
+		if me != nil && me.GetUserPrincipalName() != nil {
+			opts.From = append(opts.From, strings.TrimSpace(*me.GetUserPrincipalName()))
+		}
+	}
+	if opts.ToMe {
+		if me != nil && me.GetUserPrincipalName() != nil {
+			opts.To = append(opts.To, strings.TrimSpace(*me.GetUserPrincipalName()))
+		}
+	}
+	return nil
 }
