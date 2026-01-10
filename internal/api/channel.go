@@ -13,7 +13,6 @@ import (
 
 	"github.com/pzsp-teams/lib/config"
 	"github.com/pzsp-teams/lib/internal/sender"
-	"github.com/pzsp-teams/lib/internal/util"
 	"github.com/pzsp-teams/lib/search"
 )
 
@@ -507,6 +506,9 @@ func (c *channelAPI) SearchChannelMessages(ctx context.Context, teamID, channelI
 	}
 
 	entities := extractMessages(resp)
+	if len(entities) == 0 {
+		return []*SearchMessage{}, nil, nil
+	}
 	results := make([]*SearchMessage, 0, len(entities))
 	for _, e := range entities {
 		if e.TeamID == nil || e.ChannelID == nil {
@@ -520,8 +522,10 @@ func (c *channelAPI) SearchChannelMessages(ctx context.Context, teamID, channelI
 		}
 		msg, err := c.GetMessage(ctx, *e.TeamID, *e.ChannelID, *e.MessageID)
 		if err != nil {
-			// We skip replies here as they are not directly searchable via this method
-			continue
+			if err.StatusCode() == 404 { // skipping replies
+				continue
+			}
+			return nil, err, nil
 		}
 		results = append(results, &SearchMessage{
 			Message:   msg,
@@ -530,6 +534,10 @@ func (c *channelAPI) SearchChannelMessages(ctx context.Context, teamID, channelI
 			ChatID:    e.ChatID,
 		})
 	}
-	nextFrom := util.Deref(opts.SearchPage.From) + int32(len(entities))
+	var from int32
+	if opts != nil && opts.SearchPage != nil && opts.SearchPage.From != nil {
+		from = *opts.SearchPage.From
+	}
+	nextFrom := from + int32(len(entities))
 	return results, nil, &nextFrom
 }
