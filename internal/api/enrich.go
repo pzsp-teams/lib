@@ -95,9 +95,14 @@ func enrichMessages(
 		}
 		return nil, &sender.RequestError{Message: err.Error()}, nil
 	}
-
+	out := make([]*SearchMessage, 0, len(tasks))
+	for _, sm := range results {
+		if sm != nil {
+			out = append(out, sm)
+		}
+	}
 	nextFrom := calcNextSearchFrom(localOpts, len(entities))
-	return results, nil, nextFrom
+	return out, nil, nextFrom
 }
 
 func prepareTasks(entities []SearchEntity, keep entityFilter) []task {
