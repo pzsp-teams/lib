@@ -20,7 +20,7 @@ type UserAPI interface {
 
 type userAPI struct {
 	client    *graph.GraphServiceClient
-	snederCfg *config.SenderConfig
+	senderCfg *config.SenderConfig
 }
 
 func NewUser(client *graph.GraphServiceClient, senderCfg *config.SenderConfig) UserAPI {
@@ -57,7 +57,7 @@ func (u *userAPI) getUserByKey(ctx context.Context, key string) (msmodels.Userab
 		return u.client.Users().ByUserId(key).Get(ctx, cfg)
 	}
 
-	resp, err := sender.SendRequest(ctx, call, u.snederCfg)
+	resp, err := sender.SendRequest(ctx, call, u.senderCfg)
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +98,7 @@ func (u *userAPI) findUserByEmail(ctx context.Context, email string) (msmodels.U
 		return u.client.Users().Get(ctx, cfg)
 	}
 
-	resp, err := sender.SendRequest(ctx, call, u.snederCfg)
+	resp, err := sender.SendRequest(ctx, call, u.senderCfg)
 	if err != nil {
 		return nil, err
 	}
