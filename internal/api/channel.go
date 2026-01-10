@@ -530,6 +530,6 @@ func (c *channelAPI) SearchChannelMessages(ctx context.Context, teamID, channelI
 			ChatID:    e.ChatID,
 		})
 	}
-
-	return results, nil, util.Ptr(int32(len(entities)))
+	nextFrom := util.Deref(opts.SearchPage.From) + int32(len(entities))
+	return results, nil, &nextFrom
 }

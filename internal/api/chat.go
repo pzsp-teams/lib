@@ -433,7 +433,7 @@ func (c *chatsAPI) SearchChatMessages(ctx context.Context, chatID *string, opts 
 	entities := extractMessages(resp)
 	results := make([]*SearchMessage, 0, len(entities))
 	for _, e := range entities {
-		if e.ChatID == nil {
+		if e.ChatID == nil || e.TeamID != nil {
 			continue
 		}
 		if chatID != nil && *e.ChatID != *chatID {
@@ -450,6 +450,6 @@ func (c *chatsAPI) SearchChatMessages(ctx context.Context, chatID *string, opts 
 			ChatID:    e.ChatID,
 		})
 	}
-
-	return results, nil, util.Ptr(int32(len(entities)))
+	nextFrom := util.Deref(opts.SearchPage.From) + int32(len(entities))
+	return results, nil, &nextFrom
 }
