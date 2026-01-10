@@ -23,7 +23,7 @@ import (
 // Service defines the interface for chat-related operations.
 // It includes methods for creating chats, managing members, sending messages, and more.
 type Service interface {
-	// CreateOneOneOne creates a one-on-one chat with the given recipient.
+	// CreateOneOnOne creates a one-on-one chat with the given recipient.
 	// The authenticated user is automatically added to the chat.
 	CreateOneOnOne(ctx context.Context, recipientRef string) (*models.Chat, error)
 
