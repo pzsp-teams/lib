@@ -365,7 +365,7 @@ func (s *service) GetMentions(ctx context.Context, teamRef, channelRef string, r
 	return out, nil
 }
 
-func (s *service) SearchMessages(ctx context.Context, teamRef, channelRef *string, opts *search.SearchMessagesOptions) (*search.SearchResults, error) {
+func (s *service) SearchMessages(ctx context.Context, teamRef, channelRef *string, opts *search.SearchMessagesOptions, searchConfig *search.SearchConfig) (*search.SearchResults, error) {
 	var teamIDptr, channelIDptr *string
 	if teamRef != nil && channelRef != nil {
 		teamID, channelID, err := s.resolveTeamAndChannelID(ctx, *teamRef, *channelRef)
@@ -378,7 +378,10 @@ func (s *service) SearchMessages(ctx context.Context, teamRef, channelRef *strin
 		teamIDptr = &teamID
 		channelIDptr = &channelID
 	}
-	out, err := s.ops.SearchChannelMessages(ctx, teamIDptr, channelIDptr, opts)
+	if searchConfig == nil {
+		searchConfig = search.DefaultSearchConfig()
+	}
+	out, err := s.ops.SearchChannelMessages(ctx, teamIDptr, channelIDptr, opts, searchConfig)
 	if err != nil {
 		if teamRef == nil || channelRef == nil {
 			return nil, snd.Wrap("SearchMessages", err)

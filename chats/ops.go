@@ -195,11 +195,11 @@ func (o *ops) ListMessagesNext(ctx context.Context, chatID, nextLink string, inc
 	}, nil
 }
 
-func (o *ops) SearchChatMessages(ctx context.Context, chatID *string, opts *search.SearchMessagesOptions) (*search.SearchResults, error) {
+func (o *ops) SearchChatMessages(ctx context.Context, chatID *string, opts *search.SearchMessagesOptions, searchConfig *search.SearchConfig) (*search.SearchResults, error) {
 	if opts == nil {
 		return nil, errors.New("missing opts")
 	}
-	resp, requestErr, nextFrom := o.chatAPI.SearchChatMessages(ctx, chatID, opts)
+	resp, requestErr, nextFrom := o.chatAPI.SearchChatMessages(ctx, chatID, opts, searchConfig)
 	if requestErr != nil {
 		if chatID == nil {
 			return nil, snd.MapError(requestErr)

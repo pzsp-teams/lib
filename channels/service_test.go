@@ -9,6 +9,7 @@ import (
 	"github.com/pzsp-teams/lib/internal/testutil"
 	"github.com/pzsp-teams/lib/internal/util"
 	"github.com/pzsp-teams/lib/models"
+	"github.com/pzsp-teams/lib/search"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -1408,3 +1409,190 @@ func TestService_RemoveMember_Errors(t *testing.T) {
 		})
 	}
 }
+
+func TestService_SearchMessages(t *testing.T) {
+	opts := &search.SearchMessagesOptions{}
+	def := search.DefaultSearchConfig()
+
+	t.Run("when teamRef and channelRef are nil -> does not resolve and passes nil IDs; uses default config", func(t *testing.T) {
+		want := &search.SearchResults{}
+
+		svc, ctx := newSUT(t, func(d sutDeps) {
+			d.teamResolver.EXPECT().ResolveTeamRefToID(gomock.Any(), gomock.Any()).Times(0)
+			d.channelResolver.EXPECT().ResolveChannelRefToID(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+
+			d.ops.EXPECT().
+				SearchChannelMessages(gomock.Any(), (*string)(nil), (*string)(nil), opts, gomock.Any()).
+				DoAndReturn(func(_ context.Context, teamIDptr, channelIDptr *string, gotOpts *search.SearchMessagesOptions, cfg *search.SearchConfig) (*search.SearchResults, error) {
+					require.Nil(t, teamIDptr)
+					require.Nil(t, channelIDptr)
+					require.Same(t, opts, gotOpts)
+
+					require.NotNil(t, cfg)
+					require.Equal(t, *def, *cfg) // wartości domyślne
+
+					return want, nil
+				}).
+				Times(1)
+		})
+
+		got, err := svc.SearchMessages(ctx, nil, nil, opts, nil)
+		require.NoError(t, err)
+		require.Same(t, want, got)
+	})
+
+	t.Run("when only teamRef is provided -> still no resolve; uses default config", func(t *testing.T) {
+		teamRef := defaultTeamRef
+		want := &search.SearchResults{}
+
+		svc, ctx := newSUT(t, func(d sutDeps) {
+			d.teamResolver.EXPECT().ResolveTeamRefToID(gomock.Any(), gomock.Any()).Times(0)
+			d.channelResolver.EXPECT().ResolveChannelRefToID(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+
+			d.ops.EXPECT().
+				SearchChannelMessages(gomock.Any(), (*string)(nil), (*string)(nil), opts, gomock.Any()).
+				DoAndReturn(func(_ context.Context, teamIDptr, channelIDptr *string, gotOpts *search.SearchMessagesOptions, cfg *search.SearchConfig) (*search.SearchResults, error) {
+					require.Nil(t, teamIDptr)
+					require.Nil(t, channelIDptr)
+					require.Same(t, opts, gotOpts)
+
+					require.NotNil(t, cfg)
+					require.Equal(t, *def, *cfg)
+
+					return want, nil
+				}).
+				Times(1)
+		})
+
+		got, err := svc.SearchMessages(ctx, &teamRef, nil, opts, nil)
+		require.NoError(t, err)
+		require.Same(t, want, got)
+	})
+
+	t.Run("when only channelRef is provided -> still no resolve; uses default config", func(t *testing.T) {
+		channelRef := defaultChannelRef
+		want := &search.SearchResults{}
+
+		svc, ctx := newSUT(t, func(d sutDeps) {
+			d.teamResolver.EXPECT().ResolveTeamRefToID(gomock.Any(), gomock.Any()).Times(0)
+			d.channelResolver.EXPECT().ResolveChannelRefToID(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
+
+			d.ops.EXPECT().
+				SearchChannelMessages(gomock.Any(), (*string)(nil), (*string)(nil), opts, gomock.Any()).
+				DoAndReturn(func(_ context.Context, teamIDptr, channelIDptr *string, gotOpts *search.SearchMessagesOptions, cfg *search.SearchConfig) (*search.SearchResults, error) {
+					require.Nil(t, teamIDptr)
+					require.Nil(t, channelIDptr)
+					require.Same(t, opts, gotOpts)
+
+					require.NotNil(t, cfg)
+					require.Equal(t, *def, *cfg)
+
+					return want, nil
+				}).
+				Times(1)
+		})
+
+		got, err := svc.SearchMessages(ctx, nil, &channelRef, opts, nil)
+		require.NoError(t, err)
+		require.Same(t, want, got)
+	})
+
+	t.Run("when both refs are provided -> resolves IDs and passes pointers; uses default config", func(t *testing.T) {
+		teamRef := defaultTeamRef
+		channelRef := defaultChannelRef
+		want := &search.SearchResults{}
+
+		svc, ctx := newSUT(t, func(d sutDeps) {
+			expectResolveTeamAndChannel(t, d)
+
+			d.ops.EXPECT().
+				SearchChannelMessages(gomock.Any(), gomock.Any(), gomock.Any(), opts, gomock.Any()).
+				DoAndReturn(func(_ context.Context, teamIDptr, channelIDptr *string, gotOpts *search.SearchMessagesOptions, cfg *search.SearchConfig) (*search.SearchResults, error) {
+					require.NotNil(t, teamIDptr)
+					require.NotNil(t, channelIDptr)
+					require.Equal(t, defaultTeamID, *teamIDptr)
+					require.Equal(t, defaultChannelID, *channelIDptr)
+					require.Same(t, opts, gotOpts)
+
+					require.NotNil(t, cfg)
+					require.Equal(t, *def, *cfg)
+
+					return want, nil
+				}).
+				Times(1)
+		})
+
+		got, err := svc.SearchMessages(ctx, &teamRef, &channelRef, opts, nil)
+		require.NoError(t, err)
+		require.Same(t, want, got)
+	})
+
+	t.Run("when custom searchConfig is provided -> passes the same pointer through", func(t *testing.T) {
+		teamRef := defaultTeamRef
+		channelRef := defaultChannelRef
+		want := &search.SearchResults{}
+		customCfg := search.DefaultSearchConfig() // wystarczy, by przetestować gałąź non-nil
+
+		svc, ctx := newSUT(t, func(d sutDeps) {
+			expectResolveTeamAndChannel(t, d)
+
+			d.ops.EXPECT().
+				SearchChannelMessages(gomock.Any(), gomock.Any(), gomock.Any(), opts, customCfg).
+				Return(want, nil).
+				Times(1)
+		})
+
+		got, err := svc.SearchMessages(ctx, &teamRef, &channelRef, opts, customCfg)
+		require.NoError(t, err)
+		require.Same(t, want, got)
+	})
+
+	t.Run("when resolver fails -> returns wrapped error and does not call ops", func(t *testing.T) {
+		teamRef := defaultTeamRef
+		channelRef := defaultChannelRef
+
+		svc, ctx := newSUT(t, func(d sutDeps) {
+			d.teamResolver.EXPECT().
+				ResolveTeamRefToID(gomock.Any(), defaultTeamRef).
+				Return("", errors.New("boom")).
+				Times(1)
+
+			d.ops.EXPECT().
+				SearchChannelMessages(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+				Times(0)
+		})
+
+		_, err := svc.SearchMessages(ctx, &teamRef, &channelRef, opts, nil)
+		require.Error(t, err)
+	})
+
+	t.Run("ops error wrapped; with refs provided -> request error code preserved", func(t *testing.T) {
+		teamRef := defaultTeamRef
+		channelRef := defaultChannelRef
+
+		svc, ctx := newSUT(t, func(d sutDeps) {
+			expectResolveTeamAndChannel(t, d)
+
+			d.ops.EXPECT().
+				SearchChannelMessages(gomock.Any(), gomock.Any(), gomock.Any(), opts, gomock.Any()).
+				Return(nil, &snd.ErrAccessForbidden{Code: 403, OriginalMessage: "nope"}).
+				Times(1)
+		})
+
+		_, err := svc.SearchMessages(ctx, &teamRef, &channelRef, opts, nil)
+		testutil.RequireReqErrCode(t, err, 403)
+	})
+
+	t.Run("ops error wrapped; with nil refs -> request error code preserved", func(t *testing.T) {
+		svc, ctx := newSUT(t, func(d sutDeps) {
+			d.ops.EXPECT().
+				SearchChannelMessages(gomock.Any(), (*string)(nil), (*string)(nil), opts, gomock.Any()).
+				Return(nil, &snd.ErrAccessForbidden{Code: 403, OriginalMessage: "nope"}).
+				Times(1)
+		})
+
+		_, err := svc.SearchMessages(ctx, nil, nil, opts, nil)
+		testutil.RequireReqErrCode(t, err, 403)
+	})
+}
+

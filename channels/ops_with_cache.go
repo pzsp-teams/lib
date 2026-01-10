@@ -236,8 +236,8 @@ func (o *opsWithCache) GetMentions(ctx context.Context, teamID, teamRef, channel
 	}, o.cacheHandler)
 }
 
-func (o *opsWithCache) SearchChannelMessages(ctx context.Context, teamID, channelID *string, opts *search.SearchMessagesOptions) (*search.SearchResults, error) {
+func (o *opsWithCache) SearchChannelMessages(ctx context.Context, teamID, channelID *string, opts *search.SearchMessagesOptions, searchConfig *search.SearchConfig) (*search.SearchResults, error) {
 	return cacher.WithErrorClear(func() (*search.SearchResults, error) {
-		return o.chanOps.SearchChannelMessages(ctx, teamID, channelID, opts)
+		return o.chanOps.SearchChannelMessages(ctx, teamID, channelID, opts, searchConfig)
 	}, o.cacheHandler)
 }

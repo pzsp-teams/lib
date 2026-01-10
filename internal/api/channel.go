@@ -34,7 +34,7 @@ type ChannelAPI interface {
 	RemoveMember(ctx context.Context, teamID, channelID, memberID string) *sender.RequestError
 	ListMessagesNext(ctx context.Context, teamID, channelID, nextLink string, includeSystem bool) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError)
 	ListRepliesNext(ctx context.Context, teamID, channelID, messageID, nextLink string, includeSystem bool) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError)
-	SearchChannelMessages(ctx context.Context, teamID, channelID *string, opts *search.SearchMessagesOptions) ([]*SearchMessage, *sender.RequestError, *int32)
+	SearchChannelMessages(ctx context.Context, teamID, channelID *string, opts *search.SearchMessagesOptions, searchConfig *search.SearchConfig) ([]*SearchMessage, *sender.RequestError, *int32)
 }
 
 type channelAPI struct {
@@ -500,6 +500,7 @@ func (c *channelAPI) SearchChannelMessages(
 	ctx context.Context,
 	teamID, channelID *string,
 	opts *search.SearchMessagesOptions,
+	searchConfig *search.SearchConfig,
 ) ([]*SearchMessage, *sender.RequestError, *int32) {
 	keep := func(e SearchEntity) bool {
 		if e.TeamID == nil || e.ChannelID == nil {
@@ -518,5 +519,5 @@ func (c *channelAPI) SearchChannelMessages(
 		return c.GetMessage(ctx, *e.TeamID, *e.ChannelID, *e.MessageID)
 	}
 
-	return enrichMessages(ctx, c.searchAPI, opts, keep, fetch)
+	return enrichMessages(ctx, c.searchAPI, opts, keep, fetch, searchConfig)
 }

@@ -44,6 +44,7 @@ func enrichMessages(
 	opts *search.SearchMessagesOptions,
 	keep entityFilter,
 	fetch messageFetcher,
+	searchCfg *search.SearchConfig,
 ) ([]*SearchMessage, *sender.RequestError, *int32) {
 	localOpts := cloneSearchOpts(opts)
 
@@ -64,10 +65,8 @@ func enrichMessages(
 		return []*SearchMessage{}, nil, nextFrom
 	}
 
-	const maxConcurrent = -1
-
 	g, gctx := errgroup.WithContext(ctx)
-	g.SetLimit(maxConcurrent)
+	g.SetLimit(searchCfg.MaxWorkers)
 	results := make([]*SearchMessage, len(entities))
 
 	for _, t := range tasks {

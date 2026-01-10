@@ -266,12 +266,12 @@ func (o *ops) GetMentions(ctx context.Context, teamID, teamRef, channelRef, chan
 	return out, nil
 }
 
-func (o *ops) SearchChannelMessages(ctx context.Context, teamID, channelID *string, opts *search.SearchMessagesOptions) (*search.SearchResults, error) {
+func (o *ops) SearchChannelMessages(ctx context.Context, teamID, channelID *string, opts *search.SearchMessagesOptions, searchConfig *search.SearchConfig) (*search.SearchResults, error) {
 	if opts == nil {
 		return nil, errors.New("missing opts")
 	}
 
-	resp, requestErr, nextFrom := o.channelAPI.SearchChannelMessages(ctx, teamID, channelID, opts)
+	resp, requestErr, nextFrom := o.channelAPI.SearchChannelMessages(ctx, teamID, channelID, opts, searchConfig)
 	if requestErr != nil {
 		if teamID == nil || channelID == nil {
 			return nil, snd.MapError(requestErr)

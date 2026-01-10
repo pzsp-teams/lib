@@ -38,7 +38,7 @@ type ChatAPI interface {
 	PinMessage(ctx context.Context, chatID, messageID string) *sender.RequestError
 	UnpinMessage(ctx context.Context, chatID, pinnedID string) *sender.RequestError
 	ListMessagesNext(ctx context.Context, chatID, nextLink string, includeSystem bool) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError)
-	SearchChatMessages(ctx context.Context, chatID *string, opts *search.SearchMessagesOptions) ([]*SearchMessage, *sender.RequestError, *int32)
+	SearchChatMessages(ctx context.Context, chatID *string, opts *search.SearchMessagesOptions, searchConfig *search.SearchConfig) ([]*SearchMessage, *sender.RequestError, *int32)
 }
 
 type chatsAPI struct {
@@ -424,6 +424,7 @@ func (c *chatsAPI) SearchChatMessages(
 	ctx context.Context,
 	chatID *string,
 	opts *search.SearchMessagesOptions,
+	searchConfig *search.SearchConfig,
 ) ([]*SearchMessage, *sender.RequestError, *int32) {
 	keep := func(e SearchEntity) bool {
 		if e.ChatID == nil {
@@ -442,5 +443,5 @@ func (c *chatsAPI) SearchChatMessages(
 		return c.GetMessage(ctx, *e.ChatID, *e.MessageID)
 	}
 
-	return enrichMessages(ctx, c.searchAPI, opts, keep, fetch)
+	return enrichMessages(ctx, c.searchAPI, opts, keep, fetch, searchConfig)
 }

@@ -84,5 +84,5 @@ type Service interface {
 	//   - User IDs
 	GetMentions(ctx context.Context, chatRef ChatRef, rawMentions []string) ([]models.Mention, error)
 
-	SearchMessages(ctx context.Context, chatRef ChatRef, opts *search.SearchMessagesOptions) (*search.SearchResults, error)
+	SearchMessages(ctx context.Context, chatRef ChatRef, opts *search.SearchMessagesOptions, searchConfig *search.SearchConfig) (*search.SearchResults, error)
 }
