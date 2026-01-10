@@ -84,5 +84,10 @@ type Service interface {
 	//   - User IDs
 	GetMentions(ctx context.Context, chatRef ChatRef, rawMentions []string) ([]models.Mention, error)
 
+	// SearchMessages searches for messages in a chat matching the specified query and options.
+	//
+	// If chatRef is nil, searches across all chats the user has access to.
+	//
+	// Returns search results containing matching messages.
 	SearchMessages(ctx context.Context, chatRef ChatRef, opts *search.SearchMessagesOptions, searchConfig *search.SearchConfig) (*search.SearchResults, error)
 }

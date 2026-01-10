@@ -91,5 +91,10 @@ type Service interface {
 	GetMentions(ctx context.Context, teamRef, channelRef string, rawMentions []string) ([]models.Mention, error)
 
 	// SearchMessagesInChannel searches for messages in a channel matching the specified query and options.
+	//
+	// If channelRef is nil, searches across all channels the user has access to.
+	// If teamRef is also nil, searches across all teams and channels the user has access to.
+	//
+	// Returns search results containing matching messages.
 	SearchMessages(ctx context.Context, teamRef, channelRef *string, opts *search.SearchMessagesOptions, searchConfig *search.SearchConfig) (*search.SearchResults, error)
 }
