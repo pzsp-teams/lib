@@ -10,7 +10,6 @@ import (
 	graphusers "github.com/microsoftgraph/msgraph-sdk-go/users"
 	"github.com/pzsp-teams/lib/config"
 	"github.com/pzsp-teams/lib/internal/sender"
-	"github.com/pzsp-teams/lib/internal/util"
 	"github.com/pzsp-teams/lib/search"
 )
 
@@ -431,6 +430,9 @@ func (c *chatsAPI) SearchChatMessages(ctx context.Context, chatID *string, opts 
 	}
 
 	entities := extractMessages(resp)
+	if len(entities) == 0 {
+		return []*SearchMessage{}, nil, nil
+	}
 	results := make([]*SearchMessage, 0, len(entities))
 	for _, e := range entities {
 		if e.ChatID == nil || e.TeamID != nil {
@@ -441,7 +443,10 @@ func (c *chatsAPI) SearchChatMessages(ctx context.Context, chatID *string, opts 
 		}
 		msg, err := c.GetMessage(ctx, *e.ChatID, *e.MessageID)
 		if err != nil {
-			continue
+			if err.StatusCode() == 404 {
+				continue
+			}
+			return nil, err, nil
 		}
 		results = append(results, &SearchMessage{
 			Message:   msg,
@@ -450,6 +455,10 @@ func (c *chatsAPI) SearchChatMessages(ctx context.Context, chatID *string, opts 
 			ChatID:    e.ChatID,
 		})
 	}
-	nextFrom := util.Deref(opts.SearchPage.From) + int32(len(entities))
+	var from int32
+	if opts != nil && opts.SearchPage != nil && opts.SearchPage.From != nil {
+		from = *opts.SearchPage.From
+	}
+	nextFrom := from + int32(len(entities))
 	return results, nil, &nextFrom
 }
