@@ -23,7 +23,7 @@ type ops struct {
 	channelAPI api.ChannelAPI
 }
 
-func NewOps(channelAPI api.ChannelAPI, userAPI api.UserAPI, searchAPI api.SearchAPI) channelOps {
+func NewOps(channelAPI api.ChannelAPI, userAPI api.UserAPI) channelOps {
 	return &ops{
 		channelAPI: channelAPI,
 		userAPI:    userAPI,

@@ -135,6 +135,15 @@ func (s *service) ListMessages(ctx context.Context, chatRef ChatRef, includeSyst
 			snd.NewParam(resources.ChatRef, chatRef.get()),
 		)
 	}
+	if nextLink != nil {
+		out, err := s.chatOps.ListMessagesNext(ctx, chatID, *nextLink, includeSystem)
+		if err != nil {
+			return nil, snd.Wrap("ListMessages", err,
+				snd.NewParam(resources.ChatRef, chatRef.get()),
+			)
+		}
+		return out, nil
+	}
 
 	resp, err := s.chatOps.ListMessages(ctx, chatID, includeSystem)
 	if err != nil {

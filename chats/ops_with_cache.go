@@ -192,8 +192,8 @@ type cacheChat struct {
 
 func (o *opsWithCache) addChatsToCache(chats ...cacheChat) {
 	for _, item := range chats {
-		if item.chat.Type != models.ChatTypeOneOnOne {
-			if util.AnyBlank(item.chat.ID, *item.userID) {
+		if item.chat.Type == models.ChatTypeOneOnOne {
+			if item.userID == nil || util.AnyBlank(item.chat.ID, *item.userID) {
 				continue
 			}
 			key := cacher.NewOneOnOneChatKey(*item.userID, nil)

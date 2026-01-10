@@ -518,5 +518,5 @@ func (c *channelAPI) SearchChannelMessages(
 		return c.GetMessage(ctx, *e.TeamID, *e.ChannelID, *e.MessageID)
 	}
 
-	return searchAndHydrate(ctx, c.searchAPI, opts, keep, fetch)
+	return enrichMessages(ctx, c.searchAPI, opts, keep, fetch)
 }

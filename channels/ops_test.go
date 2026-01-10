@@ -29,13 +29,12 @@ func newOpsSUT(t *testing.T, setup func(d opsSUTDeps)) (channelOps, context.Cont
 
 	apiMock := testutil.NewMockChannelAPI(ctrl)
 	userMock := testutil.NewMockUserAPI(ctrl)
-	searchMock := testutil.NewMockSearchAPI(ctrl)
 
 	if setup != nil {
 		setup(opsSUTDeps{channelAPI: apiMock, userAPI: userMock})
 	}
 
-	return NewOps(apiMock, userMock, searchMock), context.Background()
+	return NewOps(apiMock, userMock), context.Background()
 }
 
 func requireStatus(t *testing.T, err error, want int) {
