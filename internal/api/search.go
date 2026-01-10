@@ -63,6 +63,22 @@ func (s *searchAPI) SearchMessages(ctx context.Context, searchRequest *search.Se
 		body.SetRequests([]msmodels.SearchRequestable{req})
 		return s.client.Search().Query().PostAsQueryPostResponse(ctx, body, nil)
 	}
+	if searchRequest.NotFromMe || searchRequest.NotToMe {
+		me, err := GetMe(ctx, s.client, s.senderCfg)
+		if err != nil {
+			return nil, err
+		}
+		if searchRequest.NotFromMe {
+			if me != nil && me.GetDisplayName() != nil {
+				searchRequest.NotFrom = append(searchRequest.NotFrom, strings.TrimSpace(*me.GetDisplayName()))
+			}
+		}
+		if searchRequest.NotToMe {
+			if me != nil && me.GetDisplayName() != nil {
+				searchRequest.NotTo = append(searchRequest.NotTo, strings.TrimSpace(*me.GetDisplayName()))
+			}
+		}
+	}
 
 	resp, err := sender.SendRequest(ctx, call, s.senderCfg)
 	if err != nil {
