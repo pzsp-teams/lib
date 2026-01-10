@@ -4,12 +4,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pzsp-teams/lib/internal/util"
 	"github.com/stretchr/testify/require"
 )
-
-func strPtr(s string) *string             { return &s }
-func boolPtr(b bool) *bool                { return &b }
-func tiPtr(ti TimeInterval) *TimeInterval { return &ti }
 
 func mustTimeRFC3339(t *testing.T, s string) time.Time {
 	t.Helper()
@@ -37,7 +34,7 @@ func TestSearchMessagesOptions_ParseQuery_TableDriven(t *testing.T) {
 		{
 			name: "plain query only",
 			in: SearchMessagesOptions{
-				Query: strPtr("hello world"),
+				Query: util.Ptr("hello world"),
 			},
 			want: "hello world",
 		},
@@ -65,28 +62,28 @@ func TestSearchMessagesOptions_ParseQuery_TableDriven(t *testing.T) {
 		{
 			name: "isread true",
 			in: SearchMessagesOptions{
-				IsRead: boolPtr(true),
+				IsRead: util.Ptr(true),
 			},
 			want: ` IsRead:"true"`,
 		},
 		{
 			name: "isread false",
 			in: SearchMessagesOptions{
-				IsRead: boolPtr(false),
+				IsRead: util.Ptr(false),
 			},
 			want: ` IsRead:"false"`,
 		},
 		{
 			name: "ismentioned true",
 			in: SearchMessagesOptions{
-				IsMentioned: boolPtr(true),
+				IsMentioned: util.Ptr(true),
 			},
 			want: ` IsMentioned:"true"`,
 		},
 		{
 			name: "ismentioned false",
 			in: SearchMessagesOptions{
-				IsMentioned: boolPtr(false),
+				IsMentioned: util.Ptr(false),
 			},
 			want: ` IsMentioned:"false"`,
 		},
@@ -101,9 +98,9 @@ func TestSearchMessagesOptions_ParseQuery_TableDriven(t *testing.T) {
 		{
 			name: "interval has priority and returns immediately",
 			in: SearchMessagesOptions{
-				Query:     strPtr("foo"),
+				Query:     util.Ptr("foo"),
 				From:      []string{"a@x.com"},
-				Interval:  tiPtr(Today),
+				Interval:  util.Ptr(Today),
 				StartTime: &start,
 				EndTime:   &end,
 			},
@@ -112,7 +109,7 @@ func TestSearchMessagesOptions_ParseQuery_TableDriven(t *testing.T) {
 		{
 			name: "start and end -> sent range and returns immediately",
 			in: SearchMessagesOptions{
-				Query:     strPtr("foo"),
+				Query:     util.Ptr("foo"),
 				StartTime: &start,
 				EndTime:   &end,
 			},
@@ -121,7 +118,7 @@ func TestSearchMessagesOptions_ParseQuery_TableDriven(t *testing.T) {
 		{
 			name: "only start -> sent>=",
 			in: SearchMessagesOptions{
-				Query:     strPtr("foo"),
+				Query:     util.Ptr("foo"),
 				StartTime: &start,
 			},
 			want: `foo sent>="2026-01-09T00:00:00Z"`,
@@ -129,7 +126,7 @@ func TestSearchMessagesOptions_ParseQuery_TableDriven(t *testing.T) {
 		{
 			name: "only end -> sent<=",
 			in: SearchMessagesOptions{
-				Query:   strPtr("foo"),
+				Query:   util.Ptr("foo"),
 				EndTime: &end,
 			},
 			want: `foo sent<="2026-01-10T23:59:59Z"`,
@@ -137,11 +134,11 @@ func TestSearchMessagesOptions_ParseQuery_TableDriven(t *testing.T) {
 		{
 			name: "composition order is stable",
 			in: SearchMessagesOptions{
-				Query:       strPtr("foo"),
+				Query:       util.Ptr("foo"),
 				From:        []string{"a@x.com", "b@x.com"},
 				NotFrom:     []string{"c@x.com"},
-				IsRead:      boolPtr(true),
-				IsMentioned: boolPtr(false),
+				IsRead:      util.Ptr(true),
+				IsMentioned: util.Ptr(false),
 				To:          []string{"t@x.com"},
 				NotTo:       []string{"nt1@x.com", "nt2@x.com"},
 				StartTime:   &start,
