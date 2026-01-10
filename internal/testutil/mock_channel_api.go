@@ -16,7 +16,7 @@ import (
 	models "github.com/microsoftgraph/msgraph-sdk-go/models"
 	api "github.com/pzsp-teams/lib/internal/api"
 	sender "github.com/pzsp-teams/lib/internal/sender"
-	models0 "github.com/pzsp-teams/lib/models"
+	search "github.com/pzsp-teams/lib/search"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -253,7 +253,7 @@ func (mr *MockChannelAPIMockRecorder) RemoveMember(ctx, teamID, channelID, membe
 }
 
 // SearchChannelMessages mocks base method.
-func (m *MockChannelAPI) SearchChannelMessages(ctx context.Context, teamID, channelID *string, opts *models0.SearchMessagesOptions) ([]*api.SearchMessage, *sender.RequestError, *int32) {
+func (m *MockChannelAPI) SearchChannelMessages(ctx context.Context, teamID, channelID *string, opts *search.SearchMessagesOptions) ([]*api.SearchMessage, *sender.RequestError, *int32) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SearchChannelMessages", ctx, teamID, channelID, opts)
 	ret0, _ := ret[0].([]*api.SearchMessage)

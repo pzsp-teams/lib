@@ -239,7 +239,7 @@ func (t *teamAPI) normalizeOwners(ctx context.Context, owners []string, includeM
 	owners = filterTrimNonEmpty(owners)
 
 	if includeMe {
-		me, err := getMe(ctx, t.client, t.senderCfg)
+		me, err := GetMe(ctx, t.client, t.senderCfg)
 		if err != nil {
 			return nil, err
 		}

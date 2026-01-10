@@ -6,6 +6,7 @@ import (
 	"github.com/pzsp-teams/lib/internal/cacher"
 	"github.com/pzsp-teams/lib/internal/util"
 	"github.com/pzsp-teams/lib/models"
+	"github.com/pzsp-teams/lib/search"
 )
 
 type opsWithCache struct {
@@ -239,8 +240,8 @@ func (o *opsWithCache) GetMentions(ctx context.Context, teamID, teamRef, channel
 	}, o.cacheHandler)
 }
 
-func (o *opsWithCache) SearchChannelMessages(ctx context.Context, teamID, channelID *string, opts *models.SearchMessagesOptions) (*models.SearchResults, error) {
-	return cacher.WithErrorClear(func() (*models.SearchResults, error) {
+func (o *opsWithCache) SearchChannelMessages(ctx context.Context, teamID, channelID *string, opts *search.SearchMessagesOptions) (*search.SearchResults, error) {
+	return cacher.WithErrorClear(func() (*search.SearchResults, error) {
 		return o.chanOps.SearchChannelMessages(ctx, teamID, channelID, opts)
 	}, o.cacheHandler)
 }

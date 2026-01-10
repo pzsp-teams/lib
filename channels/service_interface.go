@@ -17,6 +17,7 @@ import (
 	"context"
 
 	"github.com/pzsp-teams/lib/models"
+	"github.com/pzsp-teams/lib/search"
 )
 
 // Service defines the interface for channel-related operations.
@@ -90,5 +91,5 @@ type Service interface {
 	GetMentions(ctx context.Context, teamRef, channelRef string, rawMentions []string) ([]models.Mention, error)
 
 	// SearchMessagesInChannel searches for messages in a channel matching the specified query and options.
-	SearchMessages(ctx context.Context, teamRef, channelRef *string, opts *models.SearchMessagesOptions) (*models.SearchResults, error)
+	SearchMessages(ctx context.Context, teamRef, channelRef *string, opts *search.SearchMessagesOptions) (*search.SearchResults, error)
 }

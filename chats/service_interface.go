@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/pzsp-teams/lib/models"
+	"github.com/pzsp-teams/lib/search"
 )
 
 // Service defines the interface for chat-related operations.
@@ -83,5 +84,5 @@ type Service interface {
 	//   - User IDs
 	GetMentions(ctx context.Context, chatRef ChatRef, rawMentions []string) ([]models.Mention, error)
 
-	SearchMessages(ctx context.Context, chatRef ChatRef, opts *models.SearchMessagesOptions) (*models.SearchResults, error)
+	SearchMessages(ctx context.Context, chatRef ChatRef, opts *search.SearchMessagesOptions) (*search.SearchResults, error)
 }
