@@ -268,7 +268,7 @@ func (o *ops) GetMentions(ctx context.Context, teamID, teamRef, channelRef, chan
 
 func (o *ops) SearchChannelMessages(ctx context.Context, teamID, channelID *string, opts *search.SearchMessagesOptions) (*search.SearchResults, error) {
 	if opts == nil {
-		return nil, errors.New("missing opts.Query")
+		return nil, errors.New("missing opts")
 	}
 
 	resp, requestErr, nextFrom := o.channelAPI.SearchChannelMessages(ctx, teamID, channelID, opts)
