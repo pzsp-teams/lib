@@ -57,10 +57,10 @@ type SearchResults struct {
 func (s *SearchMessagesOptions) ParseQuery() string {
 	query := util.Deref(s.Query)
 
-	if s.From != nil {
+	if len(s.From) > 0 {
 		query += ` from:("` + strings.Join(s.From, `" OR "`) + `")`
 	}
-	if s.NotFrom != nil {
+	if len(s.NotFrom) > 0 {
 		query += ` NOT from:("` + strings.Join(s.NotFrom, `" OR "`) + `")`
 	}
 	if s.IsRead != nil {
@@ -77,10 +77,10 @@ func (s *SearchMessagesOptions) ParseQuery() string {
 			query += ` IsMentioned:"false"`
 		}
 	}
-	if s.To != nil {
+	if len(s.To) > 0 {
 		query += ` to:("` + strings.Join(s.To, `" OR "`) + `")`
 	}
-	if s.NotTo != nil {
+	if len(s.NotTo) > 0 {
 		query += ` NOT to:("` + strings.Join(s.NotTo, `" OR "`) + `")`
 	}
 	if s.Interval != nil {
