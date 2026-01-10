@@ -247,7 +247,7 @@ func handleSearchMessages(client *lib.Client, args []string) {
 		NotFromMe: false,
 	}
 	fmt.Println(opts.ParseQuery())
-	messages, err := client.Chats.SearchMessages(context.TODO(), nil, opts)
+	messages, err := client.Channels.SearchMessages(context.TODO(), nil,nil, opts)
 	if err != nil {
 		fmt.Printf("Error searching messages: %v\n", err)
 		os.Exit(1)
