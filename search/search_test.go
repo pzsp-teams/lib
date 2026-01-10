@@ -7,8 +7,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func strPtr(s string) *string { return &s }
-func boolPtr(b bool) *bool    { return &b }
+func strPtr(s string) *string             { return &s }
+func boolPtr(b bool) *bool                { return &b }
 func tiPtr(ti TimeInterval) *TimeInterval { return &ti }
 
 func mustTimeRFC3339(t *testing.T, s string) time.Time {
@@ -101,9 +101,9 @@ func TestSearchMessagesOptions_ParseQuery_TableDriven(t *testing.T) {
 		{
 			name: "interval has priority and returns immediately",
 			in: SearchMessagesOptions{
-				Query:    strPtr("foo"),
-				From:     []string{"a@x.com"},
-				Interval: tiPtr(Today),
+				Query:     strPtr("foo"),
+				From:      []string{"a@x.com"},
+				Interval:  tiPtr(Today),
 				StartTime: &start,
 				EndTime:   &end,
 			},
