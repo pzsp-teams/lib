@@ -46,6 +46,9 @@ func enrichMessages(
 	fetch messageFetcher,
 	searchCfg *search.SearchConfig,
 ) ([]*SearchMessage, *sender.RequestError, *int32) {
+	if searchCfg == nil {
+		searchCfg = search.DefaultSearchConfig()
+	}
 	localOpts := cloneSearchOpts(opts)
 
 	resp, reqErr := searchAPI.SearchMessages(ctx, localOpts)
