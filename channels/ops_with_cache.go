@@ -24,10 +24,6 @@ func NewOpsWithCache(chanOps channelOps, cache *cacher.CacheHandler) channelOps 
 	}
 }
 
-func (o *opsWithCache) Wait() {
-	o.cacheHandler.Runner.Wait()
-}
-
 func (o *opsWithCache) ListChannelsByTeamID(ctx context.Context, teamID string) ([]*models.Channel, error) {
 	out, err := o.chanOps.ListChannelsByTeamID(ctx, teamID)
 	if err != nil {
