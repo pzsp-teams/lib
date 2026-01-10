@@ -1441,20 +1441,21 @@ func TestService_SearchMessages(t *testing.T) {
 		require.Same(t, want, got)
 	})
 
-	t.Run("when only teamRef is provided -> still no resolve; uses default config", func(t *testing.T) {
+	t.Run("when only teamRef is provided -> still resolve team id; pass team id", func(t *testing.T) {
 		teamRef := defaultTeamRef
 		want := &search.SearchResults{}
 
 		svc, ctx := newSUT(t, func(d sutDeps) {
-			d.teamResolver.EXPECT().ResolveTeamRefToID(gomock.Any(), gomock.Any()).Times(0)
+			expectResolveTeam(t, d)
 			d.channelResolver.EXPECT().ResolveChannelRefToID(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 
 			d.ops.EXPECT().
-				SearchChannelMessages(gomock.Any(), (*string)(nil), (*string)(nil), opts, gomock.Any()).
+				SearchChannelMessages(gomock.Any(), gomock.Any(), (*string)(nil), opts, gomock.Any()).
 				DoAndReturn(func(_ context.Context, teamIDptr, channelIDptr *string, gotOpts *search.SearchMessagesOptions, cfg *search.SearchConfig) (*search.SearchResults, error) {
-					require.Nil(t, teamIDptr)
+					require.NotNil(t, teamIDptr)
 					require.Nil(t, channelIDptr)
 					require.Same(t, opts, gotOpts)
+					require.Equal(t, defaultTeamID, *teamIDptr)
 
 					require.NotNil(t, cfg)
 					require.Equal(t, *def, *cfg)
@@ -1469,32 +1470,14 @@ func TestService_SearchMessages(t *testing.T) {
 		require.Same(t, want, got)
 	})
 
-	t.Run("when only channelRef is provided -> still no resolve; uses default config", func(t *testing.T) {
+	t.Run("when only channelRef is provided -> error", func(t *testing.T) {
 		channelRef := defaultChannelRef
-		want := &search.SearchResults{}
 
-		svc, ctx := newSUT(t, func(d sutDeps) {
-			d.teamResolver.EXPECT().ResolveTeamRefToID(gomock.Any(), gomock.Any()).Times(0)
-			d.channelResolver.EXPECT().ResolveChannelRefToID(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
-
-			d.ops.EXPECT().
-				SearchChannelMessages(gomock.Any(), (*string)(nil), (*string)(nil), opts, gomock.Any()).
-				DoAndReturn(func(_ context.Context, teamIDptr, channelIDptr *string, gotOpts *search.SearchMessagesOptions, cfg *search.SearchConfig) (*search.SearchResults, error) {
-					require.Nil(t, teamIDptr)
-					require.Nil(t, channelIDptr)
-					require.Same(t, opts, gotOpts)
-
-					require.NotNil(t, cfg)
-					require.Equal(t, *def, *cfg)
-
-					return want, nil
-				}).
-				Times(1)
-		})
+		svc, ctx := newSUT(t, func(d sutDeps) {})
 
 		got, err := svc.SearchMessages(ctx, nil, &channelRef, opts, nil)
-		require.NoError(t, err)
-		require.Same(t, want, got)
+		require.Error(t, err)
+		require.Nil(t, got)
 	})
 
 	t.Run("when both refs are provided -> resolves IDs and passes pointers; uses default config", func(t *testing.T) {

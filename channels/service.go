@@ -2,6 +2,7 @@ package channels
 
 import (
 	"context"
+	"errors"
 
 	"github.com/pzsp-teams/lib/internal/resolver"
 	"github.com/pzsp-teams/lib/internal/resources"
@@ -365,26 +366,43 @@ func (s *service) GetMentions(ctx context.Context, teamRef, channelRef string, r
 	return out, nil
 }
 
-func (s *service) SearchMessages(ctx context.Context, teamRef, channelRef *string, opts *search.SearchMessagesOptions, searchConfig *search.SearchConfig) (*search.SearchResults, error) {
+func (s *service) SearchMessages(ctx context.Context, teamRef, channelRef *string, opts *search.SearchMessagesOptions, cfg *search.SearchConfig) (*search.SearchResults, error) {
 	var teamIDptr, channelIDptr *string
-	if teamRef != nil && channelRef != nil {
-		teamID, channelID, err := s.resolveTeamAndChannelID(ctx, *teamRef, *channelRef)
+
+	if teamRef != nil {
+		teamID, err := s.teamResolver.ResolveTeamRefToID(ctx, *teamRef)
+		if err != nil {
+			return nil, snd.Wrap("SearchMessages", err, snd.NewParam(resources.TeamRef, *teamRef))
+		}
+		teamIDptr = &teamID
+	}
+
+	if channelRef != nil {
+		if teamRef == nil {
+			return nil, snd.Wrap("SearchMessages", errors.New("channelRef requires teamRef"),
+				snd.NewParam(resources.ChannelRef, *channelRef),
+			)
+		}
+		channelID, err := s.channelResolver.ResolveChannelRefToID(ctx, *teamIDptr, *channelRef)
 		if err != nil {
 			return nil, snd.Wrap("SearchMessages", err,
 				snd.NewParam(resources.TeamRef, *teamRef),
 				snd.NewParam(resources.ChannelRef, *channelRef),
 			)
 		}
-		teamIDptr = &teamID
 		channelIDptr = &channelID
 	}
-	if searchConfig == nil {
-		searchConfig = search.DefaultSearchConfig()
+
+	if cfg == nil {
+		cfg = search.DefaultSearchConfig()
 	}
-	out, err := s.ops.SearchChannelMessages(ctx, teamIDptr, channelIDptr, opts, searchConfig)
+	out, err := s.ops.SearchChannelMessages(ctx, teamIDptr, channelIDptr, opts, cfg)
 	if err != nil {
-		if teamRef == nil || channelRef == nil {
+		if teamRef == nil {
 			return nil, snd.Wrap("SearchMessages", err)
+		}
+		if channelRef == nil {
+			return nil, snd.Wrap("SearchMessages", err, snd.NewParam(resources.TeamRef, *teamRef))
 		}
 		return nil, snd.Wrap("SearchMessages", err,
 			snd.NewParam(resources.TeamRef, *teamRef),
