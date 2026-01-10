@@ -10,7 +10,6 @@ import (
 
 	lib "github.com/pzsp-teams/lib"
 	"github.com/pzsp-teams/lib/config"
-	"github.com/pzsp-teams/lib/internal/util"
 	"github.com/pzsp-teams/lib/models"
 	"github.com/pzsp-teams/lib/search"
 )
@@ -232,13 +231,13 @@ func handleSearchMessages(client *lib.Client, args []string) {
 	query := args[2]
 	opts := &search.SearchMessagesOptions{
 		Query: &query,
-		// From: []string{"Kamil", "Damian"},
+		From: []string{"Kamil", "Damian"},
 		// NotFrom: []string{"ddsouza@pzsp2z1teams.onmicrosoft.com"},
 		// IsRead: util.Ptr(false),
 		// To: []string{"Damian", "Kamil"},
 		// NotTo: []string{"Kamil", "Damian"},
-		StartTime: util.Ptr(time.Date(2026, time.January, 9, 0, 0, 0, 0, time.UTC)), 
-		EndTime: util.Ptr(time.Date(2026, time.January, 10, 23, 59, 59, 0, time.UTC)),
+		// StartTime: util.Ptr(time.Date(2026, time.January, 9, 0, 0, 0, 0, time.UTC)), 
+		// EndTime: util.Ptr(time.Date(2026, time.January, 10, 23, 59, 59, 0, time.UTC)),
 		// SearchPage: &models.SearchPage{
 		// 	From: util.Ptr(int32(24)),
 		// 	Size: util.Ptr(int32(50)),
@@ -248,7 +247,7 @@ func handleSearchMessages(client *lib.Client, args []string) {
 		// FromMe: true,
 	}
 	fmt.Println(opts.ParseQuery())
-	messages, err := client.Chats.SearchMessages(context.TODO(), nil, opts)
+	messages, err := client.Channels.SearchMessages(context.TODO(), nil, nil, opts)
 	if err != nil {
 		fmt.Printf("Error searching messages: %v\n", err)
 		os.Exit(1)
