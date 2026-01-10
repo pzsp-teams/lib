@@ -233,7 +233,7 @@ func handleSearchMessages(client *lib.Client, args []string) {
 	opts := &search.SearchMessagesOptions{
 		Query: &query,
 		// From: []string{"Kamil", "Damian"},
-		// NotFrom: []string{"Kamil", "Michał Szwejk", "Michał Suski"},
+		NotFrom: []string{"ddsouza@pzsp2z1teams.onmicrosoft.com"},
 		// IsRead: util.Ptr(false),
 		// To: []string{"Damian", "Kamil"},
 		// NotTo: []string{"Kamil", "Damian"},
@@ -244,7 +244,7 @@ func handleSearchMessages(client *lib.Client, args []string) {
 		// 	Size: util.Ptr(int32(50)),
 		// },
 		// IsMentioned: util.Ptr(true),
-		NotToMe: true,
+		// NotToMe: true,
 	}
 	fmt.Println(opts.ParseQuery())
 	messages, err := client.Chats.SearchMessages(context.TODO(), nil, opts)
