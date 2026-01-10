@@ -1238,7 +1238,7 @@ func TestOpsWithCache_GetChannelByID_BlankName_NoSet(t *testing.T) {
 	channelID := "chan-1"
 
 	t.Run("channel returned but blank name -> task runs, helper skips Set", func(t *testing.T) {
-		out := &models.Channel{ID: "c1", Name: "   "} 
+		out := &models.Channel{ID: "c1", Name: "   "}
 
 		sut, ctx := newOpsWithCacheSUT(t, func(_ context.Context, d opsWithCacheSUTDeps) {
 			d.chanOps.EXPECT().
@@ -1261,7 +1261,7 @@ func TestOpsWithCache_AddMember_BlankEmail_NoSet(t *testing.T) {
 	channelID := "chan-1"
 
 	t.Run("member returned but blank email -> task runs, helper skips Set", func(t *testing.T) {
-		out := &models.Member{ID: "m1", Email: "   "} 
+		out := &models.Member{ID: "m1", Email: "   "}
 
 		sut, ctx := newOpsWithCacheSUT(t, func(_ context.Context, d opsWithCacheSUTDeps) {
 			d.chanOps.EXPECT().
