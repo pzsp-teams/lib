@@ -1429,7 +1429,7 @@ func TestService_SearchMessages(t *testing.T) {
 					require.Same(t, opts, gotOpts)
 
 					require.NotNil(t, cfg)
-					require.Equal(t, *def, *cfg) // wartości domyślne
+					require.Equal(t, *def, *cfg)
 
 					return want, nil
 				}).
@@ -1531,7 +1531,7 @@ func TestService_SearchMessages(t *testing.T) {
 		teamRef := defaultTeamRef
 		channelRef := defaultChannelRef
 		want := &search.SearchResults{}
-		customCfg := search.DefaultSearchConfig() // wystarczy, by przetestować gałąź non-nil
+		customCfg := search.DefaultSearchConfig()
 
 		svc, ctx := newSUT(t, func(d sutDeps) {
 			expectResolveTeamAndChannel(t, d)
@@ -1595,4 +1595,3 @@ func TestService_SearchMessages(t *testing.T) {
 		testutil.RequireReqErrCode(t, err, 403)
 	})
 }
-
