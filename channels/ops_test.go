@@ -3,14 +3,17 @@ package channels
 import (
 	"context"
 	"errors"
+	"net/http"
 	"testing"
 
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
+	iapi "github.com/pzsp-teams/lib/internal/api"
 	"github.com/pzsp-teams/lib/internal/resources"
 	snd "github.com/pzsp-teams/lib/internal/sender"
 	"github.com/pzsp-teams/lib/internal/testutil"
 	"github.com/pzsp-teams/lib/internal/util"
 	"github.com/pzsp-teams/lib/models"
+	"github.com/pzsp-teams/lib/search"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -1031,5 +1034,247 @@ func TestOps_ListRepliesNext(t *testing.T) {
 
 		var nf *snd.ErrResourceNotFound
 		require.ErrorAs(t, err, &nf)
+	})
+}
+
+func TestOps_SearchChannelMessages(t *testing.T) {
+	t.Run("opts nil -> returns error and does not call api", func(t *testing.T) {
+		op, ctx := newOpsSUT(t, func(d opsSUTDeps) {
+			d.channelAPI.EXPECT().
+				SearchChannelMessages(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+				Times(0)
+		})
+
+		got, err := op.SearchChannelMessages(ctx, util.Ptr("team-1"), util.Ptr("chan-1"), nil)
+		require.Nil(t, got)
+		require.Error(t, err)
+		require.Equal(t, "missing opts", err.Error())
+	})
+
+	t.Run("maps request error without resources when teamID/channelID are nil", func(t *testing.T) {
+		op, ctx := newOpsSUT(t, func(d opsSUTDeps) {
+			d.channelAPI.EXPECT().
+				SearchChannelMessages(gomock.Any(), nil, nil, gomock.Any()).
+				Return(nil, &snd.RequestError{Code: 403, Message: "nope"}, nil).
+				Times(1)
+		})
+
+		opts := &search.SearchMessagesOptions{}
+		got, err := op.SearchChannelMessages(ctx, nil, nil, opts)
+		require.Nil(t, got)
+		require.Error(t, err)
+
+		requireStatus(t, err, 403)
+		var af *snd.ErrAccessForbidden
+		require.ErrorAs(t, err, &af)
+	})
+
+	t.Run("maps request error with team/channel resources when IDs present", func(t *testing.T) {
+		teamID := util.Ptr("team-1")
+		channelID := util.Ptr("chan-1")
+
+		op, ctx := newOpsSUT(t, func(d opsSUTDeps) {
+			d.channelAPI.EXPECT().
+				SearchChannelMessages(gomock.Any(), teamID, channelID, gomock.Any()).
+				Return(nil, &snd.RequestError{Code: 404, Message: "missing"}, nil).
+				Times(1)
+		})
+
+		opts := &search.SearchMessagesOptions{}
+		got, err := op.SearchChannelMessages(ctx, teamID, channelID, opts)
+		require.Nil(t, got)
+		require.Error(t, err)
+
+		requireStatus(t, err, 404)
+		requireErrDataHas(t, err, resources.Team, "team-1")
+		requireErrDataHas(t, err, resources.Channel, "chan-1")
+
+		var nf *snd.ErrResourceNotFound
+		require.ErrorAs(t, err, &nf)
+	})
+
+	t.Run("success maps messages and nextFrom", func(t *testing.T) {
+		teamID := util.Ptr("team-1")
+		channelID := util.Ptr("chan-1")
+		chatID := util.Ptr("chat-1")
+		next := int32(42)
+
+		apiResp := []*iapi.SearchMessage{
+			{
+				Message: testutil.NewGraphMessage(&testutil.NewMessageParams{
+					ID:      util.Ptr("m1"),
+					Content: util.Ptr("hello"),
+				}),
+				TeamID:    teamID,
+				ChannelID: channelID,
+				ChatID:    chatID,
+			},
+			{
+				Message: testutil.NewGraphMessage(&testutil.NewMessageParams{
+					ID:      util.Ptr("m2"),
+					Content: util.Ptr("world"),
+				}),
+				TeamID:    teamID,
+				ChannelID: channelID,
+				ChatID:    nil,
+			},
+		}
+
+		op, ctx := newOpsSUT(t, func(d opsSUTDeps) {
+			d.channelAPI.EXPECT().
+				SearchChannelMessages(gomock.Any(), teamID, channelID, gomock.Any()).
+				Return(apiResp, nil, &next).
+				Times(1)
+		})
+
+		opts := &search.SearchMessagesOptions{Query: util.Ptr("q")}
+		got, err := op.SearchChannelMessages(ctx, teamID, channelID, opts)
+		require.NoError(t, err)
+		require.NotNil(t, got)
+
+		require.NotNil(t, got.NextFrom)
+		require.Equal(t, int32(42), *got.NextFrom)
+
+		require.Len(t, got.Messages, 2)
+
+		require.NotNil(t, got.Messages[0].Message)
+		assert.Equal(t, "m1", got.Messages[0].Message.ID)
+		assert.Equal(t, "hello", got.Messages[0].Message.Content)
+		assert.Equal(t, teamID, got.Messages[0].TeamID)
+		assert.Equal(t, channelID, got.Messages[0].ChannelID)
+		assert.Equal(t, chatID, got.Messages[0].ChatID)
+
+		require.NotNil(t, got.Messages[1].Message)
+		assert.Equal(t, "m2", got.Messages[1].Message.ID)
+		assert.Equal(t, "world", got.Messages[1].Message.Content)
+		assert.Equal(t, teamID, got.Messages[1].TeamID)
+		assert.Equal(t, channelID, got.Messages[1].ChannelID)
+		assert.Nil(t, got.Messages[1].ChatID)
+	})
+
+	t.Run("success allows nil nextFrom", func(t *testing.T) {
+		teamID := util.Ptr("team-1")
+		channelID := util.Ptr("chan-1")
+
+		apiResp := []*iapi.SearchMessage{
+			{
+				Message: testutil.NewGraphMessage(&testutil.NewMessageParams{
+					ID:      util.Ptr("m1"),
+					Content: util.Ptr("x"),
+				}),
+				TeamID:    teamID,
+				ChannelID: channelID,
+			},
+		}
+
+		op, ctx := newOpsSUT(t, func(d opsSUTDeps) {
+			d.channelAPI.EXPECT().
+				SearchChannelMessages(gomock.Any(), teamID, channelID, gomock.Any()).
+				Return(apiResp, nil, nil).
+				Times(1)
+		})
+
+		opts := &search.SearchMessagesOptions{}
+		got, err := op.SearchChannelMessages(ctx, teamID, channelID, opts)
+		require.NoError(t, err)
+		require.NotNil(t, got)
+		require.Nil(t, got.NextFrom)
+		require.Len(t, got.Messages, 1)
+	})
+}
+
+func TestOpsWithCache_SearchChannelMessages(t *testing.T) {
+	teamID := util.Ptr("team-1")
+	channelID := util.Ptr("chan-1")
+	opts := &search.SearchMessagesOptions{Query: util.Ptr("hello")}
+
+	t.Run("success passes through result and does not touch cache", func(t *testing.T) {
+		var next int32 = 123
+		want := &search.SearchResults{
+			Messages: []*search.SearchResult{
+				{Message: &models.Message{ID: "m1"}},
+			},
+			NextFrom: &next,
+		}
+
+		sut, ctx := newOpsWithCacheSUT(t, func(_ context.Context, d opsWithCacheSUTDeps) {
+			d.chanOps.EXPECT().
+				SearchChannelMessages(gomock.Any(), teamID, channelID, opts).
+				Return(want, nil).
+				Times(1)
+
+			d.runner.EXPECT().Run(gomock.Any()).Times(0)
+			d.cacher.EXPECT().Clear().Times(0)
+			d.cacher.EXPECT().Set(gomock.Any(), gomock.Any()).Times(0)
+			d.cacher.EXPECT().Invalidate(gomock.Any()).Times(0)
+		})
+
+		got, err := sut.SearchChannelMessages(ctx, teamID, channelID, opts)
+		require.NoError(t, err)
+		require.Equal(t, want, got)
+	})
+
+	t.Run("error clears cache (WithErrorClear)", func(t *testing.T) {
+		err400 := testutil.ReqErr(http.StatusBadRequest)
+
+		sut, ctx := newOpsWithCacheSUT(t, func(_ context.Context, d opsWithCacheSUTDeps) {
+			d.chanOps.EXPECT().
+				SearchChannelMessages(gomock.Any(), teamID, channelID, opts).
+				Return(nil, err400).
+				Times(1)
+
+			expectClearNow(d)
+		})
+
+		got, err := sut.SearchChannelMessages(ctx, teamID, channelID, opts)
+		require.Nil(t, got)
+		require.Error(t, err)
+		require.True(t, err == err400)
+	})
+}
+
+func TestOpsWithCache_GetChannelByID_BlankName_NoSet(t *testing.T) {
+	teamID := "team-1"
+	channelID := "chan-1"
+
+	t.Run("channel returned but blank name -> task runs, helper skips Set", func(t *testing.T) {
+		out := &models.Channel{ID: "c1", Name: "   "} 
+
+		sut, ctx := newOpsWithCacheSUT(t, func(_ context.Context, d opsWithCacheSUTDeps) {
+			d.chanOps.EXPECT().
+				GetChannelByID(gomock.Any(), teamID, channelID).
+				Return(out, nil).
+				Times(1)
+
+			testutil.ExpectRunNow(d.runner)
+			d.cacher.EXPECT().Set(gomock.Any(), gomock.Any()).Times(0)
+		})
+
+		got, err := sut.GetChannelByID(ctx, teamID, channelID)
+		require.NoError(t, err)
+		require.Equal(t, out, got)
+	})
+}
+
+func TestOpsWithCache_AddMember_BlankEmail_NoSet(t *testing.T) {
+	teamID := "team-1"
+	channelID := "chan-1"
+
+	t.Run("member returned but blank email -> task runs, helper skips Set", func(t *testing.T) {
+		out := &models.Member{ID: "m1", Email: "   "} 
+
+		sut, ctx := newOpsWithCacheSUT(t, func(_ context.Context, d opsWithCacheSUTDeps) {
+			d.chanOps.EXPECT().
+				AddMember(gomock.Any(), teamID, channelID, "u1", false).
+				Return(out, nil).
+				Times(1)
+
+			testutil.ExpectRunNow(d.runner)
+			d.cacher.EXPECT().Set(gomock.Any(), gomock.Any()).Times(0)
+		})
+
+		got, err := sut.AddMember(ctx, teamID, channelID, "u1", false)
+		require.NoError(t, err)
+		require.Equal(t, out, got)
 	})
 }
