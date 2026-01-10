@@ -62,7 +62,7 @@ func NewClientFromGraphClient(graphClient *graph.GraphServiceClient, senderCfg *
 	channelResolver := resolver.GetChannelResolver(channelAPI, cacheHandler)
 	chatResolver := resolver.GetChatResolver(chatAPI, cacheHandler)
 
-	channelOps := channels.NewOps(channelAPI, userAPI, searchAPI)
+	channelOps := channels.NewOps(channelAPI, userAPI)
 	teamOps := teams.NewOps(teamsAPI)
 	chatOps := chats.NewOps(chatAPI, userAPI)
 
@@ -96,7 +96,7 @@ func NewChannelServiceFromGraphClient(ctx context.Context, authCfg *config.AuthC
 	teamResolver := resolver.GetTeamResolver(teamAPI, cacheHandler)
 	channelResolver := resolver.GetChannelResolver(channelAPI, cacheHandler)
 
-	channelOps := channels.NewOps(channelAPI, userAPI, searchAPI)
+	channelOps := channels.NewOps(channelAPI, userAPI)
 	if cacheHandler != nil {
 		channelOps = channels.NewOpsWithCache(channelOps, cacheHandler)
 	}

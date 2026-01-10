@@ -33,7 +33,7 @@ func cloneSearchOpts(in *search.SearchMessagesOptions) *search.SearchMessagesOpt
 	return &out
 }
 
-type hydrateResult struct {
+type enrichResult struct {
 	idx int
 	e   SearchEntity
 	msg msmodels.ChatMessageable
@@ -44,7 +44,7 @@ type task struct {
 	e   SearchEntity
 }
 
-func searchAndHydrate(
+func enrichMessages(
 	ctx context.Context,
 	searchAPI SearchAPI,
 	opts *search.SearchMessagesOptions,
@@ -70,11 +70,11 @@ func searchAndHydrate(
 		return []*SearchMessage{}, nil, nextFrom
 	}
 
-	const maxConcurrent = 6
+	const maxConcurrent = 16
 	sem := make(chan struct{}, maxConcurrent)
 
 	g, gctx := errgroup.WithContext(ctx)
-	outCh := make(chan hydrateResult, len(tasks))
+	outCh := make(chan enrichResult, len(tasks))
 
 	for _, t := range tasks {
 		g.Go(func() error {
@@ -90,7 +90,7 @@ func searchAndHydrate(
 			}
 
 			select {
-			case outCh <- hydrateResult{idx: t.idx, e: t.e, msg: msg}:
+			case outCh <- enrichResult{idx: t.idx, e: t.e, msg: msg}:
 				return nil
 			case <-gctx.Done():
 				return gctx.Err()
@@ -103,7 +103,7 @@ func searchAndHydrate(
 		close(outCh)
 	}()
 
-	byIdx := make(map[int]hydrateResult, len(tasks))
+	byIdx := make(map[int]enrichResult, len(tasks))
 	for r := range outCh {
 		byIdx[r.idx] = r
 	}
@@ -112,6 +112,7 @@ func searchAndHydrate(
 		if reqErr, ok := err.(*sender.RequestError); ok {
 			return nil, reqErr, nil
 		}
+		return nil, &sender.RequestError{Message: err.Error()}, nil
 	}
 
 	results := aggregateResults(entities, byIdx)
@@ -120,7 +121,7 @@ func searchAndHydrate(
 	return results, nil, nextFrom
 }
 
-func aggregateResults(entities []SearchEntity, byIdx map[int]hydrateResult) []*SearchMessage {
+func aggregateResults(entities []SearchEntity, byIdx map[int]enrichResult) []*SearchMessage {
 	results := make([]*SearchMessage, 0, len(byIdx))
 	for i := range entities {
 		r, ok := byIdx[i]

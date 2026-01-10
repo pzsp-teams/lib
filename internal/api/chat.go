@@ -442,5 +442,5 @@ func (c *chatsAPI) SearchChatMessages(
 		return c.GetMessage(ctx, *e.ChatID, *e.MessageID)
 	}
 
-	return searchAndHydrate(ctx, c.searchAPI, opts, keep, fetch)
+	return enrichMessages(ctx, c.searchAPI, opts, keep, fetch)
 }
