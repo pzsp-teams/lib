@@ -49,7 +49,7 @@ func (s *searchAPI) SearchMessages(ctx context.Context, searchRequest *search.Se
 		req.SetEntityTypes([]msmodels.EntityType{msmodels.CHATMESSAGE_ENTITYTYPE})
 
 		q := msmodels.NewSearchQuery()
-		queryString := strings.TrimSpace(searchRequest.ParseQuery())
+		queryString := strings.TrimSpace(ParseQuery(searchRequest))
 		q.SetQueryString(&queryString)
 		req.SetQuery(q)
 
