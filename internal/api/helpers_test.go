@@ -798,7 +798,7 @@ func TestFilterOutSystemEvents_EmptySliceValue(t *testing.T) {
 func TestMessageToGraph_ContentTypeIsCaseSensitive(t *testing.T) {
 	t.Parallel()
 
-	body := messageToGraph("<b>hi</b>", "HTML") 
+	body := messageToGraph("<b>hi</b>", "HTML")
 	require.NotNil(t, body)
 
 	require.NotNil(t, body.GetContentType())
