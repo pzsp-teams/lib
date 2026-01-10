@@ -9,6 +9,7 @@ import (
 	"github.com/pzsp-teams/lib/internal/resources"
 	snd "github.com/pzsp-teams/lib/internal/sender"
 	"github.com/pzsp-teams/lib/models"
+	"github.com/pzsp-teams/lib/search"
 )
 
 type service struct {
@@ -302,7 +303,7 @@ func (s *service) GetMentions(ctx context.Context, chatRef ChatRef, rawMentions 
 	return resp, nil
 }
 
-func (s *service) SearchMessages(ctx context.Context, chatRef ChatRef, opts *models.SearchMessagesOptions) (*models.SearchResults, error) {
+func (s *service) SearchMessages(ctx context.Context, chatRef ChatRef, opts *search.SearchMessagesOptions) (*search.SearchResults, error) {
 	var chatID *string
 	var err error
 	if chatRef != nil {

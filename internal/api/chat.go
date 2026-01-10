@@ -11,7 +11,7 @@ import (
 	"github.com/pzsp-teams/lib/config"
 	"github.com/pzsp-teams/lib/internal/sender"
 	"github.com/pzsp-teams/lib/internal/util"
-	"github.com/pzsp-teams/lib/models"
+	"github.com/pzsp-teams/lib/search"
 )
 
 type OneOnOneChatAPI interface {
@@ -39,7 +39,7 @@ type ChatAPI interface {
 	PinMessage(ctx context.Context, chatID, messageID string) *sender.RequestError
 	UnpinMessage(ctx context.Context, chatID, pinnedID string) *sender.RequestError
 	ListMessagesNext(ctx context.Context, chatID, nextLink string, includeSystem bool) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError)
-	SearchChatMessages(ctx context.Context, chatID *string, opts *models.SearchMessagesOptions) ([]*SearchMessage, *sender.RequestError, *int32)
+	SearchChatMessages(ctx context.Context, chatID *string, opts *search.SearchMessagesOptions) ([]*SearchMessage, *sender.RequestError, *int32)
 }
 
 type chatsAPI struct {
@@ -57,7 +57,7 @@ func (c *chatsAPI) CreateOneOnOneChat(ctx context.Context, userRef string) (msmo
 	chatType := msmodels.ONEONONE_CHATTYPE
 	body.SetChatType(&chatType)
 
-	me, err := getMe(ctx, c.client, c.senderCfg)
+	me, err := GetMe(ctx, c.client, c.senderCfg)
 	if err != nil {
 		return nil, err
 	}
@@ -125,7 +125,7 @@ func (c *chatsAPI) CreateGroupChat(ctx context.Context, userRefs []string, topic
 	body.SetTopic(&topic)
 
 	if includeMe {
-		me, err := getMe(ctx, c.client, c.senderCfg)
+		me, err := GetMe(ctx, c.client, c.senderCfg)
 		if err != nil {
 			return nil, err
 		}
@@ -421,9 +421,9 @@ func (c *chatsAPI) ListMessagesNext(ctx context.Context, chatID, nextLink string
 	return out, nil
 }
 
-func (c *chatsAPI) SearchChatMessages(ctx context.Context, chatID *string, opts *models.SearchMessagesOptions) ([]*SearchMessage, *sender.RequestError, *int32) {
+func (c *chatsAPI) SearchChatMessages(ctx context.Context, chatID *string, opts *search.SearchMessagesOptions) ([]*SearchMessage, *sender.RequestError, *int32) {
 	if opts == nil {
-		opts = &models.SearchMessagesOptions{}
+		opts = &search.SearchMessagesOptions{}
 	}
 	resp, err := c.searchAPI.SearchMessages(ctx, opts)
 	if err != nil {

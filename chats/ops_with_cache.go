@@ -7,6 +7,7 @@ import (
 	"github.com/pzsp-teams/lib/internal/cacher"
 	"github.com/pzsp-teams/lib/internal/util"
 	"github.com/pzsp-teams/lib/models"
+	"github.com/pzsp-teams/lib/search"
 )
 
 type opsWithCache struct {
@@ -229,8 +230,8 @@ func (o *opsWithCache) removeMemberFromCache(chatID, userRef string) {
 	_ = o.cacheHandler.Cacher.Invalidate(key)
 }
 
-func (o *opsWithCache) SearchChatMessages(ctx context.Context, chatID *string, opts *models.SearchMessagesOptions) (*models.SearchResults, error) {
-	return cacher.WithErrorClear(func() (*models.SearchResults, error) {
+func (o *opsWithCache) SearchChatMessages(ctx context.Context, chatID *string, opts *search.SearchMessagesOptions) (*search.SearchResults, error) {
+	return cacher.WithErrorClear(func() (*search.SearchResults, error) {
 		return o.chatOps.SearchChatMessages(ctx, chatID, opts)
 	}, o.cacheHandler)
 }

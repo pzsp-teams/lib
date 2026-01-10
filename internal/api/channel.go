@@ -14,7 +14,7 @@ import (
 	"github.com/pzsp-teams/lib/config"
 	"github.com/pzsp-teams/lib/internal/sender"
 	"github.com/pzsp-teams/lib/internal/util"
-	"github.com/pzsp-teams/lib/models"
+	"github.com/pzsp-teams/lib/search"
 )
 
 type ChannelAPI interface {
@@ -35,7 +35,7 @@ type ChannelAPI interface {
 	RemoveMember(ctx context.Context, teamID, channelID, memberID string) *sender.RequestError
 	ListMessagesNext(ctx context.Context, teamID, channelID, nextLink string, includeSystem bool) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError)
 	ListRepliesNext(ctx context.Context, teamID, channelID, messageID, nextLink string, includeSystem bool) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError)
-	SearchChannelMessages(ctx context.Context, teamID, channelID *string, opts *models.SearchMessagesOptions) ([]*SearchMessage, *sender.RequestError, *int32)
+	SearchChannelMessages(ctx context.Context, teamID, channelID *string, opts *search.SearchMessagesOptions) ([]*SearchMessage, *sender.RequestError, *int32)
 }
 
 type channelAPI struct {
@@ -497,9 +497,9 @@ func (c *channelAPI) ListRepliesNext(ctx context.Context, teamID, channelID, mes
 	return out, nil
 }
 
-func (c *channelAPI) SearchChannelMessages(ctx context.Context, teamID, channelID *string, opts *models.SearchMessagesOptions) ([]*SearchMessage, *sender.RequestError, *int32) {
+func (c *channelAPI) SearchChannelMessages(ctx context.Context, teamID, channelID *string, opts *search.SearchMessagesOptions) ([]*SearchMessage, *sender.RequestError, *int32) {
 	if opts == nil {
-		opts = &models.SearchMessagesOptions{}
+		opts = &search.SearchMessagesOptions{}
 	}
 	resp, err := c.searchAPI.SearchMessages(ctx, opts)
 	if err != nil {

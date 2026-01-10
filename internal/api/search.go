@@ -10,7 +10,7 @@ import (
 
 	"github.com/pzsp-teams/lib/config"
 	"github.com/pzsp-teams/lib/internal/sender"
-	"github.com/pzsp-teams/lib/models"
+	"github.com/pzsp-teams/lib/search"
 )
 
 type SearchEntity struct {
@@ -29,7 +29,7 @@ type SearchMessage struct {
 
 type SearchAPI interface {
 	// SearchMessages runs POST /search/query with entityTypes=["chatMessage"].
-	SearchMessages(ctx context.Context, searchRequest *models.SearchMessagesOptions) (graphsearch.QueryPostResponseable, *sender.RequestError)
+	SearchMessages(ctx context.Context, searchRequest *search.SearchMessagesOptions) (graphsearch.QueryPostResponseable, *sender.RequestError)
 }
 
 type searchAPI struct {
@@ -41,7 +41,7 @@ func NewSearch(client *graph.GraphServiceClient, senderCfg *config.SenderConfig)
 	return &searchAPI{client: client, senderCfg: senderCfg}
 }
 
-func (s *searchAPI) SearchMessages(ctx context.Context, searchRequest *models.SearchMessagesOptions) (graphsearch.QueryPostResponseable, *sender.RequestError) {
+func (s *searchAPI) SearchMessages(ctx context.Context, searchRequest *search.SearchMessagesOptions) (graphsearch.QueryPostResponseable, *sender.RequestError) {
 	call := func(ctx context.Context) (sender.Response, error) {
 		body := graphsearch.NewQueryPostRequestBody()
 

@@ -14,6 +14,7 @@ import (
 	reflect "reflect"
 
 	models "github.com/pzsp-teams/lib/models"
+	search "github.com/pzsp-teams/lib/search"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -265,10 +266,10 @@ func (mr *MockchannelOpsMockRecorder) RemoveMember(ctx, teamID, channelID, membe
 }
 
 // SearchChannelMessages mocks base method.
-func (m *MockchannelOps) SearchChannelMessages(ctx context.Context, teamID, channelID *string, opts *models.SearchMessagesOptions) (*models.SearchResults, error) {
+func (m *MockchannelOps) SearchChannelMessages(ctx context.Context, teamID, channelID *string, opts *search.SearchMessagesOptions) (*search.SearchResults, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SearchChannelMessages", ctx, teamID, channelID, opts)
-	ret0, _ := ret[0].(*models.SearchResults)
+	ret0, _ := ret[0].(*search.SearchResults)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

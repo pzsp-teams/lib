@@ -7,6 +7,7 @@ import (
 	"github.com/pzsp-teams/lib/internal/resources"
 	snd "github.com/pzsp-teams/lib/internal/sender"
 	"github.com/pzsp-teams/lib/models"
+	"github.com/pzsp-teams/lib/search"
 )
 
 type service struct {
@@ -364,7 +365,7 @@ func (s *service) GetMentions(ctx context.Context, teamRef, channelRef string, r
 	return out, nil
 }
 
-func (s *service) SearchMessages(ctx context.Context, teamRef, channelRef *string, opts *models.SearchMessagesOptions) (*models.SearchResults, error) {
+func (s *service) SearchMessages(ctx context.Context, teamRef, channelRef *string, opts *search.SearchMessagesOptions) (*search.SearchResults, error) {
 	var teamIDptr, channelIDptr *string
 	if teamRef != nil && channelRef != nil {
 		teamID, channelID, err := s.resolveTeamAndChannelID(ctx, *teamRef, *channelRef)

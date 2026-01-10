@@ -15,6 +15,7 @@ import (
 	snd "github.com/pzsp-teams/lib/internal/sender"
 	"github.com/pzsp-teams/lib/internal/util"
 	"github.com/pzsp-teams/lib/models"
+	"github.com/pzsp-teams/lib/search"
 )
 
 type ops struct {
@@ -194,7 +195,7 @@ func (o *ops) ListMessagesNext(ctx context.Context, chatID, nextLink string, inc
 	}, nil
 }
 
-func (o *ops) SearchChatMessages(ctx context.Context, chatID *string, opts *models.SearchMessagesOptions) (*models.SearchResults, error) {
+func (o *ops) SearchChatMessages(ctx context.Context, chatID *string, opts *search.SearchMessagesOptions) (*search.SearchResults, error) {
 	if opts == nil {
 		return nil, errors.New("missing opts.Query")
 	}
@@ -205,16 +206,16 @@ func (o *ops) SearchChatMessages(ctx context.Context, chatID *string, opts *mode
 		}
 		return nil, snd.MapError(requestErr, snd.WithResource(resources.Chat, *chatID))
 	}
-	var results []*models.SearchResult
+	var results []*search.SearchResult
 	for _, msg := range resp {
-		results = append(results, &models.SearchResult{
+		results = append(results, &search.SearchResult{
 			Message:   adapter.MapGraphMessage(msg.Message),
 			ChatID:    msg.ChatID,
 			TeamID:    msg.TeamID,
 			ChannelID: msg.ChannelID,
 		})
 	}
-	return &models.SearchResults{
+	return &search.SearchResults{
 		Messages: results,
 		NextFrom: nextFrom,
 	}, nil

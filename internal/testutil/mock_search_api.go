@@ -15,7 +15,7 @@ import (
 
 	search "github.com/microsoftgraph/msgraph-sdk-go/search"
 	sender "github.com/pzsp-teams/lib/internal/sender"
-	models "github.com/pzsp-teams/lib/models"
+	search0 "github.com/pzsp-teams/lib/search"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -44,7 +44,7 @@ func (m *MockSearchAPI) EXPECT() *MockSearchAPIMockRecorder {
 }
 
 // SearchMessages mocks base method.
-func (m *MockSearchAPI) SearchMessages(ctx context.Context, searchRequest *models.SearchMessagesOptions) (search.QueryPostResponseable, *sender.RequestError) {
+func (m *MockSearchAPI) SearchMessages(ctx context.Context, searchRequest *search0.SearchMessagesOptions) (search.QueryPostResponseable, *sender.RequestError) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SearchMessages", ctx, searchRequest)
 	ret0, _ := ret[0].(search.QueryPostResponseable)
