@@ -90,6 +90,14 @@ func MapGraphMessage(graphMessage msmodels.ChatMessageable) *models.Message {
 	}
 }
 
+// MapGraphPinnedMessage maps a Microsoft Graph PinnedChatMessageInfoable to simplified Message model.
+func MapGraphPinnedMessage(graphPinned msmodels.PinnedChatMessageInfoable) *models.Message {
+	if graphPinned == nil {
+		return nil
+	}
+	return MapGraphMessage(graphPinned.GetMessage())
+}
+
 // MapGraphMember maps a Microsoft Graph ConversationMemberable to simplified Member model.
 func MapGraphMember(graphMember msmodels.ConversationMemberable) *models.Member {
 	if graphMember == nil {
