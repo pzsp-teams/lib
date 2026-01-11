@@ -41,7 +41,7 @@ type resourceAmbiguousError struct {
 
 func (e *resourceAmbiguousError) Error() string {
 	return fmt.Sprintf(
-		"multiple %ss referenced by %q found: %s\n. \nPlease use one of the IDs instead\n",
+		"multiple %ss referenced by %q found:\n%s. \nPlease use one of the IDs instead.",
 		e.resourceType,
 		e.ref,
 		strings.Join(e.options, ";\n"),
