@@ -1,7 +1,7 @@
 package pepper
 
 import (
-	"os"
+	"errors"
 	"testing"
 
 	"github.com/pzsp-teams/lib/internal/util"
@@ -9,88 +9,42 @@ import (
 	"github.com/zalando/go-keyring"
 )
 
-func withStdin(t *testing.T, input string) func() {
-	t.Helper()
-
-	old := os.Stdin
-
-	r, w, err := os.Pipe()
-	require.NoError(t, err)
-
-	_, err = w.WriteString(input)
-	require.NoError(t, err)
-
-	require.NoError(t, w.Close())
-	os.Stdin = r
-
-	return func() {
-		os.Stdin = old
-		_ = r.Close()
-	}
-}
-
-func requireKeyringValue(t *testing.T, want string, wantExists bool) {
-	t.Helper()
-
-	got, err := keyring.Get(serviceName, userName)
-	if !wantExists {
-		require.Error(t, err)
-		return
-	}
-
-	require.NoError(t, err)
-	require.Equal(t, want, got)
-}
-
-func TestGetOrAskPepper(t *testing.T) {
+func TestGetPepper(t *testing.T) {
 	tests := []struct {
-		name         string
-		preseed      *string
-		stdin        string
-		want         string
-		wantErrSub   string
-		wantStored   string
-		wantStoredOK bool
+		name      string
+		preseed   *string
+		want      string
+		wantErrIs error
 	}{
 		{
-			name:         "keyring has non-empty value -> returns it, no prompt",
-			preseed:      util.Ptr("existing-pepper"),
-			stdin:        "",
-			want:         "existing-pepper",
-			wantStored:   "existing-pepper",
-			wantStoredOK: true,
+			name:      "missing in keyring -> ErrPepperNotSet",
+			preseed:   nil,
+			want:      "",
+			wantErrIs: ErrPepperNotSet,
 		},
 		{
-			name:         "missing in keyring -> asks stdin, stores and returns trimmed value",
-			preseed:      nil,
-			stdin:        "  my-pepper \n",
-			want:         "my-pepper",
-			wantStored:   "my-pepper",
-			wantStoredOK: true,
+			name:      "present but empty -> ErrPepperNotSet",
+			preseed:   util.Ptr(""),
+			want:      "",
+			wantErrIs: ErrPepperNotSet,
 		},
 		{
-			name:         "keyring has only whitespace -> asks stdin, stores new value",
-			preseed:      util.Ptr("   "),
-			stdin:        "pep\n",
-			want:         "pep",
-			wantStored:   "pep",
-			wantStoredOK: true,
+			name:      "present but whitespace -> ErrPepperNotSet",
+			preseed:   util.Ptr("   \t\n"),
+			want:      "",
+			wantErrIs: ErrPepperNotSet,
 		},
 		{
-			name:         "stdin empty -> error 'pepper cannot be empty' and does not store",
-			preseed:      nil,
-			stdin:        "   \n",
-			want:         "",
-			wantErrSub:   "pepper cannot be empty",
-			wantStoredOK: false,
+			name:      "present -> returns trimmed value",
+			preseed:   util.Ptr("  my-pepper \n"),
+			want:      "my-pepper",
+			wantErrIs: nil,
 		},
 		{
-			name:         "stdin read error (EOF before newline) -> returns 'reading pepper' error and does not store",
-			preseed:      nil,
-			stdin:        "no-newline",
-			want:         "",
-			wantErrSub:   "reading pepper",
-			wantStoredOK: false,
+			name:      "present already trimmed -> returns as-is",
+			preseed:   util.Ptr("pep"),
+			want:      "pep",
+			wantErrIs: nil,
 		},
 	}
 
@@ -102,23 +56,129 @@ func TestGetOrAskPepper(t *testing.T) {
 				require.NoError(t, keyring.Set(serviceName, userName, *tt.preseed))
 			}
 
-			var restore func()
-			if tt.stdin != "" {
-				restore = withStdin(t, tt.stdin)
-				defer restore()
-			}
-
-			got, err := GetOrAskPepper()
-			if tt.wantErrSub != "" {
+			got, err := GetPepper()
+			if tt.wantErrIs != nil {
 				require.Error(t, err)
-				require.Contains(t, err.Error(), tt.wantErrSub)
+				require.True(t, errors.Is(err, tt.wantErrIs), "expected errors.Is(err, %v) to be true, got err=%v", tt.wantErrIs, err)
 				return
 			}
 
 			require.NoError(t, err)
 			require.Equal(t, tt.want, got)
-
-			requireKeyringValue(t, tt.wantStored, tt.wantStoredOK)
 		})
 	}
+}
+
+func TestSetPepper(t *testing.T) {
+	tests := []struct {
+		name          string
+		input         string
+		wantStored    string
+		wantErrSubstr string
+		wantExists    bool
+	}{
+		{
+			name:       "valid -> stores trimmed value",
+			input:      "  abc \n",
+			wantStored: "abc",
+			wantExists: true,
+		},
+		{
+			name:          "empty -> error and does not store",
+			input:         "",
+			wantErrSubstr: "pepper cannot be empty",
+			wantExists:    false,
+		},
+		{
+			name:          "whitespace -> error and does not store",
+			input:         "   \t\n",
+			wantErrSubstr: "pepper cannot be empty",
+			wantExists:    false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			keyring.MockInit()
+
+			err := SetPepper(tt.input)
+			if tt.wantErrSubstr != "" {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tt.wantErrSubstr)
+
+				_, getErr := keyring.Get(serviceName, userName)
+				require.Error(t, getErr)
+				require.True(t, errors.Is(getErr, keyring.ErrNotFound))
+				return
+			}
+
+			require.NoError(t, err)
+
+			got, getErr := keyring.Get(serviceName, userName)
+			require.NoError(t, getErr)
+			require.Equal(t, tt.wantStored, got)
+		})
+	}
+}
+
+func TestPepperExists(t *testing.T) {
+	tests := []struct {
+		name    string
+		preseed *string
+		want    bool
+	}{
+		{
+			name:    "missing -> false",
+			preseed: nil,
+			want:    false,
+		},
+		{
+			name:    "present but empty -> false",
+			preseed: util.Ptr(""),
+			want:    false,
+		},
+		{
+			name:    "present but whitespace -> false",
+			preseed: util.Ptr("   "),
+			want:    false,
+		},
+		{
+			name:    "present -> true",
+			preseed: util.Ptr("pep"),
+			want:    true,
+		},
+		{
+			name:    "present with surrounding whitespace -> true",
+			preseed: util.Ptr("  pep \n"),
+			want:    true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			keyring.MockInit()
+
+			if tt.preseed != nil {
+				require.NoError(t, keyring.Set(serviceName, userName, *tt.preseed))
+			}
+
+			got, err := PepperExists()
+			require.NoError(t, err)
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestSetGetExists_Integration(t *testing.T) {
+	keyring.MockInit()
+
+	require.NoError(t, SetPepper("  xyz  "))
+
+	ok, err := PepperExists()
+	require.NoError(t, err)
+	require.True(t, ok)
+
+	got, err := GetPepper()
+	require.NoError(t, err)
+	require.Equal(t, "xyz", got)
 }
