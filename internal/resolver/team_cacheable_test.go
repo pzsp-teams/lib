@@ -2,6 +2,7 @@ package resolver
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"testing"
 
@@ -149,23 +150,109 @@ func TestTeamResolverCacheable_ResolveTeamRefToID(t *testing.T) {
 			cacheEnabled: true,
 			setupMocks: func(api *testutil.MockTeamAPI, c *testutil.MockCacher, tr *testutil.MockTaskRunner) {
 				collection := testutil.NewTeamCollection(
-					testutil.NewGraphTeam(
-						&testutil.NewTeamParams{
-							ID:          util.Ptr("team-id-1"),
-							DisplayName: util.Ptr("My Team"),
-						},
-					),
-					testutil.NewGraphTeam(
-						&testutil.NewTeamParams{
-							ID:          util.Ptr("team-id-2"),
-							DisplayName: util.Ptr("My Team"),
-						},
-					),
+					testutil.NewGraphTeam(&testutil.NewTeamParams{ID: util.Ptr("team-id-1"), DisplayName: util.Ptr("My Team")}),
+					testutil.NewGraphTeam(&testutil.NewTeamParams{ID: util.Ptr("team-id-2"), DisplayName: util.Ptr("My Team")}),
 				)
 
 				api.EXPECT().ListMyJoined(gomock.Any()).Return(collection, nil).Times(1)
 				c.EXPECT().Get(cacher.NewTeamKey("My Team")).Return(nil, false, nil).Times(1)
 				tr.EXPECT().Run(gomock.Any()).Times(0)
+			},
+			expectError: true,
+		},
+
+		{
+			name:         "Cache Get error is ignored and resolver falls back to API",
+			teamRef:      "My Team",
+			cacheEnabled: true,
+			setupMocks: func(api *testutil.MockTeamAPI, c *testutil.MockCacher, tr *testutil.MockTaskRunner) {
+				collection := testutil.NewTeamCollection(testutil.NewGraphTeam(
+					&testutil.NewTeamParams{ID: util.Ptr("team-id-123"), DisplayName: util.Ptr("My Team")},
+				))
+
+				c.EXPECT().
+					Get(cacher.NewTeamKey("My Team")).
+					Return(nil, false, errors.New("cache down")).
+					Times(1)
+
+				api.EXPECT().ListMyJoined(gomock.Any()).Return(collection, nil).Times(1)
+				tr.EXPECT().Run(gomock.Any()).Times(1)
+			},
+			expectedID: "team-id-123",
+		},
+		{
+			name:         "Cache hit with wrong type is ignored and resolver falls back to API",
+			teamRef:      "My Team",
+			cacheEnabled: true,
+			setupMocks: func(api *testutil.MockTeamAPI, c *testutil.MockCacher, tr *testutil.MockTaskRunner) {
+				collection := testutil.NewTeamCollection(testutil.NewGraphTeam(
+					&testutil.NewTeamParams{ID: util.Ptr("team-id-123"), DisplayName: util.Ptr("My Team")},
+				))
+
+				c.EXPECT().
+					Get(cacher.NewTeamKey("My Team")).
+					Return(123, true, nil).
+					Times(1)
+
+				api.EXPECT().ListMyJoined(gomock.Any()).Return(collection, nil).Times(1)
+				tr.EXPECT().Run(gomock.Any()).Times(1)
+			},
+			expectedID: "team-id-123",
+		},
+		{
+			name:         "Cache hit with empty slice is ignored and resolver falls back to API",
+			teamRef:      "My Team",
+			cacheEnabled: true,
+			setupMocks: func(api *testutil.MockTeamAPI, c *testutil.MockCacher, tr *testutil.MockTaskRunner) {
+				collection := testutil.NewTeamCollection(testutil.NewGraphTeam(
+					&testutil.NewTeamParams{ID: util.Ptr("team-id-123"), DisplayName: util.Ptr("My Team")},
+				))
+
+				c.EXPECT().
+					Get(cacher.NewTeamKey("My Team")).
+					Return([]string{}, true, nil).
+					Times(1)
+
+				api.EXPECT().ListMyJoined(gomock.Any()).Return(collection, nil).Times(1)
+				tr.EXPECT().Run(gomock.Any()).Times(1)
+			},
+			expectedID: "team-id-123",
+		},
+		{
+			name:         "Cache hit multiple IDs triggers invalidation and falls back to API",
+			teamRef:      "My Team",
+			cacheEnabled: true,
+			setupMocks: func(api *testutil.MockTeamAPI, c *testutil.MockCacher, tr *testutil.MockTaskRunner) {
+				collection := testutil.NewTeamCollection(testutil.NewGraphTeam(
+					&testutil.NewTeamParams{ID: util.Ptr("team-id-123"), DisplayName: util.Ptr("My Team")},
+				))
+
+				c.EXPECT().
+					Get(cacher.NewTeamKey("My Team")).
+					Return([]string{"team-1", "team-2"}, true, nil).
+					Times(1)
+
+				api.EXPECT().ListMyJoined(gomock.Any()).Return(collection, nil).Times(1)
+
+				tr.EXPECT().Run(gomock.Any()).Times(2)
+			},
+			expectedID: "team-id-123",
+		},
+		{
+			name:         "Cache hit multiple IDs schedules invalidation even if API fails",
+			teamRef:      "My Team",
+			cacheEnabled: true,
+			setupMocks: func(api *testutil.MockTeamAPI, c *testutil.MockCacher, tr *testutil.MockTaskRunner) {
+				apiErr := &sender.RequestError{Code: http.StatusInternalServerError, Message: "boom"}
+
+				c.EXPECT().
+					Get(cacher.NewTeamKey("My Team")).
+					Return([]string{"team-1", "team-2"}, true, nil).
+					Times(1)
+
+				api.EXPECT().ListMyJoined(gomock.Any()).Return(nil, apiErr).Times(1)
+
+				tr.EXPECT().Run(gomock.Any()).Times(1)
 			},
 			expectError: true,
 		},
@@ -262,12 +349,10 @@ func TestTeamResolverCacheable_ResolveTeamMemberRefToID(t *testing.T) {
 			cacheEnabled: true,
 			setupMocks: func(api *testutil.MockTeamAPI, c *testutil.MockCacher, tr *testutil.MockTaskRunner) {
 				collection := testutil.NewMemberCollection(
-					testutil.NewGraphMember(
-						&testutil.NewMemberParams{
-							ID:    util.Ptr("member-id-123"),
-							Email: util.Ptr("user@example.com"),
-						},
-					),
+					testutil.NewGraphMember(&testutil.NewMemberParams{
+						ID:    util.Ptr("member-id-123"),
+						Email: util.Ptr("user@example.com"),
+					}),
 				)
 
 				api.EXPECT().ListMembers(gomock.Any(), teamID).Return(collection, nil).Times(1)
@@ -283,12 +368,10 @@ func TestTeamResolverCacheable_ResolveTeamMemberRefToID(t *testing.T) {
 			cacheEnabled: false,
 			setupMocks: func(api *testutil.MockTeamAPI, c *testutil.MockCacher, tr *testutil.MockTaskRunner) {
 				collection := testutil.NewMemberCollection(
-					testutil.NewGraphMember(
-						&testutil.NewMemberParams{
-							ID:    util.Ptr("member-id-123"),
-							Email: util.Ptr("user@example.com"),
-						},
-					),
+					testutil.NewGraphMember(&testutil.NewMemberParams{
+						ID:    util.Ptr("member-id-123"),
+						Email: util.Ptr("user@example.com"),
+					}),
 				)
 
 				api.EXPECT().ListMembers(gomock.Any(), teamID).Return(collection, nil).Times(1)
@@ -321,12 +404,10 @@ func TestTeamResolverCacheable_ResolveTeamMemberRefToID(t *testing.T) {
 			cacheEnabled: true,
 			setupMocks: func(api *testutil.MockTeamAPI, c *testutil.MockCacher, tr *testutil.MockTaskRunner) {
 				collection := testutil.NewMemberCollection(
-					testutil.NewGraphMember(
-						&testutil.NewMemberParams{
-							ID:    util.Ptr("member-id-999"),
-							Email: util.Ptr("other@example.com"),
-						},
-					),
+					testutil.NewGraphMember(&testutil.NewMemberParams{
+						ID:    util.Ptr("member-id-999"),
+						Email: util.Ptr("other@example.com"),
+					}),
 				)
 
 				api.EXPECT().ListMembers(gomock.Any(), teamID).Return(collection, nil).Times(1)
@@ -354,11 +435,122 @@ func TestTeamResolverCacheable_ResolveTeamMemberRefToID(t *testing.T) {
 
 				api.EXPECT().ListMembers(gomock.Any(), teamID).Return(collection, nil).Times(1)
 				c.EXPECT().Get(cacher.NewTeamMemberKey(teamID, "user@example.com", nil)).Return(nil, false, nil).Times(1)
+				tr.EXPECT().Run(gomock.Any()).Times(1)
+			},
+			expectedID: "member-id-1",
+		},
+
+		{
+			name:         "Cache Get error is ignored and resolver falls back to API",
+			teamID:       teamID,
+			userRef:      "user@example.com",
+			cacheEnabled: true,
+			setupMocks: func(api *testutil.MockTeamAPI, c *testutil.MockCacher, tr *testutil.MockTaskRunner) {
+				collection := testutil.NewMemberCollection(
+					testutil.NewGraphMember(&testutil.NewMemberParams{
+						ID:    util.Ptr("member-id-123"),
+						Email: util.Ptr("user@example.com"),
+					}),
+				)
+
+				c.EXPECT().
+					Get(cacher.NewTeamMemberKey(teamID, "user@example.com", nil)).
+					Return(nil, false, errors.New("cache down")).
+					Times(1)
+
+				api.EXPECT().ListMembers(gomock.Any(), teamID).Return(collection, nil).Times(1)
+				tr.EXPECT().Run(gomock.Any()).Times(1)
+			},
+			expectedID: "member-id-123",
+		},
+		{
+			name:         "Cache hit with wrong type is ignored and resolver falls back to API",
+			teamID:       teamID,
+			userRef:      "user@example.com",
+			cacheEnabled: true,
+			setupMocks: func(api *testutil.MockTeamAPI, c *testutil.MockCacher, tr *testutil.MockTaskRunner) {
+				collection := testutil.NewMemberCollection(
+					testutil.NewGraphMember(&testutil.NewMemberParams{
+						ID:    util.Ptr("member-id-123"),
+						Email: util.Ptr("user@example.com"),
+					}),
+				)
+
+				c.EXPECT().
+					Get(cacher.NewTeamMemberKey(teamID, "user@example.com", nil)).
+					Return(123, true, nil).
+					Times(1)
+
+				api.EXPECT().ListMembers(gomock.Any(), teamID).Return(collection, nil).Times(1)
+				tr.EXPECT().Run(gomock.Any()).Times(1)
+			},
+			expectedID: "member-id-123",
+		},
+		{
+			name:         "Cache hit with empty slice is ignored and resolver falls back to API",
+			teamID:       teamID,
+			userRef:      "user@example.com",
+			cacheEnabled: true,
+			setupMocks: func(api *testutil.MockTeamAPI, c *testutil.MockCacher, tr *testutil.MockTaskRunner) {
+				collection := testutil.NewMemberCollection(
+					testutil.NewGraphMember(&testutil.NewMemberParams{
+						ID:    util.Ptr("member-id-123"),
+						Email: util.Ptr("user@example.com"),
+					}),
+				)
+
+				c.EXPECT().
+					Get(cacher.NewTeamMemberKey(teamID, "user@example.com", nil)).
+					Return([]string{}, true, nil).
+					Times(1)
+
+				api.EXPECT().ListMembers(gomock.Any(), teamID).Return(collection, nil).Times(1)
+				tr.EXPECT().Run(gomock.Any()).Times(1)
+			},
+			expectedID: "member-id-123",
+		},
+		{
+			name:         "Cache hit multiple IDs triggers invalidation and falls back to API",
+			teamID:       teamID,
+			userRef:      "user@example.com",
+			cacheEnabled: true,
+			setupMocks: func(api *testutil.MockTeamAPI, c *testutil.MockCacher, tr *testutil.MockTaskRunner) {
+				collection := testutil.NewMemberCollection(
+					testutil.NewGraphMember(&testutil.NewMemberParams{
+						ID:    util.Ptr("member-id-123"),
+						Email: util.Ptr("user@example.com"),
+					}),
+				)
+
+				c.EXPECT().
+					Get(cacher.NewTeamMemberKey(teamID, "user@example.com", nil)).
+					Return([]string{"m-1", "m-2"}, true, nil).
+					Times(1)
+
+				api.EXPECT().ListMembers(gomock.Any(), teamID).Return(collection, nil).Times(1)
+
+				tr.EXPECT().Run(gomock.Any()).Times(2)
+			},
+			expectedID: "member-id-123",
+		},
+		{
+			name:         "Cache hit multiple IDs schedules invalidation even if API fails",
+			teamID:       teamID,
+			userRef:      "user@example.com",
+			cacheEnabled: true,
+			setupMocks: func(api *testutil.MockTeamAPI, c *testutil.MockCacher, tr *testutil.MockTaskRunner) {
+				apiErr := &sender.RequestError{Code: http.StatusInternalServerError, Message: "boom"}
+
+				c.EXPECT().
+					Get(cacher.NewTeamMemberKey(teamID, "user@example.com", nil)).
+					Return([]string{"m-1", "m-2"}, true, nil).
+					Times(1)
+
+				api.EXPECT().ListMembers(gomock.Any(), teamID).Return(nil, apiErr).Times(1)
 
 				tr.EXPECT().Run(gomock.Any()).Times(1)
 			},
-			expectedID:  "member-id-1",
-			expectError: false,
+			expectError: true,
 		},
 	}
 
