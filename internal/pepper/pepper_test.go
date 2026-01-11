@@ -182,3 +182,62 @@ func TestSetGetExists_Integration(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "xyz", got)
 }
+
+func withKeyringStubs(t *testing.T, get func(string, string) (string, error), set func(string, string, string) error) {
+	t.Helper()
+
+	oldGet := keyringGet
+	oldSet := keyringSet
+	if get != nil {
+		keyringGet = get
+	}
+	if set != nil {
+		keyringSet = set
+	}
+	t.Cleanup(func() {
+		keyringGet = oldGet
+		keyringSet = oldSet
+	})
+}
+
+func TestGetPepper_KeyringGetOtherError(t *testing.T) {
+	sentinel := errors.New("boom")
+
+	withKeyringStubs(t,
+		func(_, _ string) (string, error) { return "", sentinel },
+		nil,
+	)
+
+	_, err := GetPepper()
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "retrieving pepper from keyring")
+	require.True(t, errors.Is(err, sentinel))
+}
+
+func TestSetPepper_KeyringSetError(t *testing.T) {
+	sentinel := errors.New("boom")
+
+	withKeyringStubs(t,
+		nil,
+		func(_, _, _ string) error { return sentinel },
+	)
+
+	err := SetPepper("pep")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "storing pepper in keyring")
+	require.True(t, errors.Is(err, sentinel))
+}
+
+func TestPepperExists_KeyringGetOtherError(t *testing.T) {
+	sentinel := errors.New("boom")
+
+	withKeyringStubs(t,
+		func(_, _ string) (string, error) { return "", sentinel },
+		nil,
+	)
+
+	_, err := PepperExists()
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "checking pepper in keyring")
+	require.True(t, errors.Is(err, sentinel))
+}
