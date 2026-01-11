@@ -40,6 +40,10 @@ func (r *resolverContext[T]) resolveWithCache(
 		if err == nil && found {
 			if ids, ok := value.([]string); ok && len(ids) == 1 {
 				return ids[0], nil
+			} else if ok && len(ids) > 1 {
+				cacheHandler.Runner.Run(func() {
+					_ = cacheHandler.Cacher.Invalidate(r.cacheKey)
+				})
 			}
 		}
 	}
