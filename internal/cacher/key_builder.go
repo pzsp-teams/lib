@@ -57,7 +57,7 @@ func NewTeamMemberKey(teamID, userRef string, pep *string) string {
 
 func hashRef(ref string, pep *string) string {
 	if pep == nil {
-		p, err := pepper.GetOrAskPepper()
+		p, err := pepper.GetPepper()
 		if err != nil {
 			p = "default-pepper"
 		}
