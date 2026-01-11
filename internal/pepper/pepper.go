@@ -1,11 +1,8 @@
-// Package pepper provides helpers for persisting and retrieving a secret "pepper" value.
+// Package pepper provides helpers for obtaining and persisting a secret "pepper" value.
 //
 // The pepper is stored in the system keyring and is used as an additional secret when
-// hashing or deriving cache keys.
-//
-// This package is intentionally non-interactive: it never prompts the user.
-// Use SetPepper to store the value, PepperExists to check if it is present,
-// and GetPepper to retrieve it.
+// hashing or deriving cache keys. If the value is missing, the user is prompted on stdin
+// and the result is saved to the keyring.
 package pepper
 
 import (
@@ -21,14 +18,13 @@ const (
 	userName    = "pepper"
 )
 
-// ErrPepperNotSet is returned by GetPepper when the pepper is missing or empty in the keyring.
 var ErrPepperNotSet = errors.New("pepper not set in keyring")
 
-// GetPepper retrieves the pepper from the system keyring.
-//
-// It returns ErrPepperNotSet if the value is missing or empty.
+var keyringGet = keyring.Get
+var keyringSet = keyring.Set
+
 func GetPepper() (string, error) {
-	value, err := keyring.Get(serviceName, userName)
+	value, err := keyringGet(serviceName, userName)
 	if err != nil {
 		if errors.Is(err, keyring.ErrNotFound) {
 			return "", ErrPepperNotSet
@@ -42,21 +38,19 @@ func GetPepper() (string, error) {
 	return value, nil
 }
 
-// SetPepper validates and stores the pepper in the system keyring.
 func SetPepper(pepper string) error {
 	pepper = strings.TrimSpace(pepper)
 	if pepper == "" {
 		return fmt.Errorf("pepper cannot be empty")
 	}
-	if err := keyring.Set(serviceName, userName, pepper); err != nil {
+	if err := keyringSet(serviceName, userName, pepper); err != nil {
 		return fmt.Errorf("storing pepper in keyring: %w", err)
 	}
 	return nil
 }
 
-// PepperExists reports whether a non-empty pepper is stored in the system keyring.
 func PepperExists() (bool, error) {
-	value, err := keyring.Get(serviceName, userName)
+	value, err := keyringGet(serviceName, userName)
 	if err != nil {
 		if errors.Is(err, keyring.ErrNotFound) {
 			return false, nil
