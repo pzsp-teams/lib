@@ -183,6 +183,23 @@ func NewGraphMessage(params *NewMessageParams) msmodels.ChatMessageable {
 	return graphMessage
 }
 
+// PINNED MESSAGE
+
+type NewPinnedMessageParams struct {
+	ID           *string
+	NewMsgParams *NewMessageParams
+}
+
+func NewGraphPinnedMessage(params *NewPinnedMessageParams) msmodels.PinnedChatMessageInfoable {
+	if params == nil {
+		return nil
+	}
+	pinned := msmodels.NewPinnedChatMessageInfo()
+	pinned.SetId(params.ID)
+	pinned.SetMessage(NewGraphMessage(params.NewMsgParams))
+	return pinned
+}
+
 // USER
 type NewUserParams struct {
 	ID          *string
