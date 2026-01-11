@@ -332,10 +332,10 @@ func (mr *MockChatAPIMockRecorder) ListMessagesNext(ctx, chatID, nextLink, inclu
 }
 
 // ListPinnedMessages mocks base method.
-func (m *MockChatAPI) ListPinnedMessages(ctx context.Context, chatID string) (models.ChatMessageCollectionResponseable, *sender.RequestError) {
+func (m *MockChatAPI) ListPinnedMessages(ctx context.Context, chatID string) (models.PinnedChatMessageInfoCollectionResponseable, *sender.RequestError) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListPinnedMessages", ctx, chatID)
-	ret0, _ := ret[0].(models.ChatMessageCollectionResponseable)
+	ret0, _ := ret[0].(models.PinnedChatMessageInfoCollectionResponseable)
 	ret1, _ := ret[1].(*sender.RequestError)
 	return ret0, ret1
 }
