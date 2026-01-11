@@ -233,6 +233,82 @@ func TestMapGraphMessage(t *testing.T) {
 	}
 }
 
+func TestMapGraphPinnedMessage(t *testing.T) {
+	type testCase struct {
+		name   string
+		params *testutil.NewPinnedMessageParams
+		result *models.Message
+	}
+
+	testCases := []testCase{
+		{
+			"Nil pinned message",
+			nil,
+			nil,
+		},
+		{
+			"Complete pinned message",
+			&testutil.NewPinnedMessageParams{
+				ID: util.Ptr("message-id"),
+				NewMsgParams: &testutil.NewMessageParams{
+					ID:              util.Ptr("message-id"),
+					Content:         util.Ptr("Pinned message content"),
+					ContentType:     util.Ptr(msmodels.TEXT_BODYTYPE),
+					CreatedDateTime: util.Ptr(time.Date(2024, 2, 3, 10, 20, 30, 0, time.UTC)),
+					FromUserID:      util.Ptr("user-id"),
+					FromDisplayName: util.Ptr("Alice Johnson"),
+					ReplyCount:      util.Ptr(5),
+				},
+			},
+			&models.Message{
+				ID:              "message-id",
+				Content:         "Pinned message content",
+				ContentType:     models.MessageContentTypeText,
+				CreatedDateTime: time.Date(2024, 2, 3, 10, 20, 30, 0, time.UTC),
+				From:            &models.MessageFrom{UserID: "user-id", DisplayName: "Alice Johnson"},
+				ReplyCount:      5,
+			},
+		},
+		{
+			"Missing fields",
+			&testutil.NewPinnedMessageParams{
+				NewMsgParams: &testutil.NewMessageParams{},
+			},
+			&models.Message{
+				ID:              "",
+				Content:         "",
+				ContentType:     "",
+				CreatedDateTime: time.Time{},
+				From:            nil,
+				ReplyCount:      0,
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		graphPinnedMessage := testutil.NewGraphPinnedMessage(tc.params)
+		pinnedMessage := MapGraphPinnedMessage(graphPinnedMessage)
+		if pinnedMessage == nil || tc.result == nil {
+			assert.Equal(t, tc.result, pinnedMessage)
+			continue
+		}
+
+		assert.Equal(t, tc.result.ID, pinnedMessage.ID)
+		assert.Equal(t, tc.result.Content, pinnedMessage.Content)
+		assert.Equal(t, tc.result.ContentType, pinnedMessage.ContentType)
+		assert.Equal(t, tc.result.CreatedDateTime, pinnedMessage.CreatedDateTime)
+
+		if tc.result.From == nil || pinnedMessage.From == nil {
+			assert.Equal(t, tc.result.From, pinnedMessage.From)
+		} else {
+			assert.Equal(t, tc.result.From.UserID, pinnedMessage.From.UserID)
+			assert.Equal(t, tc.result.From.DisplayName, pinnedMessage.From.DisplayName)
+		}
+
+		assert.Equal(t, tc.result.ReplyCount, pinnedMessage.ReplyCount)
+	}
+}
+
 func TestMapGraphMember(t *testing.T) {
 	type testCase struct {
 		name   string
