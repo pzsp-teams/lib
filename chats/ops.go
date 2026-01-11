@@ -145,7 +145,7 @@ func (o *ops) ListPinnedMessages(ctx context.Context, chatID string) ([]*models.
 	if requestErr != nil {
 		return nil, snd.MapError(requestErr, snd.WithResource(resources.Chat, chatID))
 	}
-	return util.MapSlices(resp.GetValue(), adapter.MapGraphMessage), nil
+	return util.MapSlices(resp.GetValue(), adapter.MapGraphPinnedMessage), nil
 }
 
 func (o *ops) PinMessage(ctx context.Context, chatID, messageID string) error {
