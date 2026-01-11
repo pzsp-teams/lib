@@ -6,6 +6,7 @@ import (
 	"time"
 
 	graph "github.com/microsoftgraph/msgraph-sdk-go"
+	graphchats "github.com/microsoftgraph/msgraph-sdk-go/chats"
 	msmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
 	graphusers "github.com/microsoftgraph/msgraph-sdk-go/users"
 	"github.com/pzsp-teams/lib/config"
@@ -34,7 +35,7 @@ type ChatAPI interface {
 	DeleteMessage(ctx context.Context, chatID, messageID string) *sender.RequestError
 	GetMessage(ctx context.Context, chatID, messageID string) (msmodels.ChatMessageable, *sender.RequestError)
 	ListAllMessages(ctx context.Context, startTime, endTime *time.Time, top *int32) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError)
-	ListPinnedMessages(ctx context.Context, chatID string) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError)
+	ListPinnedMessages(ctx context.Context, chatID string) (msmodels.PinnedChatMessageInfoCollectionResponseable, *sender.RequestError)
 	PinMessage(ctx context.Context, chatID, messageID string) *sender.RequestError
 	UnpinMessage(ctx context.Context, chatID, pinnedID string) *sender.RequestError
 	ListMessagesNext(ctx context.Context, chatID, nextLink string, includeSystem bool) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError)
@@ -340,9 +341,15 @@ func (c *chatsAPI) ListAllMessages(ctx context.Context, startTime, endTime *time
 	return out, nil
 }
 
-func (c *chatsAPI) ListPinnedMessages(ctx context.Context, chatID string) (msmodels.ChatMessageCollectionResponseable, *sender.RequestError) {
+func (c *chatsAPI) ListPinnedMessages(ctx context.Context, chatID string) (msmodels.PinnedChatMessageInfoCollectionResponseable, *sender.RequestError) {
 	call := func(ctx context.Context) (sender.Response, error) {
-		return c.client.Chats().ByChatId(chatID).PinnedMessages().Get(ctx, nil)
+		requestParameters := &graphchats.ItemPinnedMessagesRequestBuilderGetQueryParameters{
+			Expand: []string{"message"},
+		}
+		configuration := &graphchats.ItemPinnedMessagesRequestBuilderGetRequestConfiguration{
+			QueryParameters: requestParameters,
+		}
+		return c.client.Chats().ByChatId(chatID).PinnedMessages().Get(ctx, configuration)
 	}
 
 	resp, err := sender.SendRequest(ctx, call, c.senderCfg)
@@ -350,9 +357,9 @@ func (c *chatsAPI) ListPinnedMessages(ctx context.Context, chatID string) (msmod
 		return nil, err
 	}
 
-	out, ok := resp.(msmodels.ChatMessageCollectionResponseable)
+	out, ok := resp.(msmodels.PinnedChatMessageInfoCollectionResponseable)
 	if !ok {
-		return nil, newTypeError("ChatMessageCollectionResponseable")
+		return nil, newTypeError("PinnedChatMessageInfoCollectionResponseable")
 	}
 	return out, nil
 }
