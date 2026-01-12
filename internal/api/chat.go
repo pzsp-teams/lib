@@ -16,9 +16,11 @@ import (
 
 type OneOnOneChatAPI interface {
 	CreateOneOnOneChat(ctx context.Context, recipientRef string) (msmodels.Chatable, *sender.RequestError)
+	GetOneOnOneChat(ctx context.Context, chatID string) (msmodels.Chatable, *sender.RequestError)
 }
 
 type GroupChatAPI interface {
+	GetGroupChat(ctx context.Context, chatID string) (msmodels.Chatable, *sender.RequestError)
 	CreateGroupChat(ctx context.Context, recipientRefs []string, topic string, includeMe bool) (msmodels.Chatable, *sender.RequestError)
 	AddMemberToGroupChat(ctx context.Context, chatID, userRef string) (msmodels.ConversationMemberable, *sender.RequestError)
 	RemoveMemberFromGroupChat(ctx context.Context, chatID, memberID string) *sender.RequestError
@@ -50,6 +52,64 @@ type chatsAPI struct {
 
 func NewChat(client *graph.GraphServiceClient, senderCfg *config.SenderConfig, searchAPI SearchAPI) ChatAPI {
 	return &chatsAPI{client, senderCfg, searchAPI}
+}
+
+func (c *chatsAPI) GetOneOnOneChat(ctx context.Context, chatID string) (msmodels.Chatable, *sender.RequestError) {
+	me, err := GetMe(ctx, c.client, c.senderCfg)
+	if err != nil {
+		return nil, err
+	}
+	if me.GetId() == nil {
+		return nil, &sender.RequestError{Message: "cannot get current user ID"}
+	}
+
+	requestParameters := &graphusers.ItemChatsChatItemRequestBuilderGetQueryParameters{
+		Expand: []string{"members"},
+	}
+
+	configuration := &graphusers.ItemChatsChatItemRequestBuilderGetRequestConfiguration{
+		QueryParameters: requestParameters,
+	}
+
+	call := func(ctx context.Context) (sender.Response, error) {
+		return c.client.
+			Users().
+			ByUserId(*me.GetId()).
+			Chats().
+			ByChatId(chatID).
+			Get(ctx, configuration)
+	}
+
+	resp, err := sender.SendRequest(ctx, call, c.senderCfg)
+	if err != nil {
+		return nil, err
+	}
+
+	out, ok := resp.(msmodels.Chatable)
+	if !ok {
+		return nil, newTypeError("Chatable")
+	}
+	return out, nil
+}
+
+func (c *chatsAPI) GetGroupChat(ctx context.Context, chatID string) (msmodels.Chatable, *sender.RequestError) {
+	call := func(ctx context.Context) (sender.Response, error) {
+		return c.client.
+			Chats().
+			ByChatId(chatID).
+			Get(ctx, nil)
+	}
+
+	resp, err := sender.SendRequest(ctx, call, c.senderCfg)
+	if err != nil {
+		return nil, err
+	}
+
+	out, ok := resp.(msmodels.Chatable)
+	if !ok {
+		return nil, newTypeError("Chatable")
+	}
+	return out, nil
 }
 
 func (c *chatsAPI) CreateOneOnOneChat(ctx context.Context, userRef string) (msmodels.Chatable, *sender.RequestError) {

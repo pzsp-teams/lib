@@ -46,6 +46,22 @@ func (o *ops) CreateGroup(ctx context.Context, userIDs []string, topic string, i
 	return adapter.MapGraphChat(resp), nil
 }
 
+func (o *ops) GetOneOnOneChat(ctx context.Context, chatID string) (*models.Chat, error) {
+	resp, requestErr := o.chatAPI.GetOneOnOneChat(ctx, chatID)
+	if requestErr != nil {
+		return nil, snd.MapError(requestErr, snd.WithResource(resources.OneOnOneChat, chatID))
+	}
+	return adapter.MapGraphChat(resp), nil
+}
+
+func (o *ops) GetGroupChat(ctx context.Context, chatID string) (*models.Chat, error) {
+	resp, requestErr := o.chatAPI.GetGroupChat(ctx, chatID)
+	if requestErr != nil {
+		return nil, snd.MapError(requestErr, snd.WithResource(resources.GroupChat, chatID))
+	}
+	return adapter.MapGraphChat(resp), nil
+}
+
 func (o *ops) AddMemberToGroupChat(ctx context.Context, chatID, userID string) (*models.Member, error) {
 	resp, requestErr := o.chatAPI.AddMemberToGroupChat(ctx, chatID, userID)
 	if requestErr != nil {

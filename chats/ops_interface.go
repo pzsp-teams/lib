@@ -11,6 +11,8 @@ import (
 type chatOps interface {
 	CreateOneOnOne(ctx context.Context, userID string) (*models.Chat, error)
 	CreateGroup(ctx context.Context, userIDs []string, topic string, includeMe bool) (*models.Chat, error)
+	GetOneOnOneChat(ctx context.Context, chatID string) (*models.Chat, error)
+	GetGroupChat(ctx context.Context, chatID string) (*models.Chat, error)
 	AddMemberToGroupChat(ctx context.Context, chatID, userID string) (*models.Member, error)
 	RemoveMemberFromGroupChat(ctx context.Context, chatID, userID string) error
 	ListGroupChatMembers(ctx context.Context, chatID string) ([]*models.Member, error)

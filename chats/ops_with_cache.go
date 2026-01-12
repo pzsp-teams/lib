@@ -56,6 +56,18 @@ func (o *opsWithCache) CreateGroup(ctx context.Context, userIDs []string, topic 
 	return chat, nil
 }
 
+func (o *opsWithCache) GetOneOnOneChat(ctx context.Context, chatID string) (*models.Chat, error) {
+	return cacher.WithErrorClear(func() (*models.Chat, error) {
+		return o.chatOps.GetOneOnOneChat(ctx, chatID)
+	}, o.cacheHandler)
+}
+
+func (o *opsWithCache) GetGroupChat(ctx context.Context, chatID string) (*models.Chat, error) {
+	return cacher.WithErrorClear(func() (*models.Chat, error) {
+		return o.chatOps.GetGroupChat(ctx, chatID)
+	}, o.cacheHandler)
+}
+
 func (o *opsWithCache) AddMemberToGroupChat(ctx context.Context, chatID, userID string) (*models.Member, error) {
 	member, err := o.chatOps.AddMemberToGroupChat(ctx, chatID, userID)
 	if err != nil {
