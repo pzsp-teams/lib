@@ -60,6 +60,21 @@ func (mr *MockOneOnOneChatAPIMockRecorder) CreateOneOnOneChat(ctx, recipientRef 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateOneOnOneChat", reflect.TypeOf((*MockOneOnOneChatAPI)(nil).CreateOneOnOneChat), ctx, recipientRef)
 }
 
+// GetOneOnOneChat mocks base method.
+func (m *MockOneOnOneChatAPI) GetOneOnOneChat(ctx context.Context, chatID string) (models.Chatable, *sender.RequestError) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetOneOnOneChat", ctx, chatID)
+	ret0, _ := ret[0].(models.Chatable)
+	ret1, _ := ret[1].(*sender.RequestError)
+	return ret0, ret1
+}
+
+// GetOneOnOneChat indicates an expected call of GetOneOnOneChat.
+func (mr *MockOneOnOneChatAPIMockRecorder) GetOneOnOneChat(ctx, chatID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOneOnOneChat", reflect.TypeOf((*MockOneOnOneChatAPI)(nil).GetOneOnOneChat), ctx, chatID)
+}
+
 // MockGroupChatAPI is a mock of GroupChatAPI interface.
 type MockGroupChatAPI struct {
 	ctrl     *gomock.Controller
@@ -112,6 +127,21 @@ func (m *MockGroupChatAPI) CreateGroupChat(ctx context.Context, recipientRefs []
 func (mr *MockGroupChatAPIMockRecorder) CreateGroupChat(ctx, recipientRefs, topic, includeMe any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateGroupChat", reflect.TypeOf((*MockGroupChatAPI)(nil).CreateGroupChat), ctx, recipientRefs, topic, includeMe)
+}
+
+// GetGroupChat mocks base method.
+func (m *MockGroupChatAPI) GetGroupChat(ctx context.Context, chatID string) (models.Chatable, *sender.RequestError) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetGroupChat", ctx, chatID)
+	ret0, _ := ret[0].(models.Chatable)
+	ret1, _ := ret[1].(*sender.RequestError)
+	return ret0, ret1
+}
+
+// GetGroupChat indicates an expected call of GetGroupChat.
+func (mr *MockGroupChatAPIMockRecorder) GetGroupChat(ctx, chatID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetGroupChat", reflect.TypeOf((*MockGroupChatAPI)(nil).GetGroupChat), ctx, chatID)
 }
 
 // ListGroupChatMembers mocks base method.
@@ -241,6 +271,21 @@ func (mr *MockChatAPIMockRecorder) DeleteMessage(ctx, chatID, messageID any) *go
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteMessage", reflect.TypeOf((*MockChatAPI)(nil).DeleteMessage), ctx, chatID, messageID)
 }
 
+// GetGroupChat mocks base method.
+func (m *MockChatAPI) GetGroupChat(ctx context.Context, chatID string) (models.Chatable, *sender.RequestError) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetGroupChat", ctx, chatID)
+	ret0, _ := ret[0].(models.Chatable)
+	ret1, _ := ret[1].(*sender.RequestError)
+	return ret0, ret1
+}
+
+// GetGroupChat indicates an expected call of GetGroupChat.
+func (mr *MockChatAPIMockRecorder) GetGroupChat(ctx, chatID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetGroupChat", reflect.TypeOf((*MockChatAPI)(nil).GetGroupChat), ctx, chatID)
+}
+
 // GetMessage mocks base method.
 func (m *MockChatAPI) GetMessage(ctx context.Context, chatID, messageID string) (models.ChatMessageable, *sender.RequestError) {
 	m.ctrl.T.Helper()
@@ -254,6 +299,21 @@ func (m *MockChatAPI) GetMessage(ctx context.Context, chatID, messageID string) 
 func (mr *MockChatAPIMockRecorder) GetMessage(ctx, chatID, messageID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMessage", reflect.TypeOf((*MockChatAPI)(nil).GetMessage), ctx, chatID, messageID)
+}
+
+// GetOneOnOneChat mocks base method.
+func (m *MockChatAPI) GetOneOnOneChat(ctx context.Context, chatID string) (models.Chatable, *sender.RequestError) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetOneOnOneChat", ctx, chatID)
+	ret0, _ := ret[0].(models.Chatable)
+	ret1, _ := ret[1].(*sender.RequestError)
+	return ret0, ret1
+}
+
+// GetOneOnOneChat indicates an expected call of GetOneOnOneChat.
+func (mr *MockChatAPIMockRecorder) GetOneOnOneChat(ctx, chatID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOneOnOneChat", reflect.TypeOf((*MockChatAPI)(nil).GetOneOnOneChat), ctx, chatID)
 }
 
 // ListAllMessages mocks base method.

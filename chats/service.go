@@ -44,6 +44,34 @@ func (s *service) CreateGroup(ctx context.Context, recipientRefs []string, topic
 	return resp, nil
 }
 
+func (s *service) GetChat(ctx context.Context, chatRef ChatRef) (*models.Chat, error) {
+	chatID, err := s.resolveChatIDFromRef(ctx, chatRef)
+	if err != nil {
+		return nil, snd.Wrap("GetChat", err,
+			snd.NewParam(resources.ChatRef, chatRef.get()),
+		)
+	}
+
+	var resp *models.Chat
+	switch chatRef.(type) {
+	case OneOnOneChatRef:
+		resp, err = s.chatOps.GetOneOnOneChat(ctx, chatID)
+	case GroupChatRef:
+		resp, err = s.chatOps.GetGroupChat(ctx, chatID)
+	default:
+		return nil, snd.Wrap("GetChat", fmt.Errorf("unknown chat reference type"),
+			snd.NewParam(resources.ChatRef, chatRef.get()),
+		)
+	}
+	if err != nil {
+		return nil, snd.Wrap("GetChat", err,
+			snd.NewParam(resources.ChatRef, chatRef.get()),
+		)
+	}
+
+	return resp, nil
+}
+
 func (s *service) AddMemberToGroupChat(ctx context.Context, chatRef GroupChatRef, userRef string) (*models.Member, error) {
 	chatID, err := s.resolveChatIDFromRef(ctx, chatRef)
 	if err != nil {

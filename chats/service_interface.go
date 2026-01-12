@@ -31,6 +31,9 @@ type Service interface {
 	// The authenticated user may be included by setting includeMe to true.
 	CreateGroup(ctx context.Context, recipientRefs []string, topic string, includeMe bool) (*models.Chat, error)
 
+	// GetChat retrieves a chat (one-on-one or group) by its reference.
+	GetChat(ctx context.Context, chatRef ChatRef) (*models.Chat, error)
+
 	// AddMemberToGroupChat adds a user to a group chat.
 	AddMemberToGroupChat(ctx context.Context, chatRef GroupChatRef, userRef string) (*models.Member, error)
 
