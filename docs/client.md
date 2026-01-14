@@ -34,7 +34,7 @@ Always ensure to call Close\(\) upon application shutdown to flush any backgroun
 
 
 <a name="Close"></a>
-## func [Close](<https://github.com/pzsp-teams/lib/blob/main/client.go#L186>)
+## func [Close](<https://github.com/pzsp-teams/lib/blob/main/client.go#L189>)
 
 ```go
 func Close()
@@ -43,7 +43,7 @@ func Close()
 Close ensures a graceful shutdown of the library. It waits for any pending background operations \(such as asynchronous cache updates\) to complete before returning, preventing data loss or race conditions.
 
 <a name="NewChannelServiceFromGraphClient"></a>
-## func [NewChannelServiceFromGraphClient](<https://github.com/pzsp-teams/lib/blob/main/client.go#L118>)
+## func [NewChannelServiceFromGraphClient](<https://github.com/pzsp-teams/lib/blob/main/client.go#L119>)
 
 ```go
 func NewChannelServiceFromGraphClient(ctx context.Context, authCfg *config.AuthConfig, senderCfg *config.SenderConfig, cacheCfg *config.CacheConfig) (channels.Service, error)
@@ -52,7 +52,7 @@ func NewChannelServiceFromGraphClient(ctx context.Context, authCfg *config.AuthC
 NewChannelServiceFromGraphClient creates a standalone service for Channel operations. Use this if you do not need the full Client wrapper and only want to interact with Channels.
 
 <a name="NewChatServiceFromGraphClient"></a>
-## func [NewChatServiceFromGraphClient](<https://github.com/pzsp-teams/lib/blob/main/client.go#L163>)
+## func [NewChatServiceFromGraphClient](<https://github.com/pzsp-teams/lib/blob/main/client.go#L165>)
 
 ```go
 func NewChatServiceFromGraphClient(ctx context.Context, authCfg *config.AuthConfig, senderCfg *config.SenderConfig, cacheCfg *config.CacheConfig) (chats.Service, error)
@@ -61,7 +61,7 @@ func NewChatServiceFromGraphClient(ctx context.Context, authCfg *config.AuthConf
 NewChatServiceFromGraphClient creates a standalone service for Chat operations. Use this if you do not need the full Client wrapper and only want to interact with Chats.
 
 <a name="NewTeamServiceFromGraphClient"></a>
-## func [NewTeamServiceFromGraphClient](<https://github.com/pzsp-teams/lib/blob/main/client.go#L142>)
+## func [NewTeamServiceFromGraphClient](<https://github.com/pzsp-teams/lib/blob/main/client.go#L144>)
 
 ```go
 func NewTeamServiceFromGraphClient(ctx context.Context, authCfg *config.AuthConfig, senderCfg *config.SenderConfig, cacheCfg *config.CacheConfig) (teams.Service, error)

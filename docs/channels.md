@@ -25,7 +25,7 @@ If an async cached service is used, call Wait\(\) to ensure all background cache
 
 
 <a name="Service"></a>
-## type [Service](<https://github.com/pzsp-teams/lib/blob/main/channels/service_interface.go#L24-L91>)
+## type [Service](<https://github.com/pzsp-teams/lib/blob/main/channels/service_interface.go#L25-L100>)
 
 Service defines the interface for channel\-related operations. It includes methods for managing channels, members, messages, and more.
 
@@ -97,11 +97,19 @@ type Service interface {
     //   - Team (only the parent team of the channel can be mentioned). It can be used by specifying "team" or team display name as raw mention.
     //   - User IDs
     GetMentions(ctx context.Context, teamRef, channelRef string, rawMentions []string) ([]models.Mention, error)
+
+    // SearchMessagesInChannel searches for messages in a channel matching the specified query and options.
+    //
+    // If channelRef is nil, searches across all channels the user has access to.
+    // If teamRef is also nil, searches across all teams and channels the user has access to.
+    //
+    // Returns search results containing matching messages.
+    SearchMessages(ctx context.Context, teamRef, channelRef *string, opts *search.SearchMessagesOptions, searchConfig *search.SearchConfig) (*search.SearchResults, error)
 }
 ```
 
 <a name="NewService"></a>
-### func [NewService](<https://github.com/pzsp-teams/lib/blob/main/channels/service.go#L19>)
+### func [NewService](<https://github.com/pzsp-teams/lib/blob/main/channels/service.go#L21>)
 
 ```go
 func NewService(ops channelOps, tr resolver.TeamResolver, cr resolver.ChannelResolver) Service
