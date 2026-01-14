@@ -2,30 +2,34 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://pzsp-teams.github.io/lib/</loc>
-         <lastmod>2026-01-08</lastmod>
+         <lastmod>2026-01-14</lastmod>
     </url>
     <url>
          <loc>https://pzsp-teams.github.io/lib/channels/</loc>
-         <lastmod>2026-01-08</lastmod>
+         <lastmod>2026-01-14</lastmod>
     </url>
     <url>
          <loc>https://pzsp-teams.github.io/lib/chats/</loc>
-         <lastmod>2026-01-08</lastmod>
+         <lastmod>2026-01-14</lastmod>
     </url>
     <url>
          <loc>https://pzsp-teams.github.io/lib/client/</loc>
-         <lastmod>2026-01-08</lastmod>
+         <lastmod>2026-01-14</lastmod>
     </url>
     <url>
          <loc>https://pzsp-teams.github.io/lib/config/</loc>
-         <lastmod>2026-01-08</lastmod>
+         <lastmod>2026-01-14</lastmod>
     </url>
     <url>
          <loc>https://pzsp-teams.github.io/lib/models/</loc>
-         <lastmod>2026-01-08</lastmod>
+         <lastmod>2026-01-14</lastmod>
+    </url>
+    <url>
+         <loc>https://pzsp-teams.github.io/lib/search/</loc>
+         <lastmod>2026-01-14</lastmod>
     </url>
     <url>
          <loc>https://pzsp-teams.github.io/lib/teams/</loc>
-         <lastmod>2026-01-08</lastmod>
+         <lastmod>2026-01-14</lastmod>
     </url>
 </urlset>

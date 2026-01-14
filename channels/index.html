@@ -583,6 +583,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../search/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Search
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -697,7 +725,7 @@
 <li><a href="#NewService">func NewService(ops channelOps, tr resolver.TeamResolver, cr resolver.ChannelResolver) Service</a></li>
 </ul>
 <p><a name="Service"></a></p>
-<h2 id="type-service">type <a href="https://github.com/pzsp-teams/lib/blob/main/channels/service_interface.go#L24-L91">Service</a></h2>
+<h2 id="type-service">type <a href="https://github.com/pzsp-teams/lib/blob/main/channels/service_interface.go#L25-L100">Service</a></h2>
 <p>Service defines the interface for channel-related operations. It includes methods for managing channels, members, messages, and more.</p>
 <pre><code class="language-go">type Service interface {
     // ListChannels returns all channels in a team.
@@ -766,10 +794,18 @@
     //   - Team (only the parent team of the channel can be mentioned). It can be used by specifying &quot;team&quot; or team display name as raw mention.
     //   - User IDs
     GetMentions(ctx context.Context, teamRef, channelRef string, rawMentions []string) ([]models.Mention, error)
+
+    // SearchMessagesInChannel searches for messages in a channel matching the specified query and options.
+    //
+    // If channelRef is nil, searches across all channels the user has access to.
+    // If teamRef is also nil, searches across all teams and channels the user has access to.
+    //
+    // Returns search results containing matching messages.
+    SearchMessages(ctx context.Context, teamRef, channelRef *string, opts *search.SearchMessagesOptions, searchConfig *search.SearchConfig) (*search.SearchResults, error)
 }
 </code></pre>
 <p><a name="NewService"></a></p>
-<h3 id="func-newservice">func <a href="https://github.com/pzsp-teams/lib/blob/main/channels/service.go#L19">NewService</a></h3>
+<h3 id="func-newservice">func <a href="https://github.com/pzsp-teams/lib/blob/main/channels/service.go#L21">NewService</a></h3>
 <pre><code class="language-go">func NewService(ops channelOps, tr resolver.TeamResolver, cr resolver.ChannelResolver) Service
 </code></pre>
 <p>NewService creates a new channels Service instance</p>

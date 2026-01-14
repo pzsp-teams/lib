@@ -638,6 +638,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../search/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Search
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -815,22 +843,22 @@
 <li><a href="#NewClientFromGraphClient">func NewClientFromGraphClient(graphClient *graph.GraphServiceClient, senderCfg *config.SenderConfig, cacheCfg *config.CacheConfig) (*Client, error)</a></li>
 </ul>
 <p><a name="Close"></a></p>
-<h2 id="func-close">func <a href="https://github.com/pzsp-teams/lib/blob/main/client.go#L186">Close</a></h2>
+<h2 id="func-close">func <a href="https://github.com/pzsp-teams/lib/blob/main/client.go#L189">Close</a></h2>
 <pre><code class="language-go">func Close()
 </code></pre>
 <p>Close ensures a graceful shutdown of the library. It waits for any pending background operations (such as asynchronous cache updates) to complete before returning, preventing data loss or race conditions.</p>
 <p><a name="NewChannelServiceFromGraphClient"></a></p>
-<h2 id="func-newchannelservicefromgraphclient">func <a href="https://github.com/pzsp-teams/lib/blob/main/client.go#L118">NewChannelServiceFromGraphClient</a></h2>
+<h2 id="func-newchannelservicefromgraphclient">func <a href="https://github.com/pzsp-teams/lib/blob/main/client.go#L119">NewChannelServiceFromGraphClient</a></h2>
 <pre><code class="language-go">func NewChannelServiceFromGraphClient(ctx context.Context, authCfg *config.AuthConfig, senderCfg *config.SenderConfig, cacheCfg *config.CacheConfig) (channels.Service, error)
 </code></pre>
 <p>NewChannelServiceFromGraphClient creates a standalone service for Channel operations. Use this if you do not need the full Client wrapper and only want to interact with Channels.</p>
 <p><a name="NewChatServiceFromGraphClient"></a></p>
-<h2 id="func-newchatservicefromgraphclient">func <a href="https://github.com/pzsp-teams/lib/blob/main/client.go#L163">NewChatServiceFromGraphClient</a></h2>
+<h2 id="func-newchatservicefromgraphclient">func <a href="https://github.com/pzsp-teams/lib/blob/main/client.go#L165">NewChatServiceFromGraphClient</a></h2>
 <pre><code class="language-go">func NewChatServiceFromGraphClient(ctx context.Context, authCfg *config.AuthConfig, senderCfg *config.SenderConfig, cacheCfg *config.CacheConfig) (chats.Service, error)
 </code></pre>
 <p>NewChatServiceFromGraphClient creates a standalone service for Chat operations. Use this if you do not need the full Client wrapper and only want to interact with Chats.</p>
 <p><a name="NewTeamServiceFromGraphClient"></a></p>
-<h2 id="func-newteamservicefromgraphclient">func <a href="https://github.com/pzsp-teams/lib/blob/main/client.go#L142">NewTeamServiceFromGraphClient</a></h2>
+<h2 id="func-newteamservicefromgraphclient">func <a href="https://github.com/pzsp-teams/lib/blob/main/client.go#L144">NewTeamServiceFromGraphClient</a></h2>
 <pre><code class="language-go">func NewTeamServiceFromGraphClient(ctx context.Context, authCfg *config.AuthConfig, senderCfg *config.SenderConfig, cacheCfg *config.CacheConfig) (teams.Service, error)
 </code></pre>
 <p>NewTeamServiceFromGraphClient creates a standalone service for Team operations. Use this if you do not need the full Client wrapper and only want to interact with Teams.</p>
