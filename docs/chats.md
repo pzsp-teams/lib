@@ -72,19 +72,22 @@ type OneOnOneChatRef struct {
 ```
 
 <a name="Service"></a>
-## type [Service](<https://github.com/pzsp-teams/lib/blob/main/chats/service_interface.go#L24-L85>)
+## type [Service](<https://github.com/pzsp-teams/lib/blob/main/chats/service_interface.go#L25-L96>)
 
 Service defines the interface for chat\-related operations. It includes methods for creating chats, managing members, sending messages, and more.
 
 ```go
 type Service interface {
-    // CreateOneOneOne creates a one-on-one chat with the given recipient.
+    // CreateOneOnOne creates a one-on-one chat with the given recipient.
     // The authenticated user is automatically added to the chat.
     CreateOneOnOne(ctx context.Context, recipientRef string) (*models.Chat, error)
 
     // CreateGroup creates a group chat with the given recipients and topic.
     // The authenticated user may be included by setting includeMe to true.
     CreateGroup(ctx context.Context, recipientRefs []string, topic string, includeMe bool) (*models.Chat, error)
+
+    // GetChat retrieves a chat (one-on-one or group) by its reference.
+    GetChat(ctx context.Context, chatRef ChatRef) (*models.Chat, error)
 
     // AddMemberToGroupChat adds a user to a group chat.
     AddMemberToGroupChat(ctx context.Context, chatRef GroupChatRef, userRef string) (*models.Member, error)
@@ -138,11 +141,18 @@ type Service interface {
     //   - Everyone (for group chats)
     //   - User IDs
     GetMentions(ctx context.Context, chatRef ChatRef, rawMentions []string) ([]models.Mention, error)
+
+    // SearchMessages searches for messages in a chat matching the specified query and options.
+    //
+    // If chatRef is nil, searches across all chats the user has access to.
+    //
+    // Returns search results containing matching messages.
+    SearchMessages(ctx context.Context, chatRef ChatRef, opts *search.SearchMessagesOptions, searchConfig *search.SearchConfig) (*search.SearchResults, error)
 }
 ```
 
 <a name="NewService"></a>
-### func [NewService](<https://github.com/pzsp-teams/lib/blob/main/chats/service.go#L20>)
+### func [NewService](<https://github.com/pzsp-teams/lib/blob/main/chats/service.go#L21>)
 
 ```go
 func NewService(chatOps chatOps, cr resolver.ChatResolver) Service
