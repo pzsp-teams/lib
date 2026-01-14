@@ -17,7 +17,7 @@ High-level Go (Golang) library that simplifies interaction with **Microsoft Grap
 ## 📦 Installation
 
 ```bash
-go get (https://github.com/pzsp-teams/lib)
+go get https://github.com/pzsp-teams/lib
 ```
 
 ## 🛠️ Architecture & Concepts
@@ -33,22 +33,22 @@ The library uses a **Facade Pattern**. The Client struct aggregates domain-speci
 Many methods accept a `_Ref` argument. This allows you to pass:
 
 - **UUID**
-- **Display Name** (**email** for UserRefs) - this provides convenient usage in interactive applications.
+- **Display Name** (**email** address in case of UserRefs) - this provides convenient usage in interactive applications.
   Library will automatically resolve refs to IDs.
 
 ## 💻 Quick Start
 
 Full example usage is showcased [HERE](https://github.com/pzsp-teams/lib/tree/example-cmd-usage/cmd)
-Here is a simple example of how to initialize the client and list the current user's teams.
+Below is a simple example showing how to initialize the client and list the current user's teams.
 
-### 1. Client init
+### 1. Client initialization
 
 ```go
 import (
     "context"
     "time"
-    "[github.com/pzsp-teams/lib](https://github.com/pzsp-teams/lib)"
-    "[github.com/pzsp-teams/lib/config](https://github.com/pzsp-teams/lib/config)"
+    "github.com/pzsp-teams/lib"
+    "github.com/pzsp-teams/lib/config"
 )
 
 func main() {
@@ -93,7 +93,7 @@ newTeam, _ := client.Teams.CreateViaGroup(ctx, "Project Alpha", "project-alpha",
 
 ## Authentication
 
-The library uses `config.AuthConfig` to establish the connection.Ensure your Azure App Registration has the necessary **API Permissions** (e.g., `Team.ReadBasic.All`, `Channel.ReadBasic.All`) granted in the Azure Portal.
+The library uses `config.AuthConfig` to establish the connection. Ensure your Azure App Registration has the necessary **API Permissions** (e.g., `Team.ReadBasic.All`, `Channel.ReadBasic.All`) granted in the Azure Portal.
 Complete list of scopes required by all functions is available [HERE](https://github.com/pzsp-teams/lib/blob/example-cmd-usage/.env.template)
 
 There are two available ways to authenticate:
@@ -103,7 +103,7 @@ There are two available ways to authenticate:
 
 ## Cache
 
-If enabled, stores metadata and non-sensitive mappings, (e.g., `TeamRef` -> `UUID`) to provide efficient reference resolution.
+If enabled, stores metadata and non-sensitive mappings (e.g., `TeamRef` -> `UUID`) to provide efficient reference resolution.
 
 <br>
 
@@ -112,7 +112,7 @@ If enabled, stores metadata and non-sensitive mappings, (e.g., `TeamRef` -> `UUI
 Because the cache might run background goroutines to keep data fresh, you **must** call lib.Close() when your application shuts down. This ensures all background operations complete and prevents memory leaks or race conditions.
 
 ```go
-defer lib.Close()
+defer lib.Close() // Important: closes global cache/background workers
 ```
 
 ## 📚 Documentation
