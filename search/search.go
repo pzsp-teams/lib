@@ -1,3 +1,17 @@
+// Package search provides types used to build message-search queries and to represent
+// paginated search results returned from the messaging backend (e.g., Microsoft Graph).
+//
+// The package defines:
+//   - query options (SearchMessagesOptions),
+//   - pagination controls (SearchPage),
+//   - predefined time windows (TimeInterval),
+//   - result containers (SearchResult, SearchResults),
+//   - and a small concurrency configuration (SearchConfig).
+//
+// Notes:
+//   - If Interval is provided, it takes precedence over StartTime and EndTime.
+//   - "To" / "NotTo" filters typically work for chats, not for team channels.
+//   - Some providers may not support all filters (e.g., IsRead), depending on API limitations.
 package search
 
 import (
@@ -6,102 +20,110 @@ import (
 	"github.com/pzsp-teams/lib/models"
 )
 
-// SearchPage contains pagination options for searching messages.
-// Fields:
-//   - From: The starting index of the search results.
-//   - Size: The number of results to return.
+// SearchPage defines pagination options for message searches.
 //
-// Note: If not set, default pagination values will be used. From is zero-based.
-// Default Size is typically 25
+// From is a zero-based index of the first item to return.
+// Size is the maximum number of items to return.
+//
+// If nil, provider defaults are used (commonly Size=25).
 type SearchPage struct {
 	From *int32
 	Size *int32
 }
 
-// TimeInterval represents a predefined time interval for message searches.
+// TimeInterval is a predefined, human-friendly time window for searching messages.
 //
-// Possible values include:
-//   - Today
-//   - Yesterday
-//   - ThisWeek
-//   - ThisMonth
-//   - LastMonth
-//   - ThisYear
-//   - LastYear
+// When Interval is used in SearchMessagesOptions, it overrides StartTime/EndTime.
 type TimeInterval string
 
 const (
-	Today     TimeInterval = "today"
+	// Today selects messages sent today.
+	Today TimeInterval = "today"
+	// Yesterday selects messages sent yesterday.
 	Yesterday TimeInterval = "yesterday"
-	ThisWeek  TimeInterval = "this week"
+	// ThisWeek selects messages sent in the current week.
+	ThisWeek TimeInterval = "this week"
+	// ThisMonth selects messages sent in the current month.
 	ThisMonth TimeInterval = "this month"
+	// LastMonth selects messages sent in the previous month.
 	LastMonth TimeInterval = "last month"
-	ThisYear  TimeInterval = "this year"
-	LastYear  TimeInterval = "last year"
+	// ThisYear selects messages sent in the current year.
+	ThisYear TimeInterval = "this year"
+	// LastYear selects messages sent in the previous year.
+	LastYear TimeInterval = "last year"
 )
 
-// SearchMessagesOptions contains options for searching messages.
+// SearchMessagesOptions describes filters and parameters used to search for messages.
 //
-// Fields:
-//   - Query: The search query string.
-//   - SearchPage: Pagination options.
-//   - From: List of sender email addresses to include.
-//   - NotFrom: List of sender email addresses to exclude.
-//   - IsRead: Filter by read status (true for read, false for unread).
-//   - IsMentioned: Filter by mention status (true for mentioned, false for not mentioned).
-//   - To: List of recipient email addresses to include.
-//   - NotTo: List of recipient email addresses to exclude.
-//   - StartTime: Start time for the sent time range filter.
-//   - EndTime: End time for the sent time range filter.
-//   - Interval: Predefined time interval for the sent time filter.
-//   - NotFromMe: Exclude messages sent by the current user.
-//   - NotToMe: Exclude messages sent to the current user.
-//   - FromMe: Include only messages sent by the current user.
-//   - ToMe: Include only messages sent to the current user.
+// Interval takes precedence over StartTime and EndTime.
 //
-// Note: If Interval is set, it takes precedence over StartTime and EndTime.
-//
-// Note: Using `to` clauses works only in chats, not in team channels.
-//
-// Note: Currently, the queries for IsRead may not function as expected due to API limitations.
+// Provider notes:
+//   - "To" / "NotTo" filters typically work only for chats (not for team channels).
+//   - Some providers may not support all filters (e.g., IsRead) due to API limitations.
 type SearchMessagesOptions struct {
-	Query       *string
-	SearchPage  *SearchPage
-	From        []string
-	NotFrom     []string
-	IsRead      *bool
+	// Query is the full-text query string (provider-dependent syntax).
+	Query *string
+
+	// SearchPage controls pagination (From/Size).
+	SearchPage *SearchPage
+
+	// From includes messages from these sender email addresses.
+	From []string
+	// NotFrom excludes messages from these sender email addresses.
+	NotFrom []string
+
+	// IsRead filters by read status (true=read, false=unread).
+	// Note: may be ignored by some providers due to API limitations.
+	IsRead *bool
+
+	// IsMentioned filters by whether the current user is mentioned.
 	IsMentioned *bool
-	To          []string
-	NotTo       []string
-	StartTime   *time.Time
-	EndTime     *time.Time
-	Interval    *TimeInterval
-	NotFromMe   bool
-	NotToMe     bool
-	FromMe      bool
-	ToMe        bool
+
+	// To includes messages addressed to these recipients.
+	// Note: commonly chat-only; may not work for channel messages.
+	To []string
+	// NotTo excludes messages addressed to these recipients.
+	// Note: commonly chat-only; may not work for channel messages.
+	NotTo []string
+
+	// StartTime is the inclusive start of the sent-time filter.
+	StartTime *time.Time
+	// EndTime is the exclusive end of the sent-time filter (provider-dependent).
+	EndTime *time.Time
+
+	// Interval is a predefined time window; when set it overrides StartTime/EndTime.
+	Interval *TimeInterval
+
+	// NotFromMe excludes messages sent by the current user.
+	NotFromMe bool
+	// NotToMe excludes messages sent to the current user (provider-dependent).
+	NotToMe bool
+	// FromMe includes only messages sent by the current user.
+	FromMe bool
+	// ToMe includes only messages sent to the current user (provider-dependent).
+	ToMe bool
 }
 
-// SearchResult represents a single search result containing a message and its context.
+// SearchResult is a single search hit together with its location context.
 //
-// Fields:
-//   - Message: The chat message.
-//   - ChannelID: The ID of the channel where the message was found (if applicable).
-//   - TeamID: The ID of the team where the message was found (if applicable).
-//   - ChatID: The ID of the chat where the message was found (if applicable).
+// Exactly which of ChannelID/TeamID/ChatID is set depends on where the message was found.
 type SearchResult struct {
-	Message   *models.Message
+	// Message is the found message payload.
+	Message *models.Message
+
+	// ChannelID is set when the message was found in a channel.
 	ChannelID *string
-	TeamID    *string
-	ChatID    *string
+	// TeamID is set when the message was found in a team (typically with ChannelID).
+	TeamID *string
+	// ChatID is set when the message was found in a chat.
+	ChatID *string
 }
 
-// SearchResults represents the results of a message search.
-//
-// Fields:
-//   - Messages: A list of search results.
-//   - NextFrom: The pagination token for the next page of results (if applicable).
+// SearchResults is a paginated container of search hits.
 type SearchResults struct {
+	// Messages contains the list of hits for this page.
 	Messages []*SearchResult
+
+	// NextFrom is the pagination cursor/index to continue from (if available).
 	NextFrom *int32
 }
