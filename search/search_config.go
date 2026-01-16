@@ -1,15 +1,15 @@
 package search
 
-// SearchConfig holds configuration for search operations.
+// SearchConfig configures how search operations are executed.
 //
-// MaxWorkers specifies the maximum number of concurrent workers to use
-// when fetching search results. A higher number can speed up searches but
-// may increase resource usage. Default is 8.
+// MaxWorkers defines the maximum number of concurrent workers used to fetch
+// and enrich search results. Higher values can speed up searches but increase
+// resource usage and pressure on the upstream API.
 type SearchConfig struct {
 	MaxWorkers int
 }
 
-// DefaultSearchConfig returns a SearchConfig with default settings.
+// DefaultSearchConfig returns a SearchConfig initialized with sane defaults.
 func DefaultSearchConfig() *SearchConfig {
 	return &SearchConfig{
 		MaxWorkers: 8,
