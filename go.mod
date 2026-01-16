@@ -45,5 +45,3 @@ require (
 	golang.org/x/text v0.28.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-replace appliedgo.net/what v0.2.0 => github.com/appliedgocode/what v0.2.0
