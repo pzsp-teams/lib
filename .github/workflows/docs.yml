@@ -1,0 +1,84 @@
+name: Docs
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build documentation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Install gomarkdoc
+        run: |
+          go install github.com/princjef/gomarkdoc/cmd/gomarkdoc@latest
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install MkDocs dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f docs/requirements.txt ]; then
+            pip install -r docs/requirements.txt
+          elif [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          else
+            pip install mkdocs mkdocs-material
+          fi
+
+      - name: Configure GitHub Pages
+        if: github.event_name != 'pull_request'
+        uses: actions/configure-pages@v5
+
+      - name: Generate Go API docs (gomarkdoc -> docs/*.md)
+        run: |
+          bash docs/generate_docs.sh
+
+      - name: Build MkDocs site
+        run: |
+          mkdocs build --strict --site-dir site
+
+      - name: Upload Pages artifact
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    name: Deploy to GitHub Pages
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
