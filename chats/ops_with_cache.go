@@ -25,10 +25,6 @@ func NewOpsWithCache(chatOps chatOps, cache *cacher.CacheHandler) chatOps {
 	}
 }
 
-func (o *opsWithCache) Wait() {
-	o.cacheHandler.Runner.Wait()
-}
-
 func (o *opsWithCache) CreateOneOnOne(ctx context.Context, userID string) (*models.Chat, error) {
 	chat, err := o.chatOps.CreateOneOnOne(ctx, userID)
 	if err != nil {

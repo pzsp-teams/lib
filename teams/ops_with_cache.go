@@ -23,10 +23,6 @@ func NewOpsWithCache(teamOps teamsOps, cache *cacher.CacheHandler) teamsOps {
 	}
 }
 
-func (o *opsWithCache) Wait() {
-	o.cacheHandler.Runner.Wait()
-}
-
 func (o *opsWithCache) GetTeamByID(ctx context.Context, teamID string) (*models.Team, error) {
 	team, requestErr := o.teamOps.GetTeamByID(ctx, teamID)
 	if requestErr != nil {
